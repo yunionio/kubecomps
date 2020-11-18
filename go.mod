@@ -1,9 +1,10 @@
 module yunion.io/x/kubecomps
 
-go 1.15
+go 1.14
 
 require (
-	github.com/projectcalico/libcalico-go v1.7.2-0.20201110235728-977c570b2f4b
+	github.com/fsnotify/fsnotify v1.4.9
+	github.com/projectcalico/libcalico-go v0.0.0-20200318234626-d63b0c8ad26c
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	yunion.io/x/jsonutils v0.0.0-20201110084044-3e4e1cb49769

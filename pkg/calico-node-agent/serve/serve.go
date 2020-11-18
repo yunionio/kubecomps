@@ -28,7 +28,7 @@ func Run(configFile string) {
 
 	nodeCfg, err := config.GetNodeConfigByFile(configFile)
 	if err != nil {
-		log.Fatalf("Get node config error: %v", err)
+		log.Errorf("Get node config error: %v", err)
 	}
 
 	calicoCli, err := client.NewClient(client.DefaultConfigPath)
@@ -36,10 +36,18 @@ func Run(configFile string) {
 		log.Fatalf("New calico client error: %v", err)
 	}
 
-	srv := newServer(nodeCfg, calicoCli)
-	if err := srv.start(context.Background()); err != nil {
-		log.Fatalf("Start serve error: %v", err)
-	}
+	srv := newServer(calicoCli)
+	srv.setConfig(nodeCfg)
+
+	ctx := context.Background()
+
+	go func() {
+		if err := config.StartWatcher(ctx, configFile, srv.watchHandler()); err != nil {
+			log.Fatalf("StartWatcher error: %v", err)
+		}
+	}()
+
+	srv.start(ctx)
 }
 
 type server struct {
@@ -47,21 +55,25 @@ type server struct {
 	calicoCli  cclient.Interface
 }
 
-func newServer(nodeCfg *types.NodeConfig, calicoCli cclient.Interface) *server {
+func newServer(calicoCli cclient.Interface) *server {
 	s := &server{
-		nodeConfig: nodeCfg,
-		calicoCli:  calicoCli,
+		calicoCli: calicoCli,
 	}
 	return s
 }
 
-func (s *server) start(ctx context.Context) error {
-	for {
+func (s *server) start(ctx context.Context) {
+	stopCh := make(chan bool, 0)
+	if s.nodeConfig != nil {
 		if err := s.syncIPPools(ctx); err != nil {
 			log.Errorf("syncIPPools error: %v", err)
 		}
-		time.Sleep(30 * time.Minute)
 	}
+	<-stopCh
+}
+
+func (s *server) setConfig(nodeCfg *types.NodeConfig) {
+	s.nodeConfig = nodeCfg
 }
 
 func getIPPoolName(nodeName string, pool *types.NodeIPPool) string {
@@ -200,4 +212,50 @@ func (s *server) syncIPPools(ctx context.Context) error {
 
 	// TODO: record tmpPools and start watch logical
 	return nil
+}
+
+func (s *server) watchHandler() config.WatchHandler {
+	return newConfigWatchHandler(s)
+}
+
+type configWatchHandler struct {
+	server *server
+}
+
+func newConfigWatchHandler(s *server) config.WatchHandler {
+	return &configWatchHandler{
+		server: s,
+	}
+}
+
+func (h *configWatchHandler) reloadConfig(pathName string) error {
+	nodeCfg, err := config.GetNodeConfigByFile(pathName)
+	if err != nil {
+		return errors.Wrapf(err, "reloadConfig %s by watcher", pathName)
+	}
+	h.server.setConfig(nodeCfg)
+	return nil
+}
+
+func (h *configWatchHandler) doSync(ctx context.Context, pathName string) {
+	if err := h.reloadConfig(pathName); err != nil {
+		log.Errorf("reloadConfig error: %v", err)
+		return
+	}
+	h.server.syncIPPools(ctx)
+}
+
+func (h *configWatchHandler) OnCreate(ctx context.Context, pathName string) {
+	h.doSync(ctx, pathName)
+}
+
+func (h *configWatchHandler) OnUpdate(ctx context.Context, pathName string) {
+	h.doSync(ctx, pathName)
+}
+
+func (h *configWatchHandler) OnDelete(ctx context.Context, pathName string) {
+}
+
+func (h *configWatchHandler) OnError(ctx context.Context, err error) {
+	log.Errorf("[configWatchHandler] error: %v", err)
 }
