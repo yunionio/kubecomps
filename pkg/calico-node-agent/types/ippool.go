@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+
 	cnet "github.com/projectcalico/libcalico-go/lib/net"
 
 	"yunion.io/x/pkg/errors"
@@ -27,6 +29,21 @@ func (pool NodeIPPool) Validate() error {
 	}
 
 	return nil
+}
+
+func (pool NodeIPPool) GetCIDR() (string, error) {
+	if err := pool.Validate(); err != nil {
+		return "", err
+	}
+
+	ip, ipNet, err := pool.GetIPAndNet()
+	if err != nil {
+		return "", err
+	}
+
+	maskLen, _ := ipNet.Mask.Size()
+
+	return fmt.Sprintf("%s/%d", ip.To4().String(), maskLen), nil
 }
 
 func (pool NodeIPPool) GetIPAndNet() (*cnet.IP, *cnet.IPNet, error) {

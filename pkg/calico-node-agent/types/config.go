@@ -9,8 +9,9 @@ const (
 )
 
 type NodeConfig struct {
-	NodeName string      `json:"nodeName"`
-	IPPools  NodeIPPools `json:"ipPools"`
+	NodeName          string      `json:"nodeName"`
+	IPPools           NodeIPPools `json:"ipPools"`
+	ProxyARPInterface string      `json:"proxyARPInterface"`
 }
 
 func (conf NodeConfig) Validate() error {

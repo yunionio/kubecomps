@@ -3,7 +3,9 @@ package serve
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -37,7 +39,9 @@ func Run(configFile string) {
 	}
 
 	srv := newServer(calicoCli)
-	srv.setConfig(nodeCfg)
+	if err := srv.setConfig(nodeCfg); err != nil {
+		log.Fatalf("setConfig error: %v", err)
+	}
 
 	ctx := context.Background()
 
@@ -63,17 +67,49 @@ func newServer(calicoCli cclient.Interface) *server {
 }
 
 func (s *server) start(ctx context.Context) {
-	stopCh := make(chan bool, 0)
-	if s.nodeConfig != nil {
-		if err := s.syncIPPools(ctx); err != nil {
-			log.Errorf("syncIPPools error: %v", err)
+	for {
+		if s.nodeConfig != nil {
+			if err := s.syncIPPools(ctx); err != nil {
+				log.Errorf("syncIPPools error: %v", err)
+			}
 		}
+		time.Sleep(5 * time.Minute)
 	}
-	<-stopCh
 }
 
-func (s *server) setConfig(nodeCfg *types.NodeConfig) {
+func (s *server) setConfig(nodeCfg *types.NodeConfig) error {
+	if nodeCfg != nil && nodeCfg.ProxyARPInterface != "" {
+		if err := s.setInterfaceProxyARP(nodeCfg.ProxyARPInterface); err != nil {
+			return errors.Wrapf(err, "setInterfaceProxyARP %s", nodeCfg.ProxyARPInterface)
+		}
+	}
+
 	s.nodeConfig = nodeCfg
+
+	return nil
+}
+
+// writeProcSys takes the sysctl path and a string value to set i.e. "0" or "1" and sets the sysctl
+func writeProcSys(path, value string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	n, err := f.Write([]byte(value))
+	if err == nil && n < len(value) {
+		err = io.ErrShortWrite
+	}
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+	return err
+}
+
+func (s *server) setInterfaceProxyARP(ifName string) error {
+	if err := writeProcSys(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/proxy_arp", ifName), "1"); err != nil {
+		return errors.Wrapf(err, "failed to set net.ipv4.conf.%s.proxy_arp=1", ifName)
+	}
+	return nil
 }
 
 func getIPPoolName(nodeName string, pool *types.NodeIPPool) string {
@@ -106,11 +142,17 @@ func (s *server) transToIPPool(pool *types.NodeIPPool) (*capi.IPPool, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "get pool ip and net")
 	}
+
+	cidrStr, err := pool.GetCIDR()
+	if err != nil {
+		return nil, errors.Wrap(err, "get pool ip CIDR string")
+	}
+
 	maskLen, _ := ipNet.Mask.Size()
 	ipPool := &capi.IPPool{
 		ObjectMeta: s.getIPPoolMeta(pool),
 		Spec: capi.IPPoolSpec{
-			CIDR:         pool.CIDR,
+			CIDR:         cidrStr,
 			NodeSelector: getIPPoolNodeSelector(s.nodeConfig.NodeName),
 			// TODO: find out how to set blockSize reasonable
 			BlockSize: maskLen,
@@ -233,7 +275,11 @@ func (h *configWatchHandler) reloadConfig(pathName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "reloadConfig %s by watcher", pathName)
 	}
-	h.server.setConfig(nodeCfg)
+
+	if err := h.server.setConfig(nodeCfg); err != nil {
+		return errors.Wrap(err, "setConfig when reloadConfig")
+	}
+
 	return nil
 }
 
@@ -242,7 +288,9 @@ func (h *configWatchHandler) doSync(ctx context.Context, pathName string) {
 		log.Errorf("reloadConfig error: %v", err)
 		return
 	}
-	h.server.syncIPPools(ctx)
+	if err := h.server.syncIPPools(ctx); err != nil {
+		log.Errorf("[sync in watcher] syncIPPools error: %v", err)
+	}
 }
 
 func (h *configWatchHandler) OnCreate(ctx context.Context, pathName string) {
