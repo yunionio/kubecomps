@@ -34,6 +34,9 @@ bin
 .ropeproject
 
 management-state/
-static
-pkg/generated
 config.yaml
+static/
+
+# generated source code
+pkg/generated
+zz_generated.blob.go

@@ -1,0 +1,5 @@
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kubectl:1.18.6
+RUN mkdir -p /opt/yunion/bin
+RUN apk add --no-cache librados librbd && rm -rf /var/cache/apk/*
+ADD ./_output/alpine-build/bin/kubeserver /opt/yunion/bin/kubeserver
+RUN ln -s /opt/yunion/bin/kubeserver /opt/yunion/bin/kube-server

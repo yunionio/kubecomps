@@ -79,9 +79,15 @@ push_image() {
 
 build_process() {
     local component=$1
+    local image_name=$component
+
     build_bin $component
-    #build_bundle_libraries $component
-    img_name="$REGISTRY/$component:$TAG"
+    img_name="$REGISTRY/$image_name:$TAG"
+
+    if [[ "$(uname -m)" == aarch64 ]]; then
+        img_name="${img_name}-arm64"
+    fi
+
     build_image $img_name $DOCKER_DIR/Dockerfile.$component $SRC_DIR
     push_image "$img_name"
 }
@@ -101,9 +107,6 @@ build_process_with_buildx() {
     fi
 
     case "$component" in
-        host | torrent)
-            buildx_and_push $img_name $DOCKER_DIR/multi-arch/Dockerfile.$component $SRC_DIR $arch
-            ;;
         *)
             build_bin $component $build_env
             buildx_and_push $img_name $DOCKER_DIR/Dockerfile.$component $SRC_DIR $arch
@@ -111,7 +114,29 @@ build_process_with_buildx() {
     esac
 }
 
-ALL_COMPONENTS=$(ls cmd | grep -v '.*test$' | xargs)
+function general_build(){
+    local current_arch
+    case $(uname -m) in
+        x86_64)
+            current_arch=amd64
+            ;;
+        aarch64)
+            current_arch=arm64
+            ;;
+    esac
+
+    local component=$1
+    # 如果未指定，则默认使用当前架构
+    local arch=${2:-$current_arch}
+
+    if [[ "$current_arch" == "$arch" ]]; then
+        build_process $component
+    else
+        build_process_with_buildx $component $arch
+    fi
+}
+
+ALL_COMPONENTS=$(ls cmd | grep -v '.*cli$' | xargs)
 
 if [ "$#" -lt 1 ]; then
     echo "No component is specified~"
@@ -119,7 +144,7 @@ if [ "$#" -lt 1 ]; then
     echo "If you want to build all components, specify the component to: all."
     exit
 elif [ "$#" -eq 1 ] && [ "$1" == "all" ]; then
-    echo "Build all kubecomps docker images"
+    echo "Build all onecloud-ee docker images"
     COMPONENTS=$ALL_COMPONENTS
 else
     COMPONENTS=$@
@@ -145,14 +170,11 @@ for component in $COMPONENTS; do
     case "$ARCH" in
         all)
             for arch in "arm64" "amd64"; do
-                build_process_with_buildx $component $arch
+                general_build $component $arch
             done
             ;;
-        arm64 )
-            build_process_with_buildx $component $ARCH
-            ;;
         *)
-            build_process $component
+            general_build $component $ARCH
             ;;
     esac
 done
