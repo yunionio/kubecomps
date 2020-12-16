@@ -92,3 +92,7 @@ func (d *sBaseDriver) AttachNetworkAddress(ctx context.Context, s *mcclient.Clie
 func (d *sBaseDriver) SyncNetworkAddress(ctx context.Context, s *mcclient.ClientSession, m *models.SMachine) error {
 	return errors.Errorf("Machine %s not support sync network address", m.GetName())
 }
+
+func (d *sBaseDriver) GetInfoFromCloud(ctx context.Context, s *mcclient.ClientSession, m *models.SMachine) (*api.CloudMachineInfo, error) {
+	return nil, nil
+}

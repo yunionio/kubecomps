@@ -22,6 +22,7 @@ type ICluster interface {
 	GetKubeconfig() (string, error)
 	GetStatus() string
 	GetK8sResourceManager(kindName string) IK8sResourceManager
+	SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSession) error
 }
 
 // bidirect sync callback
@@ -49,11 +50,13 @@ type IMachine interface {
 	IsControlplane() bool
 	IsRunning() bool
 	GetPrivateIP() (string, error)
+	GetEIP() (string, error)
 	RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error
 	GetStatus() string
 	SetStatus(userCred mcclient.TokenCredential, status string, reason string) error
 	SetPrivateIP(address string) error
 	GetRole() string
+	SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSession) error
 }
 
 type IMachineManager interface {

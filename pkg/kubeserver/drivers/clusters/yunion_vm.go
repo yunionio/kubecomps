@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"yunion.io/x/log"
 
 	"golang.org/x/sync/errgroup"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
+	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
+	kubeadmconfig "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/log"
 	computeapi "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 	"yunion.io/x/onecloud/pkg/httperrors"
@@ -22,10 +27,15 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
 	"yunion.io/x/kubecomps/pkg/kubeserver/options"
+	"yunion.io/x/kubecomps/pkg/utils/etcd"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 	"yunion.io/x/kubecomps/pkg/utils/rand"
 	"yunion.io/x/kubecomps/pkg/utils/registry"
 	"yunion.io/x/kubecomps/pkg/utils/ssh"
+)
+
+var (
+	_ models.IClusterDriver = NewYunionVMDriver()
 )
 
 type SYunionVMDriver struct {
@@ -138,13 +148,17 @@ func (d *SYunionVMDriver) ValidateCreateMachines(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	cluster *models.SCluster,
+	info *api.ClusterMachineCommonInfo,
 	imageRepo *api.ImageRepository,
 	data []*api.CreateMachineData,
 ) error {
-	controls, nodes, err := d.sClusterAPIDriver.ValidateCreateMachines(ctx, userCred, cluster, data)
+	controls, nodes, err := d.sClusterAPIDriver.ValidateCreateMachines(ctx, userCred, cluster, info, data)
 	if err != nil {
 		return err
 	}
+
+	cloudregionId := info.CloudregionId
+	vpcId := info.VpcId
 
 	var namePrefix string
 	if cluster == nil {
@@ -179,7 +193,7 @@ func (d *SYunionVMDriver) ValidateCreateMachines(
 		if len(m.Name) == 0 {
 			m.Name = generateVMName(namePrefix, m.Role, randStr, controlIdxs[idx])
 		}
-		if err := d.applyMachineCreateConfig(m, imageId); err != nil {
+		if err := d.applyMachineCreateConfig(m, imageId, cloudregionId, vpcId); err != nil {
 			return httperrors.NewInputParameterError("Apply controlplane vm config: %v", err)
 		}
 	}
@@ -191,7 +205,7 @@ func (d *SYunionVMDriver) ValidateCreateMachines(
 		if len(m.Name) == 0 {
 			m.Name = generateVMName(namePrefix, m.Role, randStr, nodeIdxs[idx])
 		}
-		if err := d.applyMachineCreateConfig(m, imageId); err != nil {
+		if err := d.applyMachineCreateConfig(m, imageId, cloudregionId, vpcId); err != nil {
 			return httperrors.NewInputParameterError("Apply node vm config: %v", err)
 		}
 	}
@@ -215,27 +229,62 @@ func (d *SYunionVMDriver) ValidateCreateMachines(
 	return nil
 }
 
-func (d *SYunionVMDriver) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, createData *api.ClusterCreateInput) error {
-	if err := d.sClusterAPIDriver.ValidateCreateData(ctx, userCred, ownerId, query, createData); err != nil {
+func (d *SYunionVMDriver) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.ClusterCreateInput) error {
+	if err := d.sClusterAPIDriver.ValidateCreateData(ctx, userCred, ownerId, query, input); err != nil {
 		return err
 	}
-	ms := createData.Machines
+
+	// validate cloud region and vpc
+	s, err := models.GetClusterManager().GetSession()
+	if err != nil {
+		return errors.Wrap(err, "get cloud session")
+	}
+	helper := onecloudcli.NewClientSets(s)
+	if input.VpcId == "" {
+		input.VpcId = computeapi.DEFAULT_VPC_ID
+	}
+	vpc, err := helper.Vpcs().GetDetails(input.VpcId)
+	if err != nil {
+		return errors.Wrap(err, "get cloud vpc")
+	}
+	input.VpcId = vpc.Id
+	if input.CloudregionId == "" {
+		input.CloudregionId = vpc.CloudregionId
+	}
+
+	cloudregion, err := helper.Cloudregions().GetDetails(input.CloudregionId)
+	if err != nil {
+		return errors.Wrap(err, "get cloud region")
+	}
+	input.CloudregionId = cloudregion.Id
+	if vpc.CloudregionId != input.CloudregionId {
+		return httperrors.NewInputParameterError("Vpc %s not in cloud region %s", vpc.Name, cloudregion.Name)
+	}
+
+	ms := input.Machines
 	controls, _ := drivers.GetControlplaneMachineDatas("", ms)
-	if len(controls) == 0 && createData.Provider != api.ProviderTypeOnecloud {
+	if len(controls) == 0 && input.Provider != api.ProviderTypeOnecloud {
 		return httperrors.NewInputParameterError("No controlplane nodes")
 	}
 
-	ctx = context.WithValue(ctx, "VmNamePrefix", createData.Name)
-	imageRepo := createData.ImageRepository
-	if err := d.ValidateCreateMachines(ctx, userCred, nil, imageRepo, ms); err != nil {
+	ctx = context.WithValue(ctx, "VmNamePrefix", input.Name)
+	info := &api.ClusterMachineCommonInfo{
+		CloudregionId: input.CloudregionId,
+		VpcId:         input.VpcId,
+	}
+	imageRepo := input.ImageRepository
+	if err := d.ValidateCreateMachines(ctx, userCred, nil, info, imageRepo, ms); err != nil {
 		return err
 	}
-	createData.Machines = ms
+	input.Machines = ms
 
 	return nil
 }
 
-func (d *SYunionVMDriver) applyMachineCreateConfig(m *api.CreateMachineData, imageId string) error {
+func (d *SYunionVMDriver) applyMachineCreateConfig(m *api.CreateMachineData, imageId string, cloudregionId, vpcId string) error {
+	m.CloudregionId = cloudregionId
+	m.VpcId = vpcId
+
 	if m.Config == nil {
 		m.Config = new(api.MachineCreateConfig)
 	}
@@ -303,12 +352,12 @@ func (d *SYunionVMDriver) GetKubeconfig(cluster *models.SCluster) (string, error
 	if err != nil {
 		return "", err
 	}
-	privateKey, err := onecloudcli.GetCloudSSHPrivateKey(session)
+	helper := onecloudcli.NewClientSets(session)
+	privateKey, err := helper.GetCloudSSHPrivateKey()
 	if err != nil {
 		return "", err
 	}
-	helper := onecloudcli.NewServerHelper(session)
-	loginInfo, err := helper.GetLoginInfo(masterMachine.GetResourceId())
+	loginInfo, err := helper.Servers().GetLoginInfo(masterMachine.GetResourceId())
 	if err != nil {
 		return "", errors.Wrapf(err, "Get server %q logininfo", masterMachine.GetResourceId())
 	}
@@ -355,3 +404,146 @@ func (d *SYunionVMDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.
 	}
 	return pluginConf.GenerateYAML()
 }
+
+func (d *SYunionVMDriver) GetClusterEtcdEndpoints(cluster *models.SCluster) ([]string, error) {
+	ms, err := cluster.GetControlplaneMachines()
+	if err != nil {
+		return nil, err
+	}
+	endpoints := []string{}
+	for _, m := range ms {
+		ip, err := m.GetPrivateIP()
+		if err != nil {
+			return nil, err
+		}
+		endpoints = append(endpoints, etcd.GetClientURLByIP(ip))
+	}
+	return endpoints, nil
+}
+
+func (d *SYunionVMDriver) GetClusterEtcdClient(cluster *models.SCluster) (*etcd.Client, error) {
+	//spec, err := d.GetClusterAPIClusterSpec(cluster)
+	//if err != nil {
+	//return nil, err
+	//}
+	spec, err := cluster.GetEtcdCAKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	ca := spec.Certificate
+	cert := spec.Certificate
+	key := spec.PrivateKey
+	if err != nil {
+		return nil, err
+	}
+	endpoints, err := d.GetClusterEtcdEndpoints(cluster)
+	if err != nil {
+		return nil, err
+	}
+	return etcd.New(endpoints, ca, cert, key)
+}
+
+func (d *SYunionVMDriver) updateKubeadmClusterStatus(cli clientset.Interface, status *kubeadmapi.ClusterStatus) error {
+	configMap, err := d.getKubeadmConfigmap(cli)
+	if err != nil {
+		return err
+	}
+	clusterStatusYaml, err := kubeadmconfig.MarshalKubeadmConfigObject(status)
+	if err != nil {
+		return err
+	}
+	configMap.Data[kubeadmconstants.ClusterStatusConfigMapKey] = string(clusterStatusYaml)
+	_, err = cli.CoreV1().ConfigMaps(metav1.NamespaceSystem).Update(context.Background(), configMap, metav1.UpdateOptions{})
+	return err
+}
+
+func (d *SYunionVMDriver) RemoveEtcdMembers(cluster *models.SCluster, ms []manager.IMachine) error {
+	joinControls := make([]manager.IMachine, 0)
+	for _, m := range ms {
+		if m.IsControlplane() && !m.IsFirstNode() {
+			joinControls = append(joinControls, m)
+		}
+	}
+	if len(joinControls) == 0 {
+		return nil
+	}
+	etcdCli, err := d.GetClusterEtcdClient(cluster)
+	if err != nil {
+		return err
+	}
+	defer etcdCli.Cleanup()
+	clusterStatus, err := d.GetKubeadmClusterStatus(cluster)
+	if err != nil {
+		return err
+	}
+	for _, m := range joinControls {
+		ip, err := m.GetPrivateIP()
+		if err != nil {
+			return err
+		}
+		if err := d.removeKubeadmClusterStatusAPIEndpoint(clusterStatus, m); err != nil {
+			return err
+		}
+		if err := d.RemoveEtcdMember(etcdCli, ip); err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				continue
+			}
+			return err
+		}
+	}
+	cli, err := cluster.GetK8sClient()
+	if err != nil {
+		return err
+	}
+	if err := d.updateKubeadmClusterStatus(cli, clusterStatus); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *SYunionVMDriver) removeKubeadmClusterStatusAPIEndpoint(status *kubeadmapi.ClusterStatus, m manager.IMachine) error {
+	ip, err := m.GetPrivateIP()
+	if err != nil {
+		return err
+	}
+	for hostname, endpoint := range status.APIEndpoints {
+		if hostname == m.GetName() {
+			delete(status.APIEndpoints, hostname)
+			return nil
+		}
+		if endpoint.AdvertiseAddress == ip {
+			delete(status.APIEndpoints, hostname)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (d *SYunionVMDriver) RemoveEtcdMember(etcdCli *etcd.Client, ip string) error {
+	// notifies the other members of the etcd cluster about the removing member
+	etcdPeerAddress := etcd.GetPeerURL(ip)
+
+	log.Infof("[etcd] get the member id from peer: %s", etcdPeerAddress)
+	id, err := etcdCli.GetMemberID(etcdPeerAddress)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("[etcd] removing etcd member: %s, id: %d", etcdPeerAddress, id)
+	members, err := etcdCli.RemoveMember(id)
+	if err != nil {
+		return err
+	}
+	log.Infof("[etcd] Updated etcd member list: %v", members)
+	return nil
+}
+
+/*func (d *SYunionVMDriver) RequestDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, ms []manager.IMachine, task taskman.ITask) error {
+	//if err := d.CleanNodeRecords(cluster, ms); err != nil {
+	//return err
+	//}
+	if err := d.RemoveEtcdMembers(cluster, ms); err != nil {
+		return err
+	}
+	return d.sClusterAPIDriver.RequestDeleteMachines(ctx, userCred, cluster, ms, task)
+}*/

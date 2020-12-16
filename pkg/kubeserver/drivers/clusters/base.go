@@ -77,6 +77,7 @@ func (d *SBaseDriver) ValidateCreateMachines(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	cluster *models.SCluster,
+	_ *api.ClusterMachineCommonInfo,
 	data []*api.CreateMachineData,
 ) ([]*api.CreateMachineData, []*api.CreateMachineData, error) {
 	var needControlplane bool

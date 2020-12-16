@@ -51,7 +51,7 @@ func (d *SYunionVMDriver) GetResourceType() api.MachineResourceType {
 	return api.MachineResourceTypeVm
 }
 
-func (d *SYunionVMDriver) ValidateCreateData(session *mcclient.ClientSession, input *api.CreateMachineData) error {
+func (d *SYunionVMDriver) ValidateCreateData(s *mcclient.ClientSession, input *api.CreateMachineData) error {
 	if input.ResourceType != api.MachineResourceTypeVm {
 		return httperrors.NewInputParameterError("Invalid resource type: %q", input.ResourceType)
 	}
@@ -59,7 +59,53 @@ func (d *SYunionVMDriver) ValidateCreateData(session *mcclient.ClientSession, in
 		return httperrors.NewInputParameterError("Resource id must not provide")
 	}
 
-	return d.validateConfig(session, input.Config.Vm)
+	config := input.Config.Vm
+
+	// validate network
+	if len(config.Networks) == 0 {
+		return httperrors.NewNotEmptyError("Network must provide")
+	}
+	if len(config.Networks) != 1 {
+		return httperrors.NewInputParameterError("Only 1 network can provide")
+	}
+	net := config.Networks[0]
+	if net.Network == "" {
+		return httperrors.NewNotEmptyError("Network must specified")
+	}
+	netObj, err := cloudmod.Networks.Get(s, net.Network, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Get cloud network %s", net.Network)
+	}
+	netDetail := new(ocapi.NetworkDetails)
+	if err := netObj.Unmarshal(netDetail); err != nil {
+		return errors.Wrap(err, "Unmarshal network")
+	}
+	input.NetworkId = netDetail.Id
+	if input.ZoneId == "" {
+		input.ZoneId = netDetail.ZoneId
+	}
+	if netDetail.VpcId != input.VpcId {
+		return httperrors.NewInputParameterError("Network %s int vpc %s, not in vpc %s", netDetail.Name, netDetail.Vpc, input.VpcId)
+	}
+
+	// validate zone
+	zoneObj, err := cloudmod.Zones.Get(s, input.ZoneId, nil)
+	if err != nil {
+		return errors.Wrapf(err, "Get cloud zone %s", input.ZoneId)
+	}
+	zoneDetail := new(ocapi.ZoneDetails)
+	if err := zoneObj.Unmarshal(zoneDetail); err != nil {
+		return errors.Wrap(err, "Unmarshal zone")
+	}
+	if zoneDetail.Id != netDetail.ZoneId {
+		return httperrors.NewInputParameterError("Network %s not in zone %s", netDetail.Name, zoneDetail.Name)
+	}
+	input.ZoneId = zoneDetail.Id
+	if zoneDetail.CloudregionId != input.CloudregionId {
+		return httperrors.NewInputParameterError("Zone %s not in cloudregion %s", zoneDetail.Name, input.CloudregionId)
+	}
+
+	return d.validateConfig(s, config)
 }
 
 func (d *SYunionVMDriver) validateConfig(s *mcclient.ClientSession, config *api.MachineCreateVMConfig) error {
@@ -69,6 +115,7 @@ func (d *SYunionVMDriver) validateConfig(s *mcclient.ClientSession, config *api.
 	if config.VmemSize < 4096 {
 		return httperrors.NewNotAcceptableError("Memory size must large than 4G")
 	}
+
 	input := &ocapi.ServerCreateInput{
 		ServerConfigs: &ocapi.ServerConfigs{
 			PreferRegion:     config.PreferRegion,
@@ -172,8 +219,9 @@ func GetDefaultDockerConfig(input *api.DockerConfig) *api.DockerConfig {
 func (d *SYunionVMDriver) GetMachineInitScript(
 	machine *models.SMachine,
 	data *api.MachinePrepareInput,
-	ip string,
+	interalIP string,
 	maxPods int,
+	eIP string,
 ) (string, error) {
 	var initScript string
 	var err error
@@ -206,12 +254,12 @@ func (d *SYunionVMDriver) GetMachineInitScript(
 	case api.RoleTypeControlplane:
 		if data.BootstrapToken != "" {
 			log.Infof("Allowing a machine to join the control plane")
-			apiServerEndpoint, err := cluster.GetAPIServerEndpoint()
+			apiServerEndpoint, err := cluster.GetAPIServerInternalEndpoint()
 			if err != nil {
 				return "", err
 			}
 			updatedJoinConfiguration := kubeadm.SetJoinNodeConfigurationOverrides(caCertHash, data.BootstrapToken, apiServerEndpoint, nil, machine.Name)
-			updatedJoinConfiguration = kubeadm.SetControlPlaneJoinConfigurationOverrides(updatedJoinConfiguration, ip)
+			updatedJoinConfiguration = kubeadm.SetControlPlaneJoinConfigurationOverrides(updatedJoinConfiguration, interalIP)
 			initScript, err = userdata.JoinControlplaneConfig{
 				DockerConfiguration: dockerConfig,
 				CACert:              string(data.CAKeyPair.Cert),
@@ -233,7 +281,7 @@ func (d *SYunionVMDriver) GetMachineInitScript(
 				return "", errors.Error("failed to run controlplane, missing CAPrivateKey")
 			}
 
-			clusterConfiguration, err := kubeadm.SetClusterConfigurationOverrides(cluster, nil, ip)
+			clusterConfiguration, err := kubeadm.SetClusterConfigurationOverrides(cluster, nil, interalIP, eIP)
 			if err != nil {
 				return "", errors.Wrap(err, "SetClusterConfigurationOverrides")
 			}
@@ -279,7 +327,7 @@ func (d *SYunionVMDriver) GetMachineInitScript(
 			}
 		}
 	case api.RoleTypeNode:
-		apiServerEndpoint, err := cluster.GetAPIServerEndpoint()
+		apiServerEndpoint, err := cluster.GetAPIServerInternalEndpoint()
 		if err != nil {
 			return "", err
 		}
@@ -327,7 +375,7 @@ func (d *SYunionVMDriver) PrepareResource(
 	if err != nil {
 		return nil, err
 	}
-	ip, err := d.GetPrivateIP(s, id)
+	intnalIp, err := d.GetPrivateIP(s, id)
 	if err != nil {
 		return nil, err
 	}
@@ -338,13 +386,13 @@ func (d *SYunionVMDriver) PrepareResource(
 	}
 
 	// 3. prepare others resource
-	maxPods, err := d.prepareResources(s, m)
+	resOut, err := d.prepareResources(s, m, srvDetail.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "prepare other resources for machine %s", m.GetName())
 	}
 
 	// 4. ssh run init script
-	script, err := d.GetMachineInitScript(m, data, ip, maxPods)
+	script, err := d.GetMachineInitScript(m, data, intnalIp, resOut.AddrCount, resOut.Eip)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get machine %s init script", m.GetName())
 	}
@@ -357,18 +405,48 @@ func (d *SYunionVMDriver) PrepareResource(
 	return nil, nil
 }
 
-func (d *SYunionVMDriver) prepareResources(s *mcclient.ClientSession, m *models.SMachine) (int, error) {
+type vmPreparedResource struct {
+	AddrCount int
+	Eip       string
+}
+
+func (d *SYunionVMDriver) prepareEIP(s *mcclient.ClientSession, srvId string) (*onecloudcli.ServerEIP, error) {
+	eip, err := onecloudcli.NewServerHelper(s).CreateEIP(srvId)
+	if err != nil {
+		return nil, errors.Wrap(err, "create eip")
+	}
+	return eip, nil
+}
+
+func (d *SYunionVMDriver) prepareResources(s *mcclient.ClientSession, m *models.SMachine, srvId string) (*vmPreparedResource, error) {
+	isClassicNetwork, err := m.IsInClassicNetwork()
+	if err != nil {
+		return nil, errors.Wrap(err, "check is in classic network")
+	}
+
+	ret := &vmPreparedResource{
+		AddrCount: DefaultKubeletMaxPods,
+	}
+
+	if !isClassicNetwork {
+		eip, err := d.prepareEIP(s, srvId)
+		if err != nil {
+			return nil, errors.Wrap(err, "prepare EIP")
+		}
+		ret.Eip = eip.IP
+	}
+
 	enableNativeIPAlloc, err := m.IsEnableNativeIPAlloc()
 	if err != nil {
-		return 0, errors.Wrap(err, "check machine's cluster is enable native IP alloc")
+		return nil, errors.Wrap(err, "check machine's cluster is enable native IP alloc")
 	}
 	if !enableNativeIPAlloc {
-		return DefaultKubeletMaxPods, nil
+		return ret, nil
 	}
 
 	addrCnt, err := d.getNetworkAddressCount(s, m)
 	if err != nil {
-		return 0, errors.Wrap(err, "getNetworkAddressCount")
+		return nil, errors.Wrap(err, "getNetworkAddressCount")
 	}
 
 	ctx := context.Background()
@@ -376,15 +454,16 @@ func (d *SYunionVMDriver) prepareResources(s *mcclient.ClientSession, m *models.
 	for i := 0; i < addrCnt; i++ {
 		opt := new(api.MachineAttachNetworkAddressInput)
 		if err := d.AttachNetworkAddress(ctx, s, m, opt); err != nil {
-			return 0, errors.Wrapf(err, "attach network address, index:%d", i)
+			return nil, errors.Wrapf(err, "attach network address, index:%d", i)
 		}
 	}
 
 	if err := d.SyncNetworkAddress(ctx, s, m); err != nil {
-		return 0, errors.Wrap(err, "sync network address")
+		return nil, errors.Wrap(err, "sync network address")
 	}
+	ret.AddrCount = addrCnt
 
-	return addrCnt, nil
+	return ret, nil
 }
 
 type ServerLoginInfo struct {
@@ -399,9 +478,16 @@ func (d *SYunionVMDriver) GetServerLoginInfo(s *mcclient.ClientSession, srvId st
 	if err != nil {
 		return nil, errors.Wrapf(err, "GetCloudSSHPrivateKey")
 	}
-	ip, err := d.GetPrivateIP(s, srvId)
+	detail, err := helper.GetDetails(srvId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Get server %q PrivateIP", srvId)
+		return nil, errors.Wrapf(err, "Get server detail")
+	}
+	ip := detail.Eip
+	if ip == "" {
+		ip, err = d.GetPrivateIP(s, srvId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Get server %q PrivateIP", srvId)
+		}
 	}
 	loginInfo, err := helper.GetLoginInfo(srvId)
 	if err != nil {
@@ -473,18 +559,45 @@ func (d *SYunionVMDriver) TerminateResource(session *mcclient.ClientSession, mac
 	return err
 }
 
-func (d *SYunionVMDriver) GetPrivateIP(session *mcclient.ClientSession, id string) (string, error) {
+func (d *SYunionVMDriver) ListServerNetworks(session *mcclient.ClientSession, id string) ([]*ocapi.SGuestnetwork, error) {
 	params := jsonutils.NewDict()
 	params.Add(jsonutils.JSONTrue, "system")
 	params.Add(jsonutils.JSONTrue, "admin")
 	ret, err := cloudmod.Servernetworks.ListDescendent(session, id, params)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(ret.Data) == 0 {
-		return "", fmt.Errorf("Not found networks by id: %s", id)
+		return nil, errors.Errorf("Not found networks by id: %s", id)
 	}
-	return ret.Data[0].GetString("ip_addr")
+	objs := make([]*ocapi.SGuestnetwork, 0)
+	for _, data := range ret.Data {
+		obj := new(ocapi.SGuestnetwork)
+		if err := data.Unmarshal(obj); err != nil {
+			return nil, err
+		}
+		objs = append(objs, obj)
+	}
+	return objs, nil
+}
+
+func (d *SYunionVMDriver) GetPrivateIP(s *mcclient.ClientSession, id string) (string, error) {
+	nets, err := d.ListServerNetworks(s, id)
+	if err != nil {
+		return "", errors.Wrap(err, "list server networks")
+	}
+	return nets[0].IpAddr, nil
+}
+
+func (d *SYunionVMDriver) GetEIP(s *mcclient.ClientSession, id string) (string, error) {
+	obj, err := onecloudcli.NewClientSets(s).Servers().GetDetails(id)
+	if err != nil {
+		return "", errors.Wrap(err, "get cloud server details")
+	}
+	if obj.Eip == "" {
+		return "", errors.Errorf("server %s not found eip", id)
+	}
+	return obj.Eip, nil
 }
 
 func (d *SYunionVMDriver) ListNetworkAddress(ctx context.Context, s *mcclient.ClientSession, m *models.SMachine) ([]*ocapi.NetworkAddressDetails, error) {
@@ -514,17 +627,8 @@ func (d *SYunionVMDriver) ListNetworkAddress(ctx context.Context, s *mcclient.Cl
 }
 
 func (d *SYunionVMDriver) getRemoteServer(s *mcclient.ClientSession, m *models.SMachine) (*ocapi.ServerDetails, error) {
-	srvObj, err := cloudmod.Servers.Get(s, m.ResourceId, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get server by id %q", m.ResourceId)
-	}
-
-	out := new(ocapi.ServerDetails)
-	if err := srvObj.Unmarshal(out); err != nil {
-		return nil, errors.Wrap(err, "unmarshal json")
-	}
-
-	return out, nil
+	h := onecloudcli.NewServerHelper(s)
+	return h.GetDetails(m.ResourceId)
 }
 
 func (d *SYunionVMDriver) getNetworkAddressCountByMemSize(memMb int) int {
@@ -615,4 +719,43 @@ func (d *SYunionVMDriver) SyncNetworkAddress(ctx context.Context, s *mcclient.Cl
 
 	_, err = d.RemoteRunScript(s, m.ResourceId, script)
 	return err
+}
+
+func (d *SYunionVMDriver) GetInfoFromCloud(ctx context.Context, s *mcclient.ClientSession, m *models.SMachine) (*api.CloudMachineInfo, error) {
+	// get server details
+	id := m.GetResourceId()
+	helper := onecloudcli.NewServerHelper(s)
+	srvObj, err := helper.ObjectIsExists(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "get cloud server")
+	}
+	srvDetail := new(ocapi.ServerDetails)
+	if err := srvObj.Unmarshal(srvDetail); err != nil {
+		return nil, err
+	}
+
+	// get server networks
+	if m.Address == "" {
+		return nil, errors.Errorf("address is empty")
+	}
+	nets, err := d.ListServerNetworks(s, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "list server network address")
+	}
+	var curNet *ocapi.SGuestnetwork
+	for _, net := range nets {
+		if net.IpAddr == m.Address {
+			curNet = net
+			break
+		}
+	}
+
+	out := &api.CloudMachineInfo{
+		Id:         srvDetail.Id,
+		Name:       srvDetail.Name,
+		Hypervisor: srvDetail.Hypervisor,
+		ZoneId:     srvDetail.ZoneId,
+		NetworkId:  curNet.NetworkId,
+	}
+	return out, nil
 }

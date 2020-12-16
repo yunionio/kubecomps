@@ -78,6 +78,10 @@ func Run(ctx context.Context) error {
 		log.Fatalf("Register system cluster %v", err)
 	}
 
+	if err := models.GetClusterManager().SyncClustersFromCloud(ctx); err != nil {
+		log.Fatalf("Sync clusters from cloud: %v", err)
+	}
+
 	if err := server.Start(httpsAddr, app); err != nil {
 		return err
 	}

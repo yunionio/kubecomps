@@ -18,6 +18,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	computeapi "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
@@ -86,6 +87,10 @@ type SCluster struct {
 	db.SStatusDomainLevelResourceBase
 	SSyncableK8sBaseResource
 
+	// imported cluster CloudregionId and VpcId is null
+	CloudregionId string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"cloudregion_id"`
+	VpcId         string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"vpc_id"`
+
 	IsSystem bool `nullable:"true" default:"false" list:"admin" create:"optional" json:"is_system"`
 
 	ClusterType     string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
@@ -130,6 +135,77 @@ func (m *SClusterManager) InitializeData() error {
 		})
 	}
 	return nil
+}
+
+func (m *SClusterManager) SyncClustersFromCloud(ctx context.Context) error {
+	clusters, err := m.GetClusters()
+	if err != nil {
+		return errors.Wrap(err, "get all clusters")
+	}
+
+	s, err := m.GetSession()
+	if err != nil {
+		return errors.Wrap(err, "get auth session")
+	}
+
+	var errs []error
+	for _, cls := range clusters {
+		if err := cls.SyncInfoFromCloud(ctx, s); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.NewAggregate(errs)
+}
+
+func (c *SCluster) LogPrefix() string {
+	return c.GetId() + "/" + c.GetName()
+}
+
+func (c *SCluster) GetMode() api.ModeType {
+	return api.ModeType(c.Mode)
+}
+
+func (c *SCluster) IsImported() bool {
+	if c.GetMode() == api.ModeTypeImport {
+		return true
+	}
+	return false
+}
+
+func (c *SCluster) SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSession) error {
+	// imported cluster not need sync info from cloud
+	if c.IsImported() {
+		return nil
+	}
+
+	// for classic network cluster
+	_, err := db.Update(c, func() error {
+		if c.CloudregionId == "" {
+			c.CloudregionId = computeapi.DEFAULT_REGION_ID
+			if c.VpcId == "" {
+				c.VpcId = computeapi.DEFAULT_VPC_ID
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "update cluster %s info", c.GetName())
+	}
+
+	ms, err := c.GetMachines()
+	if err != nil {
+		return errors.Wrap(err, "get cluster machines")
+	}
+	var errs []error
+	for _, m := range ms {
+		if m.GetResourceId() == "" {
+			continue
+		}
+		if err := m.SyncInfoFromCloud(ctx, s); err != nil {
+			errs = append(errs, errors.Wrapf(err, "sync cluster %s machine from cloud", c.LogPrefix()))
+		}
+	}
+	return errors.NewAggregate(errs)
 }
 
 func (m *SClusterManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
@@ -650,9 +726,15 @@ func (m *SClusterManager) GetRunningClusters() ([]manager.ICluster, error) {
 	return m.GetClustersByStatus(api.ClusterStatusRunning)
 }
 
+func (m *SClusterManager) GetClusters() ([]manager.ICluster, error) {
+	return m.GetClustersByStatus()
+}
+
 func (m *SClusterManager) getClustersByStatus(status ...string) ([]SCluster, error) {
 	q := m.Query()
-	q = q.In("status", status)
+	if len(status) != 0 {
+		q = q.In("status", status)
+	}
 	objs := make([]SCluster, 0)
 	err := db.FetchModelObjects(m, q, &objs)
 	if err != nil {
@@ -1465,7 +1547,11 @@ func (c *SCluster) ValidateAddMachines(ctx context.Context, userCred mcclient.To
 	if err != nil {
 		return nil, err
 	}
-	if err := driver.ValidateCreateMachines(ctx, userCred, c, imageRepo, machines); err != nil {
+	info := &api.ClusterMachineCommonInfo{
+		CloudregionId: c.CloudregionId,
+		VpcId:         c.VpcId,
+	}
+	if err := driver.ValidateCreateMachines(ctx, userCred, c, info, imageRepo, machines); err != nil {
 		return nil, err
 	}
 	return machines, nil
@@ -1594,7 +1680,7 @@ func (c *SCluster) StartDeleteMachinesTask(ctx context.Context, userCred mcclien
 }
 
 func (c *SCluster) GetControlPlaneUrl() (string, error) {
-	apiServerEndpoint, err := c.GetAPIServerEndpoint()
+	apiServerEndpoint, err := c.GetAPIServerPublicEndpoint()
 	if err != nil {
 		return "", errors.Wrapf(err, "GetAPIServerEndpoint")
 	}
@@ -1621,7 +1707,23 @@ func (c *SCluster) SetAPIServer(apiServer string) error {
 	return err
 }
 
-func (c *SCluster) GetAPIServerEndpoint() (string, error) {
+func (c *SCluster) GetAPIServerPublicEndpoint() (string, error) {
+	if c.IsInClassicNetwork() {
+		return c.GetAPIServerInternalEndpoint()
+	}
+	m, err := c.getControlplaneMachine(false)
+	if err != nil {
+		return "", errors.Wrap(err, "get controlplane machine")
+	}
+	ip, err := m.GetEIP()
+	if err != nil {
+		return "", errors.Wrapf(err, "get controlplane machine %s EIP", m.GetName())
+	}
+	return ip, nil
+}
+
+// TODO: support use loadbalancer
+func (c *SCluster) GetAPIServerInternalEndpoint() (string, error) {
 	m, err := c.getControlplaneMachine(false)
 	if err != nil {
 		return "", errors.Wrap(err, "get controlplane machine")
@@ -2140,4 +2242,8 @@ func (c *SCluster) DisableBidirectionalSync() error {
 	}
 	cli.GetHandler().DisableBidirectionalSync()
 	return nil
+}
+
+func (c *SCluster) IsInClassicNetwork() bool {
+	return c.VpcId == computeapi.DEFAULT_VPC_ID
 }

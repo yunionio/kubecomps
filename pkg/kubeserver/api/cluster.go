@@ -36,7 +36,7 @@ const (
 	// self build k8s cluster
 	ModeTypeSelfBuild ModeType = "customize"
 	// public cloud managed k8s cluster
-	ModeTypeManaged ModeType = "managed"
+	// ModeTypeManaged ModeType = "managed"
 	// imported already exists k8s cluster
 	ModeTypeImport ModeType = "import"
 )
@@ -49,13 +49,13 @@ const (
 	// default provider type by onecloud
 	ProviderTypeOnecloud ProviderType = "onecloud"
 	// AWS provider
-	ProviderTypeAws ProviderType = "aws"
+	// ProviderTypeAws ProviderType = "aws"
 	// Alibaba cloud provider
-	ProviderTypeAliyun ProviderType = "aliyun"
+	// ProviderTypeAliyun ProviderType = "aliyun"
 	// Azure provider
-	ProviderTypeAzure ProviderType = "azure"
+	// ProviderTypeAzure ProviderType = "azure"
 	// Tencent cloud provider
-	ProviderTypeQcloud ProviderType = "qcloud"
+	// ProviderTypeQcloud ProviderType = "qcloud"
 	// External provider type by import
 	ProviderTypeExternal ProviderType = "external"
 )
@@ -130,6 +130,8 @@ type ClusterCreateInput struct {
 	HA              bool                 `json:"ha"`
 	Machines        []*CreateMachineData `json:"machines"`
 	ImageRepository *ImageRepository     `json:"image_repository"`
+	CloudregionId   string               `json:"cloudregion_id"`
+	VpcId           string               `json:"vpc_id"`
 
 	// imported cluster data
 	ImportData *ImportClusterData `json:"import_data"`
@@ -155,6 +157,13 @@ type CreateMachineData struct {
 	Address      string               `json:"address"`
 	FirstNode    bool                 `json:"first_node"`
 	Config       *MachineCreateConfig `json:"config"`
+
+	ZoneId    string `json:"zone_id"`
+	NetworkId string `json:"network_id"`
+
+	// CloudregionId will be inject by cluster
+	CloudregionId string `json:"-"`
+	VpcId         string `json:"-"`
 }
 
 const (

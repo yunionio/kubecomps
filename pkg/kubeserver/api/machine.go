@@ -66,3 +66,16 @@ type MachineAttachNetworkAddressInput struct {
 	// ip_addr specify ip address, e.g. `192.168.0.2`
 	IPAddr string `json:"ip_addr"`
 }
+
+type CloudMachineInfo struct {
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	Hypervisor string `json:"hypervisor"`
+	ZoneId     string `json:"zone_id"`
+	NetworkId  string `json:"network_id"`
+}
+
+type ClusterMachineCommonInfo struct {
+	CloudregionId string
+	VpcId         string
+}

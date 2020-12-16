@@ -46,6 +46,8 @@ type SMachine struct {
 	// Provider determine which cloud provider this node used, e.g. onecloud, aliyun, aws
 	Provider  string `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	ClusterId string `width:"128" charset:"ascii" nullable:"false" create:"required" list:"user"`
+	ZoneId    string `width:"128" charset:"ascii" nullable:"true" create:"optional" list:"user"`
+	NetworkId string `width:"128" charset:"ascii" nullable:"true" create:"optional" list:"user"`
 	Role      string `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	// ResourceType determine which resource type this node used
 	ResourceType string `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
@@ -57,7 +59,7 @@ type SMachine struct {
 
 	// Private IP address
 	Address string `width:"16" charset:"ascii" nullable:"true" list:"user"`
-
+	// Hypervisor in onecloud server
 	Hypervisor string `width:"16" charset:"ascii" nullable:"true" list:"user" create:"optional"`
 }
 
@@ -141,6 +143,39 @@ func (man *SMachineManager) CreateMachineNoHook(ctx context.Context, cluster *SC
 	m := obj.(*SMachine)
 	err = m.SetMetadata(ctx, api.MachineMetadataCreateParams, input.String(), userCred)
 	return m, err
+}
+
+func (m *SMachine) LogPrefix() string {
+	return m.GetId() + "/" + m.GetName()
+}
+
+func (m *SMachine) SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSession) error {
+	if m.ZoneId != "" && m.NetworkId != "" {
+		return nil
+	}
+
+	if m.ResourceId == "" {
+		return errors.Errorf("machine %s resource_id is empty", m.LogPrefix())
+	}
+
+	drv := m.GetDriver()
+	info, err := drv.GetInfoFromCloud(ctx, s, m)
+	if err != nil {
+		return errors.Wrapf(err, "get machine %s info from cloud", m.LogPrefix())
+	}
+
+	if _, err := db.Update(m, func() error {
+		if m.ZoneId == "" {
+			m.ZoneId = info.ZoneId
+		}
+		if m.NetworkId == "" {
+			m.NetworkId = info.NetworkId
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrapf(err, "update machine %s cloud info to db", m.LogPrefix())
+	}
+	return nil
 }
 
 func (m *SMachine) GetCreateInput(userCred mcclient.TokenCredential) (*api.CreateMachineData, error) {
@@ -512,6 +547,19 @@ func (m *SMachine) SetPrivateIP(address string) error {
 	return err
 }
 
+func (m *SMachine) GetEIP() (string, error) {
+	driver := m.GetDriver()
+	s, err := MachineManager.GetSession()
+	if err != nil {
+		return "", err
+	}
+	addr, err := driver.GetEIP(s, m.ResourceId)
+	if err != nil {
+		return "", err
+	}
+	return addr, nil
+}
+
 func (m *SMachine) SetHypervisor(hypervisor string) error {
 	if _, err := db.Update(m, func() error {
 		m.Hypervisor = hypervisor
@@ -653,4 +701,13 @@ func (m *SMachine) IsEnableNativeIPAlloc() (bool, error) {
 	}
 
 	return config.Network.EnableNativeIPAlloc, nil
+}
+
+func (m *SMachine) IsInClassicNetwork() (bool, error) {
+	cls, err := m.GetCluster()
+	if err != nil {
+		return false, errors.Wrap(err, "get cluster")
+	}
+
+	return cls.IsInClassicNetwork(), nil
 }

@@ -164,6 +164,7 @@ func (d *SDefaultImportDriver) ValidateCreateMachines(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	c *models.SCluster,
+	_ *api.ClusterMachineCommonInfo,
 	imageRepo *api.ImageRepository,
 	data []*api.CreateMachineData) error {
 	return httperrors.NewBadRequestError("Not support add machines")

@@ -8,9 +8,9 @@ import (
 	computeapi "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/mcclient"
 
-	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers"
+	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 )
 
 type IMachineDriver interface {
@@ -18,7 +18,8 @@ type IMachineDriver interface {
 
 	GetProvider() api.ProviderType
 	GetResourceType() api.MachineResourceType
-	GetPrivateIP(session *mcclient.ClientSession, resourceId string) (string, error)
+	GetPrivateIP(s *mcclient.ClientSession, resourceId string) (string, error)
+	GetEIP(s *mcclient.ClientSession, resourceId string) (string, error)
 	UseClusterAPI() bool
 
 	PostCreate(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, m *SMachine, data *jsonutils.JSONDict) error
@@ -27,7 +28,10 @@ type IMachineDriver interface {
 	PrepareResource(session *mcclient.ClientSession, m *SMachine, data *api.MachinePrepareInput) (jsonutils.JSONObject, error)
 
 	ValidateDeleteCondition(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, m *SMachine) error
-	TerminateResource(session *mcclient.ClientSession, m *SMachine) error
+	TerminateResource(s *mcclient.ClientSession, m *SMachine) error
+
+	// GetInfoFromCloud fetch machine concerned info from cloud
+	GetInfoFromCloud(ctx context.Context, s *mcclient.ClientSession, m *SMachine) (*api.CloudMachineInfo, error)
 
 	// NetworkAddress related interface
 	ListNetworkAddress(ctx context.Context, s *mcclient.ClientSession, m *SMachine) ([]*computeapi.NetworkAddressDetails, error)

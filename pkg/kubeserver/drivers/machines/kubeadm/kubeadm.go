@@ -31,7 +31,8 @@ const (
 )
 
 type ICluster interface {
-	GetAPIServerEndpoint() (string, error)
+	GetAPIServerPublicEndpoint() (string, error)
+	GetAPIServerInternalEndpoint() (string, error)
 	GetName() string
 	GetServiceDomain() string
 	GetServiceCidr() string
@@ -41,40 +42,43 @@ type ICluster interface {
 
 // SetDefaultClusterConfiguration sets default dynamic values without overriding
 // user specified values.
-func SetDefaultClusterConfiguration(cluster ICluster, base *kubeadmv1beta1.ClusterConfiguration, ipAddress string) (*kubeadmv1beta1.ClusterConfiguration, error) {
+func SetDefaultClusterConfiguration(cluster ICluster, base *kubeadmv1beta1.ClusterConfiguration, internalIP, eIP string) (*kubeadmv1beta1.ClusterConfiguration, error) {
 	if base == nil {
 		base = &kubeadmv1beta1.ClusterConfiguration{}
 	}
 	out := base.DeepCopy()
 
-	apiServerEndpoint, err := cluster.GetAPIServerEndpoint()
+	apiServerEndpoint, err := cluster.GetAPIServerInternalEndpoint()
 	if err != nil {
 		//return nil, errors.Wrapf(err, "Get cluster %s apiServerEndpoint", cluster.GetName())
 		// TODO: fix this use LB?
 		log.Errorf("Get cluster %s apiServerEndpoint: %v", cluster.GetName(), err)
 	}
-	if ipAddress == "" {
-		ipAddress = localIPV4Lookup
+	if internalIP == "" {
+		internalIP = localIPV4Lookup
 	}
 	if apiServerEndpoint == "" {
-		apiServerEndpoint = ipAddress
+		apiServerEndpoint = internalIP
 	}
 	// Only set the control plane endpoint if the user hasn't specified one
 	if out.ControlPlaneEndpoint == "" {
 		out.ControlPlaneEndpoint = fmt.Sprintf("%s:%d", apiServerEndpoint, APIServerBindPort)
 	}
 	// Add the control plane endpoint to the list of cert SAN
-	out.APIServer.CertSANs = append(out.APIServer.CertSANs, ipAddress, apiServerEndpoint)
+	out.APIServer.CertSANs = append(out.APIServer.CertSANs, internalIP, apiServerEndpoint)
+	if eIP != "" {
+		out.APIServer.CertSANs = append(out.APIServer.CertSANs, eIP)
+	}
 	return out, nil
 }
 
 // SetClusterConfigurationOverrides will modify the supplied configuration with certain values
-func SetClusterConfigurationOverrides(cluster ICluster, base *kubeadmv1beta1.ClusterConfiguration, ipAddress string) (*kubeadmv1beta1.ClusterConfiguration, error) {
+func SetClusterConfigurationOverrides(cluster ICluster, base *kubeadmv1beta1.ClusterConfiguration, interalIP, eIP string) (*kubeadmv1beta1.ClusterConfiguration, error) {
 	if base == nil {
 		base = &kubeadmv1beta1.ClusterConfiguration{}
 	}
 
-	out, err := SetDefaultClusterConfiguration(cluster, base.DeepCopy(), ipAddress)
+	out, err := SetDefaultClusterConfiguration(cluster, base.DeepCopy(), interalIP, eIP)
 	if err != nil {
 		return nil, err
 	}
