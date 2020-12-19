@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/minio/minio-go/v7"
 	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -160,7 +161,10 @@ func validateObjectStore(ctx context.Context, conf *api.ObjectStoreConfig) error
 		return errors.Wrap(err, "check bucket exists")
 	}
 	if !exists {
-		return httperrors.NewNotFoundError("bucket %s not found", conf.Bucket)
+		// return httperrors.NewNotFoundError("bucket %s not found", conf.Bucket)
+		if err := cli.MakeBucket(ctx, conf.Bucket, minio.MakeBucketOptions{}); err != nil {
+			return errors.Wrapf(err, "make bucket %s", conf.Bucket)
+		}
 	}
 
 	return nil
@@ -204,6 +208,9 @@ func (c componentDriverMonitor) createOrUpdateThanosObjectStoreSecret(ctx contex
 	cli, err := cluster.GetRemoteClient()
 	if err != nil {
 		return errors.Wrapf(err, "get cluster %s remote client", cluster.GetName())
+	}
+	if err := MonitorComponentManager.EnsureNamespace(cluster, MonitorNamespace); err != nil {
+		return errors.Wrap(err, "ensure namespace")
 	}
 	secrets := cli.GetClientset().CoreV1().Secrets(MonitorNamespace)
 	obj, err := secrets.Get(ctx, ThanosObjectStoreConfigSecretName, metav1.GetOptions{})
