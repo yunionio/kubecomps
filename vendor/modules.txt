@@ -257,6 +257,8 @@ github.com/google/uuid
 github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/openapiv2
+# github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1
+github.com/gopherjs/gopherjs/js
 # github.com/gorilla/mux v1.7.3
 github.com/gorilla/mux
 # github.com/gosuri/uitable v0.0.4
@@ -280,6 +282,8 @@ github.com/jmoiron/sqlx
 github.com/jmoiron/sqlx/reflectx
 # github.com/json-iterator/go v1.1.10
 github.com/json-iterator/go
+# github.com/jtolds/gls v4.20.0+incompatible
+github.com/jtolds/gls
 # github.com/kelseyhightower/envconfig v0.0.0-20180517194557-dd1402a4d99d
 github.com/kelseyhightower/envconfig
 # github.com/klauspost/cpuid v1.3.1
@@ -372,6 +376,8 @@ github.com/openshift/client-go/user/clientset/versioned/typed/user/v1
 github.com/peterbourgon/diskv
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/projectcalico/go-json v0.0.0-20161128004156-6219dc7339ba
 github.com/projectcalico/go-json/json
 # github.com/projectcalico/go-yaml-wrapper v0.0.0-20191112210931-090425220c54
@@ -431,12 +437,22 @@ github.com/russross/blackfriday
 github.com/satori/go.uuid
 # github.com/sirupsen/logrus v1.7.0
 github.com/sirupsen/logrus
+# github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d
+github.com/smartystreets/assertions
+github.com/smartystreets/assertions/internal/go-render/render
+github.com/smartystreets/assertions/internal/oglematchers
+# github.com/smartystreets/goconvey v1.6.4
+github.com/smartystreets/goconvey/convey
+github.com/smartystreets/goconvey/convey/gotest
+github.com/smartystreets/goconvey/convey/reporting
 # github.com/spf13/cast v1.3.1
 github.com/spf13/cast
 # github.com/spf13/cobra v1.0.0
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
+# github.com/stretchr/testify v1.6.1
+github.com/stretchr/testify/assert
 # github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e
 github.com/texttheater/golang-levenshtein/levenshtein
 # github.com/tredoe/osutil v0.0.0-20161130133508-7d3ee1afa71c
@@ -678,6 +694,8 @@ gopkg.in/inf.v0
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+gopkg.in/yaml.v3
 # helm.sh/helm/v3 v3.4.1 => helm.sh/helm/v3 v3.4.1
 helm.sh/helm/v3/cmd/helm/search
 helm.sh/helm/v3/internal/experimental/registry

@@ -1,5 +1,9 @@
 FROM registry.cn-beijing.aliyuncs.com/yunionio/kubectl:1.18.6
 RUN mkdir -p /opt/yunion/bin
-RUN apk add --no-cache librados librbd && rm -rf /var/cache/apk/*
+RUN apk add --no-cache librados librbd \
+	openssh-client ansible py-netaddr tzdata rsync \
+	git ca-certificates \
+	&& rm -rf /var/cache/apk/*
+ADD ./manifests/ansible /opt/yunion/ansible
 ADD ./_output/alpine-build/bin/kubeserver /opt/yunion/bin/kubeserver
 RUN ln -s /opt/yunion/bin/kubeserver /opt/yunion/bin/kube-server

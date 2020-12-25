@@ -21,7 +21,8 @@ type KubeServerOptions struct {
 
 	EnableDefaultLimitRange bool `help:"Enable default namespace limit range" default:"false"`
 
-	GuestDefaultTemplate string `help:"Guest kubernetes default image id" default:"k8s-centos7-base.qcow2"`
+	// GuestDefaultTemplate string `help:"Guest kubernetes default image id" default:"k8s-centos7-base.qcow2"`
+	// GuestDefaultTemplate string `help:"Guest kubernetes default image id" default:"CentOS-7.6.1810-20190430.qcow2"`
 }
 
 func OnOptionsChange(oldO, newO interface{}) bool {

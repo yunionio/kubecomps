@@ -5,6 +5,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"yunion.io/x/jsonutils"
 	"yunion.io/x/onecloud/pkg/apis"
 )
 
@@ -15,19 +16,7 @@ const (
 	// common k8s cluster with nodes
 	ClusterTypeDefault ClusterType = "default"
 	// nodeless k8s cluster
-	ClusterTypeServerless ClusterType = "serverless"
-)
-
-// k8s cluster cloud type
-type CloudType string
-
-const (
-	// cluster running on private cloud
-	CloudTypePrivate CloudType = "private"
-	// cluster running on public cloud
-	CloudTypePublic CloudType = "public"
-	// cluster running on hybrid cloud
-	CloudTypeHybrid CloudType = "hybrid"
+	// ClusterTypeServerless ClusterType = "serverless"
 )
 
 type ModeType string
@@ -49,9 +38,9 @@ const (
 	// default provider type by onecloud
 	ProviderTypeOnecloud ProviderType = "onecloud"
 	// AWS provider
-	// ProviderTypeAws ProviderType = "aws"
+	ProviderTypeAws ProviderType = "aws"
 	// Alibaba cloud provider
-	// ProviderTypeAliyun ProviderType = "aliyun"
+	ProviderTypeAliyun ProviderType = "aliyun"
 	// Azure provider
 	// ProviderTypeAzure ProviderType = "azure"
 	// Tencent cloud provider
@@ -106,6 +95,8 @@ const (
 	ClusterStatusCreateFail        = "create_fail"
 	ClusterStatusCreatingMachine   = "creating_machine"
 	ClusterStatusCreateMachineFail = "create_machine_fail"
+	ClusterStatusDeploying         = "deploying"
+	ClusterStatusDeployingFail     = "deploy_fail"
 	ClusterStatusRunning           = "running"
 	ClusterStatusLost              = "lost"
 	ClusterStatusUnknown           = "unknown"
@@ -114,12 +105,20 @@ const (
 	ClusterStatusDeleteFail        = "delete_fail"
 )
 
+type ClusterDeployAction string
+
+const (
+	ClusterDeployActionCreate     ClusterDeployAction = "create"
+	ClusterDeployActionRun        ClusterDeployAction = "run"
+	ClusterDeployActionScale      ClusterDeployAction = "scale"
+	ClusterDeployActionRemoveNode ClusterDeployAction = "remove-node"
+)
+
 type ClusterCreateInput struct {
 	apis.StatusDomainLevelResourceCreateInput
 
 	IsSystem        *bool                `json:"is_system"`
 	ClusterType     ClusterType          `json:"cluster_type"`
-	CloudType       CloudType            `json:"cloud_type"`
 	ResourceType    ClusterResourceType  `json:"resource_type"`
 	Mode            ModeType             `json:"mode"`
 	Provider        ProviderType         `json:"provider"`
@@ -164,6 +163,8 @@ type CreateMachineData struct {
 	// CloudregionId will be inject by cluster
 	CloudregionId string `json:"-"`
 	VpcId         string `json:"-"`
+	// ClusterDeployAction will be inject by background task
+	ClusterDeployAction ClusterDeployAction `json:"cluster_deploy_action"`
 }
 
 const (
@@ -417,4 +418,10 @@ type ClusterAddonNetworkConfig struct {
 
 type ClusterAddonsManifestConfig struct {
 	Network ClusterAddonNetworkConfig `json:"network"`
+}
+
+type ClusterKubesprayConfig struct {
+	InventoryContent string               `json:"inventory_content"`
+	PrivateKey       string               `json:"private_key"`
+	Vars             jsonutils.JSONObject `json:"vars"`
 }

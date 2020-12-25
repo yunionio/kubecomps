@@ -90,3 +90,12 @@ type IngressControllerYunionConfig struct {
 func (c IngressControllerYunionConfig) GenerateYAML() (string, error) {
 	return CompileTemplateFromMap(YunionIngressControllerTemplate, c)
 }
+
+type CSIRancherLocalPathConfig struct {
+	Image       string
+	HelperImage string
+}
+
+func (c CSIRancherLocalPathConfig) GenerateYAML() (string, error) {
+	return CompileTemplateFromMap(CSIRancherLocalPath, c)
+}

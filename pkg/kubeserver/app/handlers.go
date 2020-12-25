@@ -9,14 +9,10 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 
-	_ "yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
 	"yunion.io/x/kubecomps/pkg/kubeserver/k8s"
 	"yunion.io/x/kubecomps/pkg/kubeserver/k8s/common/model"
 	k8sdispatcher "yunion.io/x/kubecomps/pkg/kubeserver/k8s/dispatcher"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
-	_ "yunion.io/x/kubecomps/pkg/kubeserver/models/drivers/release"
-	_ "yunion.io/x/kubecomps/pkg/kubeserver/models/drivers/secret"
-	_ "yunion.io/x/kubecomps/pkg/kubeserver/models/drivers/storageclass"
 	"yunion.io/x/kubecomps/pkg/kubeserver/usages"
 )
 
@@ -42,7 +38,6 @@ func InitHandlers(app *appsrv.Application) {
 		db.OpsLog,
 		models.RepoManager,
 		models.ClusterManager,
-		models.X509KeyPairManager,
 		models.ComponentManager,
 		models.MachineManager,
 
@@ -87,7 +82,6 @@ func InitHandlers(app *appsrv.Application) {
 	}
 
 	for _, man := range []db.IJointModelManager{
-		models.ClusterX509KeyPairManager,
 		models.ClusterComponentManager,
 
 		// federated joint resources

@@ -19,6 +19,7 @@ const (
 	ActionClusterApplyAddons    TEventAction = "cluster_apply_addons"
 	ActionClusterSyncStatus     TEventAction = "cluster_sync_status"
 	ActionClusterSync           TEventAction = "cluster_sync"
+	ActionClusterDeploy         TEventAction = "cluster_deploy"
 
 	ActionMachineCreate  TEventAction = "machine_create"
 	ActionMachinePrepare TEventAction = "machine_prepare"

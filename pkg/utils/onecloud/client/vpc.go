@@ -1,8 +1,6 @@
 package client
 
 import (
-	"yunion.io/x/pkg/errors"
-
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
@@ -24,13 +22,9 @@ func (h *VpcHelper) Vpcs() modulebase.Manager {
 }
 
 func (h *VpcHelper) GetDetails(id string) (*api.VpcDetails, error) {
-	obj, err := h.Vpcs().Get(h.session, id, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get vpc by id %q", id)
-	}
 	out := new(api.VpcDetails)
-	if err := obj.Unmarshal(out); err != nil {
-		return nil, errors.Wrap(err, "unmarshal json")
+	if err := h.ResourceHelper.GetDetails(id, out); err != nil {
+		return nil, err
 	}
 
 	return out, nil

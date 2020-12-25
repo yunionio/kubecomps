@@ -11,10 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -41,7 +39,7 @@ import (
 	k8sutil "yunion.io/x/kubecomps/pkg/kubeserver/k8s/util"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
 	"yunion.io/x/kubecomps/pkg/utils/certificates"
-	"yunion.io/x/kubecomps/pkg/utils/tokens"
+	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 )
 
 var ClusterManager *SClusterManager
@@ -94,7 +92,6 @@ type SCluster struct {
 	IsSystem bool `nullable:"true" default:"false" list:"admin" create:"optional" json:"is_system"`
 
 	ClusterType     string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
-	CloudType       string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	ResourceType    string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	Mode            string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	Provider        string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
@@ -106,7 +103,8 @@ type SCluster struct {
 
 	// kubernetes config
 	Kubeconfig string `nullable:"true" charset:"utf8" create:"optional"`
-
+	Ca         string `nullable:"false" charset:"utf8" create:"optional"`
+	CaKey      string `nullable:"false" charset:"utf8" create:"optional"`
 	// kubernetes api server endpoint
 	ApiServer string `width:"256" nullable:"true" charset:"ascii" create:"optional" list:"user"`
 
@@ -233,6 +231,31 @@ func (m *SClusterManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, use
 	return q
 }
 
+func (c *SCluster) GetMachineByName(name string) (*SMachine, error) {
+	q := MachineManager.Query().Equals("cluster_id", c.GetId())
+	q = MachineManager.FilterByName(q, name)
+	count, err := q.CountWithError()
+	if err != nil {
+		return nil, err
+	}
+	if count == 1 {
+		obj, err := db.NewModelObject(MachineManager)
+		if err != nil {
+			return nil, err
+		}
+		err = q.First(obj)
+		if err != nil {
+			return nil, err
+		} else {
+			return obj.(*SMachine), nil
+		}
+	} else if count > 1 {
+		return nil, sqlchemy.ErrDuplicateEntry
+	} else {
+		return nil, sql.ErrNoRows
+	}
+}
+
 func (m *SClusterManager) GetSystemCluster() (*SCluster, error) {
 	clusters := m.Query().SubQuery()
 	q := clusters.Query().Filter(sqlchemy.Equals(clusters.Field("provider"), string(api.ProviderTypeSystem)))
@@ -289,7 +312,6 @@ func (m *SClusterManager) GetSystemClusterK8SInfo() (*k8sInfo, error) {
 func (m *SClusterManager) GetSystemClusterCreateData() (*api.ClusterCreateInput, error) {
 	createData := &api.ClusterCreateInput{
 		ClusterType: api.ClusterTypeDefault,
-		CloudType:   api.CloudTypePrivate,
 		Mode:        api.ModeTypeImport,
 		Provider:    api.ProviderTypeSystem,
 	}
@@ -419,6 +441,32 @@ func (m *SClusterManager) CreateCluster(ctx context.Context, userCred mcclient.T
 	return obj.(*SCluster), nil
 }
 
+func (m *SClusterManager) setCreateDataProvider(input *api.ClusterCreateInput) error {
+	if input.Mode == "" {
+		return httperrors.NewNotEmptyError("Mode is empty")
+	}
+	if input.Provider != "" {
+		return nil
+	}
+	if input.Mode == api.ModeTypeImport {
+		return httperrors.NewNotEmptyError("Provider must specified when mode is import")
+	}
+	if input.VpcId == "" {
+		input.VpcId = computeapi.DEFAULT_VPC_ID
+	}
+	s, err := m.GetSession()
+	if err != nil {
+		return errors.Wrap(err, "get cloud session")
+	}
+	helper := onecloudcli.NewClientSets(s)
+	vpc, err := helper.Vpcs().GetDetails(input.VpcId)
+	if err != nil {
+		return errors.Wrap(err, "get cloud vpc")
+	}
+	input.Provider = api.ProviderType(strings.ToLower(vpc.Provider))
+	return nil
+}
+
 func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.ClusterCreateInput) (*api.ClusterCreateInput, error) {
 	sInput, err := m.SStatusDomainLevelResourceBaseManager.ValidateCreateData(ctx, userCred, ownerId, query, input.StatusDomainLevelResourceCreateInput)
 	if err != nil {
@@ -434,13 +482,6 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 	}
 	if !utils.IsInStringArray(string(input.ClusterType), []string{string(api.ClusterTypeDefault)}) {
 		return nil, httperrors.NewInputParameterError("Invalid cluster type: %q", input.ClusterType)
-	}
-
-	if input.CloudType == "" {
-		input.CloudType = api.CloudTypePrivate
-	}
-	if !utils.IsInStringArray(string(input.CloudType), []string{string(api.CloudTypePrivate)}) {
-		return nil, httperrors.NewInputParameterError("Invalid cloud type: %q", input.CloudType)
 	}
 
 	if input.ResourceType == "" {
@@ -460,10 +501,7 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 		return nil, httperrors.NewInputParameterError("Invalid mode type: %q", input.Mode)
 	}
 
-	if input.Provider == "" {
-		input.Provider = api.ProviderTypeOnecloud
-	}
-	if err := m.ValidateProviderType(string(input.Provider)); err != nil {
+	if err := m.setCreateDataProvider(input); err != nil {
 		return nil, err
 	}
 
@@ -497,7 +535,7 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 	}
 
 	if input.Provider != api.ProviderTypeSystem && driver.NeedCreateMachines() && len(input.Machines) == 0 {
-		return nil, httperrors.NewInputParameterError("Machines desc not provider")
+		return nil, httperrors.NewInputParameterError("Machines data not provider")
 	}
 
 	var machineResType api.MachineResourceType
@@ -549,6 +587,9 @@ func (cluster *SCluster) GetDistributionInfo() (*api.ClusterDistributionInfo, er
 }
 
 func (cluster *SCluster) GetAddonsConfig() (*api.ClusterAddonsManifestConfig, error) {
+	if cluster.AddonsConfig == nil {
+		return nil, nil
+	}
 	out := new(api.ClusterAddonsManifestConfig)
 	if err := cluster.AddonsConfig.Unmarshal(out); err != nil {
 		return nil, err
@@ -582,17 +623,6 @@ func (m *SClusterManager) AllowGetPropertyK8sVersions(ctx context.Context, userC
 	return true
 }
 
-func (m *SClusterManager) ValidateProviderType(providerType string) error {
-	if !utils.IsInStringArray(providerType, []string{
-		string(api.ProviderTypeOnecloud),
-		string(api.ProviderTypeSystem),
-		string(api.ProviderTypeExternal),
-	}) {
-		return httperrors.NewInputParameterError("Invalid provider type: %q", providerType)
-	}
-	return nil
-}
-
 func (m *SClusterManager) ValidateResourceType(resType string) error {
 	if !utils.IsInStringArray(resType, []string{
 		string(api.ClusterResourceTypeHost),
@@ -608,9 +638,6 @@ func (m *SClusterManager) GetDriverByQuery(query jsonutils.JSONObject) (ICluster
 	modeType, _ := query.GetString("mode")
 	providerType, _ := query.GetString("provider")
 	resType, _ := query.GetString("resource_type")
-	if err := m.ValidateProviderType(providerType); err != nil {
-		return nil, err
-	}
 	if len(resType) == 0 {
 		resType = string(api.ClusterResourceTypeHost)
 	}
@@ -921,38 +948,6 @@ func (c *SCluster) moreExtraInfo(extra *jsonutils.JSONDict) *jsonutils.JSONDict 
 	return extra
 }
 
-type CertificatesGroup struct {
-	CAKeyPair           *SX509KeyPair
-	EtcdCAKeyPair       *SX509KeyPair
-	FrontProxyCAKeyPair *SX509KeyPair
-	SAKeyPair           *SX509KeyPair
-}
-
-func (c *SCluster) GetCertificatesGroup() (*CertificatesGroup, error) {
-	caKp, err := c.GetCAKeyPair()
-	if err != nil {
-		return nil, errors.Wrap(err, "get CAKeyPair")
-	}
-	etcdKp, err := c.GetEtcdCAKeyPair()
-	if err != nil {
-		return nil, errors.Wrap(err, "get EtcdCAKeyPair")
-	}
-	fpKp, err := c.GetFrontProxyCAKeyPair()
-	if err != nil {
-		return nil, errors.Wrap(err, "get FrontProxyCAKeyPair")
-	}
-	saKp, err := c.GetSAKeyPair()
-	if err != nil {
-		return nil, errors.Wrap(err, "get ServiceAccount KeyPair")
-	}
-	return &CertificatesGroup{
-		CAKeyPair:           caKp,
-		EtcdCAKeyPair:       etcdKp,
-		FrontProxyCAKeyPair: fpKp,
-		SAKeyPair:           saKp,
-	}, nil
-}
-
 func (man *SClusterManager) GetRegistryUrlByRepoUrl(imageRepo string) (string, error) {
 	rets := strings.Split(imageRepo, "/")
 	if len(rets) != 2 {
@@ -974,21 +969,6 @@ func (c *SCluster) GetDefaultMachineDockerConfig(imageRepo *api.ImageRepository)
 }
 
 func (c *SCluster) FillMachinePrepareInput(input *api.MachinePrepareInput) (*api.MachinePrepareInput, error) {
-	cg, err := c.GetCertificatesGroup()
-	if err != nil {
-		return nil, errors.Wrap(err, "get certificates group")
-	}
-	input.CAKeyPair = cg.CAKeyPair.ToKeyPair()
-	input.EtcdCAKeyPair = cg.EtcdCAKeyPair.ToKeyPair()
-	input.FrontProxyCAKeyPair = cg.FrontProxyCAKeyPair.ToKeyPair()
-	input.SAKeyPair = cg.SAKeyPair.ToKeyPair()
-	if !input.FirstNode {
-		bootstrapToken, err := c.GetNodeJoinToken()
-		if err != nil {
-			return nil, errors.Wrapf(err, "get %s node join token", input.Role)
-		}
-		input.BootstrapToken = bootstrapToken
-	}
 	imageRepo, err := c.GetImageRepository()
 	if err != nil {
 		return nil, err
@@ -1001,93 +981,6 @@ func (c *SCluster) FillMachinePrepareInput(input *api.MachinePrepareInput) (*api
 	input.Config.DockerConfig = dockerConfig
 	// TODO: support lb
 	return input, nil
-}
-
-func (c *SCluster) GetNodeJoinToken() (string, error) {
-	kubeConfig, err := c.GetKubeconfig()
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to retrieve kubeconfig for cluster %q", c.GetName())
-	}
-	controlPlaneURL, err := c.GetControlPlaneUrl()
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to get controlPlaneURL")
-	}
-	clientConfig, err := clientcmd.BuildConfigFromKubeconfigGetter(controlPlaneURL, func() (*clientcmdapi.Config, error) {
-		return clientcmd.Load([]byte(kubeConfig))
-	})
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to get client config for cluster at %q", controlPlaneURL)
-	}
-
-	coreClient, err := corev1.NewForConfig(clientConfig)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to initialize new corev1 client")
-	}
-
-	bootstrapToken, err := tokens.NewBootstrap(coreClient, 24*time.Hour)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to create new bootstrap token")
-	}
-	return bootstrapToken, nil
-}
-
-func (c *SCluster) AttachKeypair(ctx context.Context, userCred mcclient.TokenCredential, keypair *SX509KeyPair) error {
-	attached, err := c.IsAttachKeypair(keypair)
-	if err != nil {
-		return errors.Wrapf(err, "check keypair %s attached to cluster %s", keypair.GetName(), c.GetName())
-	}
-	if attached {
-		return errors.Errorf("Cluster %s already attached keypair %s", c.GetName(), keypair.GetName())
-	}
-	model, err := db.NewModelObject(ClusterX509KeyPairManager)
-	if err != nil {
-		return errors.Wrapf(err, "new cluster %s keypair %s obj", c.GetName(), keypair.GetName())
-	}
-
-	clusterKeypair := model.(*SClusterX509KeyPair)
-	clusterKeypair.ClusterId = c.GetId()
-	clusterKeypair.KeypairId = keypair.GetId()
-	clusterKeypair.User = keypair.User
-	return ClusterX509KeyPairManager.TableSpec().Insert(ctx, clusterKeypair)
-}
-
-func (c *SCluster) IsAttachKeypair(kp *SX509KeyPair) (bool, error) {
-	q := ClusterX509KeyPairManager.Query().Equals("keypair_id", kp.GetId()).Equals("cluster_id", c.GetId())
-	cnt, err := q.CountWithError()
-	if err != nil {
-		return false, err
-	}
-	return cnt > 0, nil
-}
-
-func (c *SCluster) GenerateCertificates(ctx context.Context, userCred mcclient.TokenCredential) error {
-	if !c.GetDriver().NeedGenerateCertificate() {
-		return nil
-	}
-	clusterCAKeyPair, err := X509KeyPairManager.GenerateCertificates(ctx, userCred, c, api.ClusterCA)
-	if err != nil {
-		return errors.Wrapf(err, "Generate %s certificate", api.ClusterCA)
-	}
-	infof := func(kp *SX509KeyPair) {
-		log.Infof("Generate cluster %s %s certificate", c.GetName(), kp.GetName())
-	}
-	infof(clusterCAKeyPair)
-	etcdCAKeyPair, err := X509KeyPairManager.GenerateCertificates(ctx, userCred, c, api.EtcdCA)
-	if err != nil {
-		return errors.Wrapf(err, "Generate %s certificate", api.EtcdCA)
-	}
-	infof(etcdCAKeyPair)
-	fpCAKeyPair, err := X509KeyPairManager.GenerateCertificates(ctx, userCred, c, api.FrontProxyCA)
-	if err != nil {
-		return errors.Wrapf(err, "Generate %s certificate", api.FrontProxyCA)
-	}
-	infof(fpCAKeyPair)
-	saKeyPair, err := X509KeyPairManager.GenerateServiceAccountKeys(ctx, userCred, c, api.ServiceAccountCA)
-	if err != nil {
-		return errors.Wrapf(err, "Generate ServiceAccount key %s", api.ServiceAccountCA)
-	}
-	infof(saKeyPair)
-	return nil
 }
 
 func (c *SCluster) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
@@ -1140,9 +1033,6 @@ func (c *SCluster) Delete(ctx context.Context, userCred mcclient.TokenCredential
 }
 
 func (c *SCluster) RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error {
-	if err := X509KeyPairManager.DeleteKeyPairsByCluster(ctx, userCred, c); err != nil {
-		return errors.Wrapf(err, "DeleteKeyPairsByCluster")
-	}
 	if err := c.DeleteAllComponents(ctx, userCred); err != nil {
 		return errors.Wrapf(err, "DeleteClusterComponent")
 	}
@@ -1315,31 +1205,10 @@ func (c *SCluster) GetMachinesByRole(role string) ([]manager.IMachine, error) {
 	return ret, nil
 }
 
-func (c *SCluster) getKeyPairByUser(user string) (*SX509KeyPair, error) {
-	return ClusterX509KeyPairManager.GetKeyPairByClusterUser(c.GetId(), user)
-}
-
-func (c *SCluster) GetCAKeyPair() (*SX509KeyPair, error) {
-	return c.getKeyPairByUser(api.ClusterCA)
-}
-
-func (c *SCluster) GetEtcdCAKeyPair() (*SX509KeyPair, error) {
-	return c.getKeyPairByUser(api.EtcdCA)
-}
-
-func (c *SCluster) GetFrontProxyCAKeyPair() (*SX509KeyPair, error) {
-	return c.getKeyPairByUser(api.FrontProxyCA)
-}
-
-func (c *SCluster) GetSAKeyPair() (*SX509KeyPair, error) {
-	return c.getKeyPairByUser(api.ServiceAccountCA)
-}
-
 func (c *SCluster) GetKubeconfig() (string, error) {
 	if len(c.Kubeconfig) != 0 {
 		return c.Kubeconfig, nil
 	}
-	//kubeconfig, err := c.GetDriver().GetKubeconfig(c)
 	kubeconfig, err := c.GetKubeconfigByCerts()
 	if err != nil {
 		return "", err
@@ -1355,12 +1224,33 @@ func (c *SCluster) GetClientV2() (*clientv2.Client, error) {
 	return clientv2.NewClient(kubeconfig)
 }
 
+func (c *SCluster) GetCAKeyPair() (*api.KeyPair, error) {
+	if c.Ca == "" {
+		return nil, errors.Errorf("ca is empty")
+	}
+	if c.CaKey == "" {
+		return nil, errors.Errorf("ca key is empty")
+	}
+	return &api.KeyPair{
+		Cert: []byte(c.Ca),
+		Key:  []byte(c.CaKey),
+	}, nil
+}
+
+func (c *SCluster) SetCAKeyPair(kp *api.KeyPair) error {
+	_, err := db.Update(c, func() error {
+		c.Ca = string(kp.Cert)
+		c.CaKey = string(kp.Key)
+		return nil
+	})
+	return err
+}
+
 func (c *SCluster) GetKubeconfigByCerts() (string, error) {
-	caKpObj, err := c.GetCAKeyPair()
+	caKp, err := c.GetCAKeyPair()
 	if err != nil {
 		return "", errors.Wrap(err, "Get CA key pair")
 	}
-	caKp := caKpObj.ToKeyPair()
 	cert, err := certificates.DecodeCertPEM(caKp.Cert)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to decode CA Cert")
@@ -1416,6 +1306,10 @@ func (c *SCluster) GetDetailsKubeconfig(ctx context.Context, userCred mcclient.T
 	ret := jsonutils.NewDict()
 	ret.Add(jsonutils.NewString(conf), "kubeconfig")
 	return ret, nil
+}
+
+func (c *SCluster) GetDetailsKubesprayConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*api.ClusterKubesprayConfig, error) {
+	return c.GetDriver().GetKubesprayConfig(ctx, c)
 }
 
 func (c *SCluster) GetAdminKubeconfig() (string, error) {
@@ -1530,18 +1424,166 @@ func (c *SCluster) PerformSyncstatus(ctx context.Context, userCred mcclient.Toke
 }
 
 func (c *SCluster) StartSyncStatus(ctx context.Context, userCred mcclient.TokenCredential, parentTaskId string) error {
-	return c.GetDriver().StartSyncStatus(c, ctx, userCred, parentTaskId)
+	task, err := taskman.TaskManager.NewTask(ctx, "ClusterSyncstatusTask", c, userCred, nil, parentTaskId, "", nil)
+	if err != nil {
+		return err
+	}
+	task.ScheduleRun(nil)
+	return nil
+}
+
+func (c *SCluster) GetDeployMachines(includeMs []manager.IMachine) ([]manager.IMachine, error) {
+	ms, err := c.GetMachines()
+	if err != nil {
+		return nil, errors.Wrap(err, "get machines")
+	}
+	var primaryM *SMachine
+	cs := make([]manager.IMachine, 0)
+	ns := make([]manager.IMachine, 0)
+
+	isInclude := func(m *SMachine, targetMs []manager.IMachine) bool {
+		for _, tm := range targetMs {
+			if m.GetName() == tm.GetName() {
+				return true
+			}
+		}
+		return false
+	}
+
+	shouldInclude := func(m *SMachine) bool {
+		if m.IsRunning() || isInclude(m, includeMs) {
+			return true
+		}
+		return false
+	}
+
+	for _, obj := range ms {
+		m := obj.(*SMachine)
+		if !shouldInclude(m) {
+			continue
+		}
+		if m.IsFirstNode() {
+			primaryM = m
+			continue
+		}
+		if m.IsControlplane() {
+			cs = append(cs, m)
+		} else {
+			ns = append(ns, m)
+		}
+	}
+
+	if primaryM == nil {
+		return nil, httperrors.NewNotFoundError("Not found running primary controlplane node")
+	}
+
+	ret := []manager.IMachine{primaryM}
+	ret = append(ret, cs...)
+	ret = append(ret, ns...)
+	return ret, nil
+}
+
+func (c *SCluster) validateDeployCondtion() error {
+	if !utils.IsInStringArray(c.GetStatus(), []string{
+		api.ClusterStatusRunning,
+		api.ClusterStatusCreateFail,
+		api.ClusterStatusDeployingFail,
+		api.ClusterStatusCreateMachineFail,
+	}) {
+		return httperrors.NewNotAcceptableError("Can not deploy cluster when status is %s", c.GetStatus())
+	}
+	return nil
+}
+
+func (c *SCluster) PerformDeploy(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	if err := c.validateDeployCondtion(); err != nil {
+		return nil, err
+	}
+
+	ms, err := c.GetDeployMachines(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	mIds := []string{}
+	for _, m := range ms {
+		mIds = append(mIds, m.GetId())
+	}
+
+	// use run action to run kubespray cluster.yml
+	action := api.ClusterDeployActionRun
+	return nil, c.StartDeployMachinesTask(ctx, userCred, action, mIds, "")
 }
 
 func (c *SCluster) AllowPerformAddMachines(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
 	return c.allowPerformAction(userCred, "add-machines")
 }
 
-func (c *SCluster) ValidateAddMachines(ctx context.Context, userCred mcclient.TokenCredential, ms []api.CreateMachineData) ([]*api.CreateMachineData, error) {
+func (c *SCluster) GetAllowedControlplanceCount() []int {
+	return []int{1, 3, 5}
+}
+
+func (c *SCluster) validateAddControlplaneMachinesCnt(ms []api.CreateMachineData) error {
+	curMs, err := c.GetControlplaneMachines()
+	if err != nil {
+		return err
+	}
+	// check count
+	total := len(curMs) + len(ms)
+	allowedCount := c.GetAllowedControlplanceCount()
+	maxCount := allowedCount[len(allowedCount)-1]
+	if total > maxCount {
+		return httperrors.NewInputParameterError("Out of max controlplane count %d", maxCount)
+	}
+
+	isAllow := false
+	allowCount := []int{}
+	for _, an := range allowedCount {
+		if total == an {
+			isAllow = true
+			break
+		} else {
+			if total < an {
+				allowCount = append(allowCount, an-len(curMs))
+			}
+		}
+	}
+
+	allowCountStr := make([]string, len(allowCount))
+	for idx := range allowCount {
+		allowCountStr[idx] = fmt.Sprintf("%d", allowedCount[idx])
+	}
+	if !isAllow {
+		return httperrors.NewInputParameterError("Only %s controlplane machines can be added", strings.Join(allowCountStr, "or"))
+	}
+
+	return nil
+}
+
+func (c *SCluster) ValidateAddMachines(ctx context.Context, userCred mcclient.TokenCredential, ms []api.CreateMachineData, checkCount bool) ([]*api.CreateMachineData, error) {
 	machines := make([]*api.CreateMachineData, len(ms))
 	for i := range ms {
 		machines[i] = &ms[i]
 	}
+
+	// check is same role
+	curRole := ""
+	for _, m := range machines {
+		if curRole == "" {
+			curRole = m.Role
+		}
+		if curRole != m.Role {
+			return nil, httperrors.NewInputParameterError("Machines role not same, %s and %s mixed", curRole, m.Role)
+		}
+	}
+
+	// check controlplane role count
+	if curRole == api.RoleTypeControlplane && checkCount {
+		if err := c.validateAddControlplaneMachinesCnt(ms); err != nil {
+			return nil, errors.Wrap(err, "validate controlplane machines")
+		}
+	}
+
 	driver := c.GetDriver()
 	imageRepo, err := c.GetImageRepository()
 	if err != nil {
@@ -1566,12 +1608,12 @@ func (c *SCluster) PerformAddMachines(ctx context.Context, userCred mcclient.Tok
 		return nil, httperrors.NewNotAcceptableError("Cluster status is %s", c.Status)
 	}
 
-	machines, err := c.ValidateAddMachines(ctx, userCred, ms)
+	machines, err := c.ValidateAddMachines(ctx, userCred, ms, true)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, c.StartCreateMachinesTask(ctx, userCred, machines, "")
+	return nil, c.StartCreateMachinesTask(ctx, userCred, api.ClusterDeployActionScale, machines, "")
 }
 
 func (c *SCluster) NeedControlplane() (bool, error) {
@@ -1585,10 +1627,20 @@ func (c *SCluster) NeedControlplane() (bool, error) {
 	return false, nil
 }
 
-func (c *SCluster) StartCreateMachinesTask(ctx context.Context, userCred mcclient.TokenCredential, machines []*api.CreateMachineData, parentTaskId string) error {
+func (c *SCluster) StartCreateMachinesTask(
+	ctx context.Context,
+	userCred mcclient.TokenCredential,
+	action api.ClusterDeployAction,
+	machines []*api.CreateMachineData,
+	parentTaskId string) error {
 	data := jsonutils.NewDict()
 	data.Add(jsonutils.Marshal(machines), "machines")
+	SetDataDeployAction(data, action)
+
+	log.Errorf("==start ClusterCreateMachinesTask")
+
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterCreateMachinesTask", c, userCred, data, parentTaskId, "", nil)
+	log.Errorf("==run ClusterCreateMachinesTask")
 	if err != nil {
 		return err
 	}
@@ -1596,22 +1648,106 @@ func (c *SCluster) StartCreateMachinesTask(ctx context.Context, userCred mcclien
 	return nil
 }
 
-func (c *SCluster) CreateMachines(ctx context.Context, userCred mcclient.TokenCredential, ms []*api.CreateMachineData, task taskman.ITask) error {
-	drv := c.GetDriver()
-	machines, err := drv.CreateMachines(ctx, userCred, c, ms)
-	if err != nil {
-		return err
+func GroupCreateMachineDatas(clusterId string, data []*api.CreateMachineData) ([]*api.CreateMachineData, []*api.CreateMachineData) {
+	controls := make([]*api.CreateMachineData, 0)
+	nodes := make([]*api.CreateMachineData, 0)
+	for _, d := range data {
+		if len(clusterId) != 0 {
+			d.ClusterId = clusterId
+		}
+		if d.Role == api.RoleTypeControlplane {
+			controls = append(controls, d)
+		} else {
+			nodes = append(nodes, d)
+		}
 	}
-	return drv.RequestDeployMachines(ctx, userCred, c, machines, task)
+	return controls, nodes
 }
 
-const (
-	MachinesDeployIdsKey = "MachineIds"
-)
+type machineData struct {
+	machine *SMachine
+	data    *jsonutils.JSONDict
+}
 
-func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclient.TokenCredential, machineIds []string, parentTaskId string) error {
+func newMachineData(machine *SMachine, input *api.CreateMachineData) *machineData {
+	return &machineData{
+		machine: machine,
+		data:    jsonutils.Marshal(input).(*jsonutils.JSONDict),
+	}
+}
+
+func (c *SCluster) createMachineRecords(ctx context.Context, userCred mcclient.TokenCredential, data []*api.CreateMachineData) ([]*machineData, error) {
+	needControlplane, err := c.NeedControlplane()
+	if err != nil {
+		return nil, errors.Wrap(err, "check cluster needControlplane")
+	}
+
+	controls, nodes := GroupCreateMachineDatas(c.GetId(), data)
+	if needControlplane {
+		if len(controls) == 0 {
+			return nil, errors.Errorf("Empty controlplane machines from create data")
+		}
+	}
+
+	cms := make([]*machineData, 0)
+	nms := make([]*machineData, 0)
+	cf := func(data []*api.CreateMachineData) ([]*machineData, error) {
+		ret := make([]*machineData, 0)
+		for _, m := range data {
+			obj, err := MachineManager.CreateMachineNoHook(ctx, c, userCred, m)
+			if err != nil {
+				return nil, err
+			}
+			ret = append(ret, newMachineData(obj.(*SMachine), m))
+		}
+		return ret, nil
+	}
+	cms, err = cf(controls)
+	if err != nil {
+		return nil, err
+	}
+	nms, err = cf(nodes)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]*machineData, 0)
+	for _, m := range cms {
+		ret = append(ret, m)
+	}
+	for _, m := range nms {
+		ret = append(ret, m)
+	}
+	return ret, nil
+}
+
+func (c *SCluster) CreateMachines(ctx context.Context, userCred mcclient.TokenCredential, ms []*api.CreateMachineData, task taskman.ITask) error {
+	machineSets, err := c.createMachineRecords(ctx, userCred, ms)
+	if err != nil {
+		return errors.Wrap(err, "create machine records")
+	}
+
+	machines := make([]db.IStandaloneModel, len(machineSets))
 	data := jsonutils.NewDict()
-	data.Add(jsonutils.NewStringArray(machineIds), MachinesDeployIdsKey)
+	datas := jsonutils.NewArray()
+	for idx, md := range machineSets {
+		machines[idx] = md.machine
+		datas.Add(md.data)
+	}
+
+	data.Add(datas, "machines")
+
+	return RunBatchTask(ctx, machines, userCred, data, "MachineBatchCreateTask", task.GetTaskId())
+}
+
+func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclient.TokenCredential, action api.ClusterDeployAction, machineIds []string, parentTaskId string) error {
+	if err := c.SetStatus(userCred, api.ClusterStatusDeploying, ""); err != nil {
+		return err
+	}
+
+	data := jsonutils.NewDict()
+	SetDataDeployMachineIds(data, machineIds...)
+	SetDataDeployAction(data, action)
+
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterDeployMachinesTask", c, userCred, data, parentTaskId, "", nil)
 	if err != nil {
 		return err

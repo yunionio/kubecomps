@@ -32,6 +32,10 @@ func prepareEnv() {
 	os.Unsetenv("SSH_AGENT_PID")
 	os.Setenv("DISABLE_HTTP2", "true")
 
+	// for ansible
+	os.Setenv("PATH", "$PATH:/usr/bin/")
+	os.Setenv("ANSIBLE_HOST_KEY_CHECKING", "False")
+
 	common_options.ParseOptions(&options.Options, os.Args, "kubeserver.conf", constants.ServiceType)
 	runtime.ReallyCrash = false
 	helm.InitEnv(options.Options.HelmDataDir)

@@ -2,13 +2,16 @@ package models
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/client-go/rest"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
+	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers"
@@ -19,37 +22,30 @@ type IClusterDriver interface {
 	GetMode() api.ModeType
 	GetProvider() api.ProviderType
 	GetResourceType() api.ClusterResourceType
-
 	// GetK8sVersions return current cluster k8s versions supported
 	GetK8sVersions() []string
+
+	IClusterDriverMethods
+}
+
+type IClusterDriverMethods interface {
 	// GetUsableInstances return usable instances for cluster
 	GetUsableInstances(session *mcclient.ClientSession) ([]api.UsableInstance, error)
-	// GetKubeconfig get current cluster kubeconfig
-	GetKubeconfig(cluster *SCluster) (string, error)
+
+	NeedCreateMachines() bool
 
 	ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerProjId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ClusterCreateInput) error
+	// RequestDeployMachines run ansible deploy machines as kubernetes nodes
+	RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, action api.ClusterDeployAction, machines []manager.IMachine, task taskman.ITask) error
+	GetKubesprayConfig(ctx context.Context, cluster *SCluster) (*api.ClusterKubesprayConfig, error)
+
 	ValidateDeleteCondition() error
 	ValidateDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, machines []manager.IMachine) error
 	RequestDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, machines []manager.IMachine, task taskman.ITask) error
 
-	// CreateClusterResource create cluster resource to global k8s cluster
-	CreateClusterResource(man *SClusterManager, data *api.ClusterCreateInput) error
 	ValidateCreateMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, info *api.ClusterMachineCommonInfo, imageRepo *api.ImageRepository, data []*api.CreateMachineData) error
-	// CreateMachines create machines record in db
-	CreateMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, data []*api.CreateMachineData) ([]manager.IMachine, error)
-	// RequestDeployMachines deploy machines after machines created
-	RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, machines []manager.IMachine, task taskman.ITask) error
 	// GetAddonsManifest return addons yaml manifest to be applied to cluster
 	GetAddonsManifest(cluster *SCluster, conf *api.ClusterAddonsManifestConfig) (string, error)
-	// StartSyncStatus start cluster sync status task
-	StartSyncStatus(cluster *SCluster, ctx context.Context, userCred mcclient.TokenCredential, parentTaskId string) error
-
-	// need generate kubeadm certificates
-	NeedGenerateCertificate() bool
-	// NeedCreateMachines make this driver create machines models
-	NeedCreateMachines() bool
-
-	GetMachineDriver(resourceType api.MachineResourceType) IMachineDriver
 	// GetClusterUsers query users resource from remote k8s cluster
 	GetClusterUsers(cluster *SCluster, restCfg *rest.Config) ([]api.ClusterUser, error)
 	// GetClusterUserGroups query groups resource from remote k8s cluster
@@ -71,7 +67,7 @@ func RegisterClusterDriver(driver IClusterDriver) {
 		string(provider),
 		string(resType))
 	if err != nil {
-		log.Fatalf("cluster driver provider %s, resource type %s driver register error: %v", provider, resType, err)
+		panic(fmt.Sprintf("cluster driver provider %s, resource type %s driver register error: %v", provider, resType, err))
 	}
 }
 
@@ -82,6 +78,9 @@ func GetDriverWithError(
 ) (IClusterDriver, error) {
 	drv, err := clusterDrivers.Get(string(mode), string(provider), string(resType))
 	if err != nil {
+		if errors.Cause(err) == drivers.ErrDriverNotFound {
+			return nil, httperrors.NewNotFoundError("Not found support driver by %s/%s/%s", mode, provider, resType)
+		}
 		return nil, err
 	}
 	return drv.(IClusterDriver), nil

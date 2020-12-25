@@ -36,7 +36,7 @@ EOF`,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &SYunionVMDriver{}
+			d := &sYunionVMDriver{}
 			got, err := d.getCalicoNodeAgentDeployScript(tt.addrs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SYunionVMDriver.getCalicoNodeAgentDeployScript() error = %v, wantErr %v", err, tt.wantErr)

@@ -2,8 +2,11 @@ package client
 
 import (
 	"fmt"
-	"yunion.io/x/jsonutils"
 
+	"yunion.io/x/jsonutils"
+	"yunion.io/x/pkg/errors"
+
+	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules"
 )
@@ -42,4 +45,25 @@ func GetKubernetesImage(session *mcclient.ClientSession) (string, error) {
 
 func GetImage(session *mcclient.ClientSession, name string) (jsonutils.JSONObject, error) {
 	return cloudmod.Images.Get(session, name, nil)
+}
+
+func GetPublicCloudImage(s *mcclient.ClientSession, input map[string]interface{}) (*jsonutils.JSONDict, error) {
+	params := jsonutils.Marshal(input)
+	ret, err := cloudmod.Cachedimages.List(s, params)
+	if err != nil {
+		return nil, errors.Wrapf(err, "list public cloud cached images %s", params)
+	}
+	if len(ret.Data) == 0 {
+		return nil, httperrors.NewNotFoundError("not found images by params %s", params)
+	}
+
+	firstObj := ret.Data[0]
+	/*
+	 * details := new(api.SCachedimage)
+	 * if err := firstObj.Unmarshal(details); err != nil {
+	 *     return nil, err
+	 * }
+	 * return details, nil
+	 */
+	return firstObj.(*jsonutils.JSONDict), nil
 }

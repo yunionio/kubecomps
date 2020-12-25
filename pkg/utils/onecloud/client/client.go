@@ -7,7 +7,10 @@ import (
 type IClient interface {
 	Cloudregions() *CloudregionHelper
 	Vpcs() *VpcHelper
+	Zones() *ZoneHelper
+	Networks() *NetworkHelper
 	Servers() *ServerHelper
+	Skus() *SkuHelper
 	GetCloudSSHPrivateKey() (string, error)
 }
 
@@ -30,8 +33,20 @@ func (c *sClient) Vpcs() *VpcHelper {
 	return NewVpcHelper(c.s)
 }
 
+func (c *sClient) Zones() *ZoneHelper {
+	return NewZoneHelper(c.s)
+}
+
+func (c *sClient) Networks() *NetworkHelper {
+	return NewNetworkHelper(c.s)
+}
+
 func (c *sClient) Servers() *ServerHelper {
 	return NewServerHelper(c.s)
+}
+
+func (c *sClient) Skus() *SkuHelper {
+	return NewSkuHelper(c.s)
 }
 
 func (c *sClient) GetCloudSSHPrivateKey() (string, error) {
