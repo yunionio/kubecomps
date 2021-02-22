@@ -37,8 +37,11 @@ build: clean generate
 		$(GO_BUILD) -o $(BIN_DIR)/`basename $${CMD}` $$CMD; \
 	done
 
-generate:
-	./scripts/embed-helm-pkgs.sh
+embed-helm-pkgs:
+	docker run -it --rm -v $(shell pwd):/app registry.cn-beijing.aliyuncs.com/yunionio/helm:v3.5.2 \
+		/bin/bash -c "cd /app && /app/scripts/embed-helm-pkgs.sh"
+
+generate: embed-helm-pkgs
 	@go generate ./...
 	@echo "[OK] files added to embed box!"
 
@@ -78,8 +81,7 @@ swagger-serve: gen-swagger
 	swagger-serve generate -i ./_output/swagger/kubeserver.yaml \
 		-o ./_output/swagger
 
-.PHONY: build clean image mod generate
+.PHONY: build clean image mod generate embed-helm-pkgs
 
 %:
 	@:
-
