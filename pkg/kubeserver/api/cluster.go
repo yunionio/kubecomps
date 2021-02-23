@@ -36,7 +36,8 @@ const (
 	// system provider type means default v3 supervisor cluster
 	ProviderTypeSystem ProviderType = "system"
 	// default provider type by onecloud
-	ProviderTypeOnecloud ProviderType = "onecloud"
+	ProviderTypeOnecloud    ProviderType = "onecloud"
+	ProviderTypeOnecloudKvm ProviderType = "kvm"
 	// AWS provider
 	ProviderTypeAws ProviderType = "aws"
 	// Alibaba cloud provider

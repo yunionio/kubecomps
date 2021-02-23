@@ -42,6 +42,8 @@ embed-helm-pkgs:
 		/bin/bash -c "cd /app && /app/scripts/embed-helm-pkgs.sh"
 
 generate: embed-helm-pkgs
+	@git submodule init
+	@git submodule update
 	@go generate ./...
 	@echo "[OK] files added to embed box!"
 

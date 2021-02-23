@@ -11,6 +11,7 @@ import (
 
 func init() {
 	registerDriver(newOnecloud())
+	registerDriver(newOnecloudKvm())
 }
 
 func newOnecloud() machines.IYunionVmHypervisor {
@@ -25,4 +26,16 @@ func (_ onecloud) GetHypervisor() api.ProviderType {
 
 func (_ onecloud) FindSystemDiskImage(s *mcclient.ClientSession, zoneId string) (jsonutils.JSONObject, error) {
 	return onecloudcli.GetImage(s, "CentOS-7.6.1810-20190430.qcow2")
+}
+
+func newOnecloudKvm() machines.IYunionVmHypervisor {
+	return new(onecloudKvm)
+}
+
+type onecloudKvm struct {
+	onecloud
+}
+
+func (_ onecloudKvm) GetHypervisor() api.ProviderType {
+	return api.ProviderTypeOnecloudKvm
 }
