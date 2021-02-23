@@ -38,7 +38,7 @@ build: clean generate
 	done
 
 embed-helm-pkgs:
-	docker run -it --rm -v $(shell pwd):/app registry.cn-beijing.aliyuncs.com/yunionio/helm:v3.5.2 \
+	docker run --rm -v $(shell pwd):/app registry.cn-beijing.aliyuncs.com/yunionio/helm:v3.5.2 \
 		/bin/bash -c "cd /app && /app/scripts/embed-helm-pkgs.sh"
 
 generate: embed-helm-pkgs
