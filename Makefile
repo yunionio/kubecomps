@@ -44,7 +44,7 @@ embed-helm-pkgs:
 generate: embed-helm-pkgs
 	@git submodule init
 	@git submodule update
-	@go generate ./...
+	@go generate -mod vendor ./...
 	@echo "[OK] files added to embed box!"
 
 prepare_dir:
