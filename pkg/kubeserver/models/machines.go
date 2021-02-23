@@ -296,6 +296,12 @@ func (m *SMachineManager) ValidateResourceType(resType string) error {
 }
 
 func (man *SMachineManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error) {
+	// TODO: fix this ugly impl
+	deployAction, _ := data.GetString("cluster_deploy_action")
+	if deployAction == "" {
+		return nil, httperrors.NewNotAcceptableError("Machine must create from cluster api, can not create directly")
+	}
+
 	clusterId := jsonutils.GetAnyString(data, []string{"cluster", "cluster_id"})
 	if len(clusterId) == 0 {
 		return nil, httperrors.NewInputParameterError("Cluster must specified")
@@ -333,7 +339,7 @@ func (man *SMachineManager) ValidateCreateData(ctx context.Context, userCred mcc
 
 	machine := new(api.CreateMachineData)
 	data.Unmarshal(machine)
-	ms, err := cluster.ValidateAddMachines(ctx, userCred, []api.CreateMachineData{*machine})
+	ms, err := cluster.ValidateAddMachines(ctx, userCred, []api.CreateMachineData{*machine}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -357,11 +363,11 @@ func (m *SMachine) PostCreate(ctx context.Context, userCred mcclient.TokenCreden
 
 func (m *SMachine) StartMachineCreateTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
 	if err := m.SetStatus(userCred, api.MachineStatusCreating, ""); err != nil {
-		return err
+		return errors.Wrapf(err, "set status to %s", api.MachineStatusCreating)
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "MachineCreateTask", m, userCred, data, parentTaskId, "", nil)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "new MachineCreateTask")
 	}
 	task.ScheduleRun(nil)
 	return nil
@@ -710,4 +716,13 @@ func (m *SMachine) IsInClassicNetwork() (bool, error) {
 	}
 
 	return cls.IsInClassicNetwork(), nil
+}
+
+func (m *SMachine) GetKubernetesVersion() (string, error) {
+	cls, err := m.GetCluster()
+	if err != nil {
+		return "", errors.Wrap(err, "get cluster")
+	}
+
+	return cls.GetVersion(), nil
 }

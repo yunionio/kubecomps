@@ -7,6 +7,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/wait"
 
 	"yunion.io/x/onecloud/pkg/mcclient"
@@ -39,6 +40,17 @@ func NewResourceHelper(s *mcclient.ClientSession, manager modulebase.Manager) *R
 		Manager: manager,
 		session: s,
 	}
+}
+
+func (h *ResourceHelper) GetDetails(id string, output interface{}) error {
+	ret, err := h.Manager.Get(h.session, id, nil)
+	if err != nil {
+		return errors.Wrapf(err, "get %s by id %q", h.Manager.GetKeyword(), id)
+	}
+	if err := ret.Unmarshal(output); err != nil {
+		return errors.Wrap(err, "unmarshal json")
+	}
+	return nil
 }
 
 func (h *ResourceHelper) ObjectIsExists(id string) (jsonutils.JSONObject, error) {
@@ -78,6 +90,10 @@ func (h *ResourceHelper) WaitObjectStatus(
 			kw := h.indexKey(id)
 			if obj == nil {
 				return false, fmt.Errorf("Object %s not exists", kw)
+			}
+			name, _ := obj.GetString("name")
+			if name != "" {
+				kw = kw + "/" + name
 			}
 			status, _ := obj.GetString("status")
 			if status == "" {

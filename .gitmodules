@@ -1,0 +1,3 @@
+[submodule "manifests/ansible/kubespray"]
+	path = manifests/ansible/kubespray
+	url = https://github.com/zexi/kubespray.git

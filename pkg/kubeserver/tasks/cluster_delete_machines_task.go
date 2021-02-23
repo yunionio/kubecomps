@@ -41,8 +41,33 @@ func (t *ClusterDeleteMachinesTask) getDeleteMachines() ([]manager.IMachine, err
 	return machines, nil
 }
 
+func (t *ClusterDeleteMachinesTask) IsFromClusterDeleteTask(cluster *models.SCluster) bool {
+	return cluster.GetStatus() == api.ClusterStatusDeleting
+}
+
 func (t *ClusterDeleteMachinesTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
+	ms, err := t.getDeleteMachines()
+	if err != nil {
+		t.OnError(ctx, cluster, err.Error())
+		return
+	}
+
+	mIds := make([]string, 0)
+	for _, m := range ms {
+		mIds = append(mIds, m.GetId())
+	}
+
+	if t.IsFromClusterDeleteTask(cluster) {
+		t.OnClusterNodeRemoved(ctx, cluster, data)
+		return
+	} else {
+		t.SetStage("OnClusterNodeRemoved", nil)
+		cluster.StartDeployMachinesTask(ctx, t.GetUserCred(), api.ClusterDeployActionRemoveNode, mIds, t.GetTaskId())
+	}
+}
+
+func (t *ClusterDeleteMachinesTask) OnClusterNodeRemoved(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
 	ms, err := t.getDeleteMachines()
 	if err != nil {
 		t.OnError(ctx, cluster, err.Error())
@@ -55,9 +80,13 @@ func (t *ClusterDeleteMachinesTask) OnInit(ctx context.Context, obj db.IStandalo
 	}
 }
 
+func (t *ClusterDeleteMachinesTask) OnClusterNodeRemovedFailed(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
+	t.OnError(ctx, cluster, data.String())
+}
+
 func (t *ClusterDeleteMachinesTask) OnDeleteMachines(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
 	logclient.LogWithStartable(t, cluster, logclient.ActionClusterDeleteMachine, nil, t.UserCred, true)
-	if cluster.GetStatus() == api.ClusterStatusDeleting {
+	if t.IsFromClusterDeleteTask(cluster) {
 		t.SetStageComplete(ctx, nil)
 		return
 	}

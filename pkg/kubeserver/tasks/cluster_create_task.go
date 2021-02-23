@@ -3,13 +3,14 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"yunion.io/x/kubecomps/pkg/kubeserver/api"
-	"yunion.io/x/kubecomps/pkg/kubeserver/models"
-	"yunion.io/x/kubecomps/pkg/utils/logclient"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
+
+	"yunion.io/x/kubecomps/pkg/kubeserver/api"
+	"yunion.io/x/kubecomps/pkg/kubeserver/models"
+	"yunion.io/x/kubecomps/pkg/utils/logclient"
 )
 
 func init() {
@@ -21,9 +22,6 @@ type ClusterCreateTask struct {
 }
 
 func (t *ClusterCreateTask) getMachines(cluster *models.SCluster) ([]*api.CreateMachineData, error) {
-	if !cluster.GetDriver().NeedCreateMachines() {
-		return nil, nil
-	}
 	params := t.GetParams()
 	ret := []*api.CreateMachineData{}
 	ms := []api.CreateMachineData{}
@@ -54,11 +52,6 @@ func (t *ClusterCreateTask) OnInit(ctx context.Context, obj db.IStandaloneModel,
 		t.onError(ctx, obj, fmt.Errorf("Unmarshal: %v", err))
 		return
 	}
-	// generate certificates if needed
-	if err := cluster.GenerateCertificates(ctx, t.GetUserCred()); err != nil {
-		t.onError(ctx, obj, fmt.Errorf("GenerateCertificates: %v", err))
-		return
-	}
 	t.CreateMachines(ctx, cluster)
 }
 
@@ -69,12 +62,16 @@ func (t *ClusterCreateTask) CreateMachines(ctx context.Context, cluster *models.
 		return
 	}
 	t.SetStage("OnMachinesCreated", nil)
-	cluster.StartCreateMachinesTask(ctx, t.GetUserCred(), machines, t.GetTaskId())
+	cluster.StartCreateMachinesTask(ctx, t.GetUserCred(), api.ClusterDeployActionCreate, machines, t.GetTaskId())
 }
 
 func (t *ClusterCreateTask) OnMachinesCreated(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
-	t.SetStage("OnApplyAddonsComplete", nil)
-	cluster.StartApplyAddonsTask(ctx, t.GetUserCred(), t.GetParams(), t.GetTaskId())
+	logclient.LogWithStartable(t, cluster, logclient.ActionClusterCreate, nil, t.UserCred, true)
+	t.SetStageComplete(ctx, nil)
+	/*
+	 * t.SetStage("OnApplyAddonsComplete", nil)
+	 * cluster.StartApplyAddonsTask(ctx, t.GetUserCred(), t.GetParams(), t.GetTaskId())
+	 */
 }
 
 func (t *ClusterCreateTask) OnMachinesCreatedFailed(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {

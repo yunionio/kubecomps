@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -57,7 +58,7 @@ func RegisterMachineDriver(driver IMachineDriver) {
 func GetMachineDriver(provider api.ProviderType, resType api.MachineResourceType) IMachineDriver {
 	drv, err := machineDrivers.Get(string(provider), string(resType))
 	if err != nil {
-		log.Fatalf("Get machine driver provider: %s, resource type: %s error: %v", provider, resType, err)
+		panic(fmt.Sprintf("Get machine driver provider: %s, resource type: %s error: %v", provider, resType, err))
 	}
 	return drv.(IMachineDriver)
 }

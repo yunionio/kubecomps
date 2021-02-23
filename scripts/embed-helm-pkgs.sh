@@ -7,8 +7,13 @@ STATIC_DIR="$PROJ_DIR/static"
 
 rm -rf "$STATIC_DIR"
 
-CHARTS=()
-readarray -d '' CHARTS < <(find "$HELM_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
+CHARTS=(
+    manifests/helm/monitor-stack
+    manifests/helm/minio
+    manifests/helm/thanos
+    manifests/helm/fluent-bit
+)
+#readarray -d '' CHARTS < <(find "$HELM_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
 
 for chart in "${CHARTS[@]}"; do
     echo package "$chart"

@@ -1,9 +1,41 @@
 package api
 
 import (
+	"yunion.io/x/pkg/errors"
+
 	"yunion.io/x/onecloud/pkg/apis"
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 )
+
+const (
+	ErrPublicCloudImageNotFound = errors.Error("Image not found")
+)
+
+var (
+	PublicHypervisors = []string{
+		api.HYPERVISOR_ALIYUN,
+		// api.HYPERVISOR_AWS,
+	}
+
+	OnPremiseHypervisors = []string{
+		api.HYPERVISOR_KVM,
+		api.HYPERVISOR_BAREMETAL,
+		api.HYPERVISOR_ESXI,
+	}
+
+	/*
+	 * publicCloudImageMap map[string]HypervisorImage = map[string]HypervisorImage{
+	 *     // Ref: https://help.aliyun.com/document_detail/100410.html?spm=a2c4g.11186623.6.759.28b92d9frtaFKC
+	 *     api.HYPERVISOR_ALIYUN: {
+	 *         Id: "centos_7_9_x64_20G_alibase_20201120.vhd",
+	 *     },
+	 * }
+	 */
+)
+
+type HypervisorImage struct {
+	Id string
+}
 
 type MachineCreateConfig struct {
 	ImageRepository *ImageRepository       `json:"image_repository"`
@@ -23,21 +55,22 @@ type MachineCreateVMConfig struct {
 	Schedtags       []*api.SchedtagConfig       `json:"schedtags"`
 	IsolatedDevices []*api.IsolatedDeviceConfig `json:"isolated_devices"`
 
-	Hypervisor string `json:"hypervisor"`
-	VmemSize   int    `json:"vmem_size"`
-	VcpuCount  int    `json:"vcpu_count"`
+	Hypervisor   string `json:"hypervisor"`
+	VmemSize     int    `json:"vmem_size"`
+	VcpuCount    int    `json:"vcpu_count"`
+	InstanceType string `json:"instance_type"`
 }
 
 type MachinePrepareInput struct {
 	FirstNode bool   `json:"first_node"`
 	Role      string `json:"role"`
 
-	CAKeyPair           *KeyPair `json:"ca_key_pair"`
-	EtcdCAKeyPair       *KeyPair `json:"etcd_ca_key_pair"`
-	FrontProxyCAKeyPair *KeyPair `json:"front_proxy_ca_key_pair"`
-	SAKeyPair           *KeyPair `json:"sa_key_pair"`
-	BootstrapToken      string   `json:"bootstrap_token"`
-	ELBAddress          string   `json:"elb_address"`
+	// CAKeyPair           *KeyPair `json:"ca_key_pair"`
+	// EtcdCAKeyPair       *KeyPair `json:"etcd_ca_key_pair"`
+	// FrontProxyCAKeyPair *KeyPair `json:"front_proxy_ca_key_pair"`
+	// SAKeyPair           *KeyPair `json:"sa_key_pair"`
+	// BootstrapToken string `json:"bootstrap_token"`
+	ELBAddress string `json:"elb_address"`
 
 	Config *MachineCreateConfig `json:"config"`
 

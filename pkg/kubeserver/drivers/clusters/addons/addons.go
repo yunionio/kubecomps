@@ -41,6 +41,9 @@ const YunionVMManifestTemplate = `
 ---
 {{.IngressControllerPlugin}}
 ---
+#### RancherLocalPathCSI config ####
+{{.RancherLocalPathCSI}}
+---
 `
 
 type yunionConfig struct {
@@ -50,6 +53,7 @@ type yunionConfig struct {
 	HelmPlugin              string
 	CloudProviderPlugin     string
 	IngressControllerPlugin string
+	RancherLocalPathCSI     string
 }
 
 func (c yunionConfig) GenerateYAML() (string, error) {
@@ -62,6 +66,7 @@ type YunionCommonPluginsConfig struct {
 	*CloudProviderYunionConfig
 	*CSIYunionConfig
 	*IngressControllerYunionConfig
+	*CSIRancherLocalPathConfig
 }
 
 func (config *YunionCommonPluginsConfig) GetAllConfig() (*yunionConfig, error) {
@@ -102,6 +107,13 @@ func (config *YunionCommonPluginsConfig) GetAllConfig() (*yunionConfig, error) {
 			return nil, errors.Wrap(err, "Generate csi plugin")
 		}
 		allConfig.IngressControllerPlugin = ret
+	}
+	if config.CSIRancherLocalPathConfig != nil {
+		ret, err := config.CSIRancherLocalPathConfig.GenerateYAML()
+		if err != nil {
+			return nil, errors.Wrap(err, "Generate csi rancher local-path plugin")
+		}
+		allConfig.RancherLocalPathCSI = ret
 	}
 	return allConfig, nil
 }
