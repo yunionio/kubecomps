@@ -1,4 +1,4 @@
-//go:generate go run generator.go
+//go:generate go run -mod vendor generator.go
 
 package embed
 
