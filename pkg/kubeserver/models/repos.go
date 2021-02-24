@@ -66,7 +66,7 @@ func (m *SRepoManager) InitializeData() error {
 type SRepo struct {
 	db.SStatusInfrasResourceBase
 
-	Url      string `width:"256" charset:"ascii" nullable:"false" create:"required" list:"user"`
+	Url      string `width:"256" charset:"ascii" nullable:"false" create:"required" update:"user" list:"user"`
 	Username string `width:"256" charset:"ascii" nullable:"false"`
 	Password string `width:"256" charset:"ascii" nullable:"false"`
 	Type     string `charset:"ascii" width:"128" create:"required" nullable:"true" list:"user"`
