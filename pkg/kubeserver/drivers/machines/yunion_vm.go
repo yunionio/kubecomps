@@ -579,6 +579,9 @@ func (d *sYunionVMDriver) GetInfoFromCloud(ctx context.Context, s *mcclient.Clie
 	if err != nil {
 		return nil, errors.Wrap(err, "get cloud server")
 	}
+	if srvObj == nil {
+		return nil, errors.Wrapf(errors.ErrNotFound, "machine %s cloud server %s not found", m.GetName(), id)
+	}
 	srvDetail := new(ocapi.ServerDetails)
 	if err := srvObj.Unmarshal(srvDetail); err != nil {
 		return nil, err
