@@ -641,6 +641,9 @@ func (m *SClusterManager) GetDriverByQuery(query jsonutils.JSONObject) (ICluster
 	if len(resType) == 0 {
 		resType = string(api.ClusterResourceTypeHost)
 	}
+	if len(modeType) == 0 {
+		modeType = string(api.ModeTypeSelfBuild)
+	}
 	if err := m.ValidateResourceType(resType); err != nil {
 		return nil, err
 	}
@@ -652,7 +655,6 @@ func (m *SClusterManager) GetDriverByQuery(query jsonutils.JSONObject) (ICluster
 }
 
 func (m *SClusterManager) GetPropertyK8sVersions(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	SetJSONDataDefault(query.(*jsonutils.JSONDict), "mode", string(api.ModeTypeSelfBuild))
 	driver, err := m.GetDriverByQuery(query)
 	if err != nil {
 		return nil, err
@@ -688,12 +690,27 @@ func (m *SClusterManager) IsSystemClusterReady() (bool, error) {
 	return true, nil
 }
 
+func (m *SClusterManager) AllowPerformPreCheck(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
+	return true
+}
+
+func (m *SClusterManager) PerformPreCheck(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error) {
+	driver, err := m.GetDriverByQuery(data)
+	if err != nil {
+		return nil, err
+	}
+	s, err := m.GetSession()
+	if err != nil {
+		return nil, err
+	}
+	return driver.PreCheck(s, data)
+}
+
 func (m *SClusterManager) AllowGetPropertyUsableInstances(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
 	return userCred.IsAllow(rbacutils.ScopeSystem, m.KeywordPlural(), policy.PolicyActionGet, "usable-instances")
 }
 
 func (m *SClusterManager) GetPropertyUsableInstances(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	SetJSONDataDefault(query.(*jsonutils.JSONDict), "mode", string(api.ModeTypeSelfBuild))
 	driver, err := m.GetDriverByQuery(query)
 	if err != nil {
 		return nil, err

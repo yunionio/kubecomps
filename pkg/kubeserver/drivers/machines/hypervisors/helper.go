@@ -22,7 +22,9 @@ func findSystemDiskImage(
 		"order":      "desc",
 		"valid":      true,
 		"image_type": "system",
-		"zone_id":    zoneId,
+	}
+	if zoneId != "" {
+		params["zone_id"] = zoneId
 	}
 	params = getParams(params)
 
