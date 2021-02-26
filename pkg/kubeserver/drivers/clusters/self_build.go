@@ -21,6 +21,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/addons"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/kubespray"
+	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
@@ -74,6 +75,25 @@ func (d *selfBuildClusterDriver) GetK8sVersions() []string {
 	return []string{
 		"v1.17.0",
 	}
+}
+
+func (d *selfBuildClusterDriver) PreCheck(s *mcclient.ClientSession, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error) {
+	mDrv, err := machines.GetYunionVMDriver().GetHypervisor(string(d.provider))
+	if err != nil {
+		return nil, err
+	}
+
+	zoneId := jsonutils.GetAnyString(data, []string{"zone", "zone_id"})
+
+	ret := &api.ClusterPreCheckResp{
+		Pass: true,
+	}
+	if _, err := mDrv.FindSystemDiskImage(s, zoneId); err != nil {
+		log.Errorf("FindSystemDiskImage for %s error: %v", mDrv.GetHypervisor(), err)
+		ret.Pass = false
+		ret.ImageError = err.Error()
+	}
+	return ret, nil
 }
 
 func newSelfBuildDriver(driver models.IClusterDriver) iSelfBuildDriver {
