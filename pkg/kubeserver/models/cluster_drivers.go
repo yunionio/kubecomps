@@ -24,13 +24,14 @@ type IClusterDriver interface {
 	GetResourceType() api.ClusterResourceType
 	// GetK8sVersions return current cluster k8s versions supported
 	GetK8sVersions() []string
+	PreCheck(s *mcclient.ClientSession, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error)
 
 	IClusterDriverMethods
 }
 
 type IClusterDriverMethods interface {
 	// GetUsableInstances return usable instances for cluster
-	GetUsableInstances(session *mcclient.ClientSession) ([]api.UsableInstance, error)
+	GetUsableInstances(s *mcclient.ClientSession) ([]api.UsableInstance, error)
 
 	NeedCreateMachines() bool
 
