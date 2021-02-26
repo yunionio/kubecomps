@@ -51,6 +51,12 @@ func (d *SBaseDriver) ValidateCreateData(userCred mcclient.TokenCredential, owne
 	return nil
 }
 
+func (d *SBaseDriver) PreCheck(s *mcclient.ClientSession, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error) {
+	return &api.ClusterPreCheckResp{
+		Pass: true,
+	}, nil
+}
+
 func (d *SBaseDriver) ValidateDeleteCondition() error {
 	return nil
 }
