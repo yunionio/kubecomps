@@ -6,4 +6,5 @@ import (
 
 func init() {
 	registerSelfBuildClusterDriver(api.ProviderTypeOnecloud)
+	registerSelfBuildClusterDriver(api.ProviderTypeOnecloudKvm)
 }
