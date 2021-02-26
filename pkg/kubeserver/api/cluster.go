@@ -115,6 +115,11 @@ const (
 	ClusterDeployActionRemoveNode ClusterDeployAction = "remove-node"
 )
 
+type ClusterPreCheckResp struct {
+	Pass       bool   `json:"pass"`
+	ImageError string `json:"image_error"`
+}
+
 type ClusterCreateInput struct {
 	apis.StatusDomainLevelResourceCreateInput
 
