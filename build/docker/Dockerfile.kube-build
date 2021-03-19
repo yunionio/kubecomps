@@ -1,0 +1,3 @@
+FROM registry.cn-beijing.aliyuncs.com/yunionio/alpine-build:1.0-5
+
+RUN apk add librados librbd

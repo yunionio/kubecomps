@@ -1,0 +1,18 @@
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kube-build:1.0-5 as build
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+RUN mkdir -p /go/src/yunion.io/x/kubecomps
+COPY . /go/src/yunion.io/x/kubecomps
+
+WORKDIR /go/src/yunion.io/x/kubecomps
+RUN make cmd/kubeserver
+
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kubectl:1.18.6
+RUN mkdir -p /opt/yunion/bin
+RUN apk add --no-cache librados librbd \
+	openssh-client ansible py-netaddr tzdata rsync \
+	git ca-certificates \
+	&& rm -rf /var/cache/apk/*
+COPY --from=build /go/src/yunion.io/x/kubecomps/manifests/ansible /opt/yunion/ansible
+COPY --from=build /go/src/yunion.io/x/kubecomps/_output/bin/kubeserver /opt/yunion/bin/kubeserver
+RUN ln -s /opt/yunion/bin/kubeserver /opt/yunion/bin/kube-server
