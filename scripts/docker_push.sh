@@ -25,6 +25,19 @@ readlink_mac() {
   REAL_PATH=$PHYS_DIR/$TARGET_FILE
 }
 
+get_current_arch() {
+    local current_arch
+    case $(uname -m) in
+        x86_64)
+            current_arch=amd64
+            ;;
+        aarch64)
+            current_arch=arm64
+            ;;
+    esac
+    echo $current_arch
+}
+
 pushd $(cd "$(dirname "$0")"; pwd) > /dev/null
 readlink_mac $(basename "$0")
 cd "$(dirname "$REAL_PATH")"
@@ -39,6 +52,8 @@ export DOCKER_BUILDKIT=1
 
 REGISTRY=${REGISTRY:-docker.io/yunion}
 TAG=${TAG:-latest}
+CURRENT_ARCH=$(get_current_arch)
+ARCH=${ARCH:-$CURRENT_ARCH}
 
 build_bin() {
     local BUILD_ARCH=$2
@@ -49,7 +64,7 @@ build_bin() {
                 -v $SRC_DIR:/root/go/src/yunion.io/x/kubecomps \
                 -v $SRC_DIR/_output/alpine-build:/root/go/src/yunion.io/x/kubecomps/_output \
                 -v $SRC_DIR/_output/alpine-build/_cache:/root/.cache \
-                registry.cn-beijing.aliyuncs.com/yunionio/alpine-build:1.0-5 \
+                registry.cn-beijing.aliyuncs.com/yunionio/kube-build:1.0-5 \
                 /bin/sh -c "set -ex; cd /root/go/src/yunion.io/x/kubecomps; $BUILD_ARCH $BUILD_CGO GOOS=linux make cmd/$1; chown -R $(id -u):$(id -g) _output"
             ;;
     esac
@@ -77,16 +92,24 @@ push_image() {
     docker push "$tag"
 }
 
+get_image_name() {
+    local component=$1
+    local arch=$2
+    local is_all_arch=$3
+    local img_name="$REGISTRY/$component:$TAG"
+    if [[ "$is_all_arch" == "true" || "$arch" == arm64 ]]; then
+        img_name="${img_name}-$arch"
+    fi
+    echo $img_name
+}
+
 build_process() {
     local component=$1
     local image_name=$component
+    local is_all_arch=$3
+    local img_name=$(get_image_name $component $arch $is_all_arch)
 
     build_bin $component
-    img_name="$REGISTRY/$image_name:$TAG"
-
-    if [[ "$(uname -m)" == aarch64 ]]; then
-        img_name="${img_name}-arm64"
-    fi
 
     build_image $img_name $DOCKER_DIR/Dockerfile.$component $SRC_DIR
     push_image "$img_name"
@@ -95,18 +118,15 @@ build_process() {
 build_process_with_buildx() {
     local component=$1
     local arch=$2
+    local is_all_arch=$3
+    local img_name=$(get_image_name $component $arch $is_all_arch)
 
-    build_env="GOARCH=$arch"
-    img_name="$REGISTRY/$component:$TAG"
-    if [[ "$arch" == arm64 ]]; then
-        img_name="$img_name-$arch"
-        build_env="$build_env"
-        if [[ $component == host ]]; then
-            build_env="$build_env CGO_ENABLED=1"
-        fi
-    fi
+    build_env="GOARCH=$arch "
 
     case "$component" in
+        kubeserver)
+            buildx_and_push $img_name $DOCKER_DIR/Dockerfile.$component-mularch $SRC_DIR $arch
+            ;;
         *)
             build_bin $component $build_env
             buildx_and_push $img_name $DOCKER_DIR/Dockerfile.$component $SRC_DIR $arch
@@ -114,26 +134,23 @@ build_process_with_buildx() {
     esac
 }
 
-function general_build(){
-    local current_arch
-    case $(uname -m) in
-        x86_64)
-            current_arch=amd64
-            ;;
-        aarch64)
-            current_arch=arm64
-            ;;
-    esac
-
+general_build(){
     local component=$1
     # 如果未指定，则默认使用当前架构
     local arch=${2:-$current_arch}
+    local is_all_arch=$3
 
-    if [[ "$current_arch" == "$arch" ]]; then
-        build_process $component
-    else
-        build_process_with_buildx $component $arch
-    fi
+    build_process_with_buildx $component $arch $is_all_arch
+}
+
+make_manifest_image() {
+    local component=$1
+    local img_name=$(get_image_name $component "" "false")
+    docker manifest create --amend $img_name \
+        $img_name-amd64 \
+        $img_name-arm64
+    docker manifest annotate $img_name $img_name-arm64 --arch arm64
+    docker manifest push $img_name
 }
 
 ALL_COMPONENTS=$(ls cmd | grep -v '.*cli$' | xargs)
@@ -159,22 +176,16 @@ for component in $COMPONENTS; do
         continue
     fi
     echo "Start to build component: $component"
-    if [[ $component == baremetal-agent ]]; then
-        if [[ "$ARCH" == "arm64" ]]; then
-            continue
-        fi
-        build_process $component
-        continue
-    fi
 
     case "$ARCH" in
         all)
             for arch in "arm64" "amd64"; do
-                general_build $component $arch
+                general_build $component $arch "true"
             done
+            make_manifest_image $component
             ;;
         *)
-            general_build $component $ARCH
+            general_build $component $ARCH "false"
             ;;
     esac
 done
