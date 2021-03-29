@@ -201,7 +201,10 @@ func (m *SClusterResourceBaseManager) FilterBySystemAttributes(q *sqlchemy.SQuer
 	}
 	if !isSystem {
 		if sysCls, _ := ClusterManager.GetSystemCluster(); sysCls != nil {
-			q = q.NotEquals("cluster_id", sysCls.GetId())
+			// make system cluster resource can be getted
+			if input.Cluster != sysCls.GetName() && input.Cluster != sysCls.GetId() {
+				q = q.NotEquals("cluster_id", sysCls.GetId())
+			}
 		}
 	}
 	return q
