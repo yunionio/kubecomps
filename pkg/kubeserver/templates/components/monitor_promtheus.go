@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 
+	"k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 
 	"yunion.io/x/jsonutils"
@@ -398,6 +399,8 @@ type Minio struct {
 	// Default directory mount path, e.g. `/export`
 	MountPath   string           `json:"mountPath"`
 	Persistence MinioPersistence `json:"persistence"`
+	Tolerations []v1.Toleration  `json:"tolerations"`
+	Affinity    *v1.Affinity     `json:"affinity"`
 }
 
 func GenerateHelmValues(config interface{}) map[string]interface{} {

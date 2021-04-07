@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/pkg/errors"
@@ -203,6 +204,38 @@ func (m SMinioComponentManager) GetHelmValues(cluster *SCluster, setting *api.Co
 			StorageClass: input.Storage.ClassName,
 			Size:         fmt.Sprintf("%dGi", input.Storage.SizeMB/1024),
 		},
+	}
+
+	if cluster.IsSystem {
+		// inject tolerations
+		conf.Tolerations = append(conf.Tolerations,
+			v1.Toleration{
+				Key:    "node-role.kubernetes.io/master",
+				Effect: v1.TaintEffectNoSchedule,
+			},
+			v1.Toleration{
+				Key:    "node-role.kubernetes.io/controlplane",
+				Effect: v1.TaintEffectNoSchedule,
+			},
+		)
+		// inject affinity
+		conf.Affinity = &v1.Affinity{
+			NodeAffinity: &v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+					NodeSelectorTerms: []v1.NodeSelectorTerm{
+						{
+							MatchExpressions: []v1.NodeSelectorRequirement{
+								{
+									Key:      "onecloud.yunion.io/controller",
+									Operator: v1.NodeSelectorOpIn,
+									Values:   []string{"enable"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
 	}
 
 	return components.GenerateHelmValues(conf), nil
