@@ -7,6 +7,7 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
+	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
@@ -23,15 +24,16 @@ type ClusterCreateTask struct {
 
 func (t *ClusterCreateTask) getMachines(cluster *models.SCluster) ([]*api.CreateMachineData, error) {
 	params := t.GetParams()
-	ret := []*api.CreateMachineData{}
-	ms := []api.CreateMachineData{}
-	if err := params.Unmarshal(&ms, "machines"); err != nil {
-		return nil, err
+	input := new(api.ClusterCreateInput)
+	if err := params.Unmarshal(input); err != nil {
+		return nil, errors.Wrapf(err, "unmarshal cluster create input data from: %s", params)
 	}
+	ms := input.Machines
+	ret := []*api.CreateMachineData{}
 	for _, m := range ms {
 		m.ClusterId = cluster.Id
 		tmp := m
-		ret = append(ret, &tmp)
+		ret = append(ret, tmp)
 	}
 	return ret, nil
 }
