@@ -193,13 +193,14 @@ func (c RepoClient) Remove(name string) error {
 	}
 
 	if !r.Remove(name) {
-		return errors.Errorf("no repo named %q found", name)
+		// return errors.Errorf("no repo named %q found", name)
+		log.Errorf("No repo named %q found", name)
 	}
 	if err := r.WriteFile(repoFile, 0644); err != nil {
-		return err
+		return errors.Wrapf(err, "Write file %s", repoFile)
 	}
 	if err := removeRepoCache(c.RepositoryCache, name); err != nil {
-		return err
+		return errors.Wrapf(err, "Remove repo cache: %s", name)
 	}
 	return nil
 }
