@@ -161,6 +161,9 @@ func (man *SRepoManager) ValidateCreateData(ctx context.Context, userCred mcclie
 	}
 	if err := cli.Add(entry); err != nil {
 		log.Errorf("Add helm entry %#v error: %v", entry, err)
+		if errors.Cause(err) == helm.ErrRepoAlreadyExists {
+			return nil, httperrors.NewDuplicateResourceError("Backend helm repo name %s already exists, please specify a different name", data.Name)
+		}
 		return nil, httperrors.NewNotAcceptableError("Add helm repo %s failed", entry.URL)
 	}
 
