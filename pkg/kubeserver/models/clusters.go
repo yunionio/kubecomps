@@ -103,8 +103,8 @@ type SCluster struct {
 
 	// kubernetes config
 	Kubeconfig string `nullable:"true" charset:"utf8" create:"optional"`
-	Ca         string `nullable:"false" charset:"utf8" create:"optional"`
-	CaKey      string `nullable:"false" charset:"utf8" create:"optional"`
+	Ca         string `charset:"utf8" create:"optional"`
+	CaKey      string `charset:"utf8" create:"optional"`
 	// kubernetes api server endpoint
 	ApiServer string `width:"256" nullable:"true" charset:"ascii" create:"optional" list:"user"`
 
