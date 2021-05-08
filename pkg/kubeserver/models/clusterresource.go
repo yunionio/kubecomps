@@ -104,6 +104,8 @@ type IClusterModelManager interface {
 	InitOwnedManager(man IClusterModelManager)
 
 	GetGCQuery() *sqlchemy.SQuery
+
+	FetchCustomizeColumns(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, objs []interface{}, fields stringutils2.SSortedStrings, isList bool) []interface{}
 }
 
 type IClusterModel interface {
