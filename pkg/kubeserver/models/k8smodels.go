@@ -47,23 +47,30 @@ func RegisterK8sModelManager(man IK8sModelManager) {
 	globalK8sModelManagers[man.GetK8sResourceInfo()] = man
 }
 
-// GetK8sResourceManagerByKind used by bidirect sync
-func GetK8sResourceManagerByKind(kindName string) manager.IK8sResourceManager {
+func GetOriginK8sModelManager(kindName string) IK8sModelManager {
 	for rsInfo, man := range globalK8sModelManagers {
 		if rsInfo.KindName == kindName {
-			return man.(manager.IK8sResourceManager)
+			return man
 		}
 	}
 	return nil
 }
 
-func GetK8sModelManagerByKind(kindName string) model.IK8sModelManager {
-	for rsInfo, man := range globalK8sModelManagers {
-		if rsInfo.KindName == kindName {
-			return man.(model.IK8sModelManager)
-		}
+// GetK8sResourceManagerByKind used by bidirect sync
+func GetK8sResourceManagerByKind(kindName string) manager.IK8sResourceManager {
+	man := GetOriginK8sModelManager(kindName)
+	if man == nil {
+		return nil
 	}
-	return nil
+	return man.(manager.IK8sResourceManager)
+}
+
+func GetK8sModelManagerByKind(kindName string) model.IK8sModelManager {
+	man := GetOriginK8sModelManager(kindName)
+	if man == nil {
+		return nil
+	}
+	return man.(model.IK8sModelManager)
 }
 
 func newModelManager(factory func() db.IModelManager) db.IModelManager {
