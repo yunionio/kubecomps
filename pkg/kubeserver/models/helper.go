@@ -20,14 +20,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -168,11 +168,12 @@ func GetReleaseResources(
 	ret := make(map[string][]interface{})
 	ress.Visit(func(info *resource.Info, err error) error {
 		gvk := info.Object.GetObjectKind().GroupVersionKind()
-		man := GetK8sModelManagerByKind(gvk.Kind)
+		man := GetOriginK8sModelManager(gvk.Kind)
 		if man == nil {
 			log.Warningf("not fond %s manager", gvk.Kind)
 			return nil
 		}
+
 		obj := info.Object.(*unstructured.Unstructured)
 		objGVK := obj.GroupVersionKind()
 		keyword := man.Keyword()
@@ -188,15 +189,36 @@ func GetReleaseResources(
 			log.Warningf("get resource %#v error: %v", objGVK, err)
 			return nil
 		}
-		modelObj, err := model.NewK8SModelObject(man, clusterMan, getObj)
-		if err != nil {
-			log.Errorf("%s NewK8sModelObject error: %v", keyword, err)
-			return errors.Wrapf(err, "%s NewK8SModelObject", keyword)
+
+		var jsonObj interface{}
+		if k8sMan, ok := man.(model.IK8sModelManager); ok {
+			modelObj, err := model.NewK8SModelObject(k8sMan, clusterMan, getObj)
+			if err != nil {
+				log.Errorf("%s NewK8sModelObject error: %v", keyword, err)
+				return errors.Wrapf(err, "%s NewK8SModelObject", keyword)
+			}
+			jsonObj, err = model.GetObject(modelObj)
+			if err != nil {
+				return errors.Wrapf(err, "get %s object", modelObj.Keyword())
+			}
+		} else if dbMan, ok := man.(IClusterModelManager); ok {
+			newObj := dbMan.GetK8sResourceInfo().Object.DeepCopyObject()
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(getObj.Object, newObj); err != nil {
+				return errors.Wrapf(err, "convert from unstructured %v", getObj)
+			}
+			cluster := clusterMan.GetClusterObject().(*SCluster)
+			// TODO: avoid use context.Background() and admin usercred
+			dbObj, err := dbMan.NewFromRemoteObject(context.Background(), GetAdminCred(), cluster, newObj)
+			if err != nil {
+				return errors.Wrapf(err, "NewFromRemoteObject %v", getObj)
+			}
+			ret := dbMan.FetchCustomizeColumns(context.Background(), GetAdminCred(), jsonutils.NewDict(), []interface{}{dbObj}, nil, true)
+			jsonObj = ret[0]
+		} else {
+			log.Warningf("Invalid manager %s: %v", man.Keyword(), man)
+			return nil
 		}
-		jsonObj, err := model.GetObject(modelObj)
-		if err != nil {
-			return errors.Wrapf(err, "get %s object", modelObj.Keyword())
-		}
+
 		if list, ok := ret[keyword]; ok {
 			list = append(list, jsonObj)
 			ret[keyword] = list
