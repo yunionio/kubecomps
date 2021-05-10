@@ -212,8 +212,19 @@ func GetReleaseResources(
 			if err != nil {
 				return errors.Wrapf(err, "NewFromRemoteObject %v", getObj)
 			}
+			nsObj, isNsObj := dbObj.(INamespaceModel)
+			if isNsObj {
+				dbObj, err = FetchClusterResourceByName(dbMan, GetAdminCred(), cluster.GetId(), nsObj.GetNamespaceId(), nsObj.GetName())
+			} else {
+				dbObj, err = FetchClusterResourceByName(dbMan, GetAdminCred(), cluster.GetId(), "", nsObj.GetName())
+			}
+			if err != nil {
+				return errors.Wrapf(err, "Fetch DB object %v", getObj)
+			}
 			ret := dbMan.FetchCustomizeColumns(context.Background(), GetAdminCred(), jsonutils.NewDict(), []interface{}{dbObj}, nil, true)
-			jsonObj = ret[0]
+			jsonDictObj := jsonutils.Marshal(dbObj).(*jsonutils.JSONDict)
+			jsonDictObj.Update(jsonutils.Marshal(ret[0]))
+			jsonObj = jsonDictObj
 		} else {
 			log.Warningf("Invalid manager %s: %v", man.Keyword(), man)
 			return nil
