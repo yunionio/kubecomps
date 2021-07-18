@@ -187,12 +187,19 @@ type GrafanaIni struct {
 	Server *GrafanaIniServer `json:"server"`
 }
 
+type GrafanaDataSourceJsonData struct {
+	// TlsAuth       bool `json:"tlsAuth"`
+	TlsSkipVerify bool `json:"tlsSkipVerify"`
+}
+
 type GrafanaAdditionalDataSource struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Url       string `json:"url"`
-	Access    string `json:"access"`
-	IsDefault bool   `json:"isDefault"`
+	Name      string                     `json:"name"`
+	Type      string                     `json:"type"`
+	Url       string                     `json:"url"`
+	Access    string                     `json:"access"`
+	IsDefault bool                       `json:"isDefault"`
+	Database  string                     `json:"database,omitempty"`
+	JsonData  *GrafanaDataSourceJsonData `json:"jsonData,omitempty"`
 }
 
 type GrafanaAdditionalDataSources []GrafanaAdditionalDataSource

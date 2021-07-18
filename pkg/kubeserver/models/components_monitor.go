@@ -270,6 +270,16 @@ func (c componentDriverMonitor) validatePromtail(conf *api.ComponentSettingMonit
 }
 
 func (c componentDriverMonitor) ValidateUpdateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentUpdateInput) error {
+	comp, err := cluster.GetComponentByType(input.Type)
+	if err != nil {
+		return err
+	}
+	oldSetting, _ := comp.GetSettings()
+	if oldSetting != nil {
+		if input.Monitor.Grafana.TLSKeyPair == nil {
+			input.Monitor.Grafana.TLSKeyPair = oldSetting.Monitor.Grafana.TLSKeyPair
+		}
+	}
 	return c.validateSetting(ctx, userCred, cluster, input.Monitor)
 }
 
@@ -452,13 +462,33 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		conf.Grafana.Sidecar.Datasources.DefaultDatasourceEnabled = false
 		conf.Grafana.AdditionalDataSources = []components.GrafanaAdditionalDataSource{
 			{
-				Name:      "Thanos-Query",
+				Name:      "Prometheus",
 				Type:      "prometheus",
-				Url:       fmt.Sprintf("http://thanos-query.%s:9090", MonitorNamespace),
+				Url:       fmt.Sprintf("http://monitor-monitor-stack-prometheus.%s:9090", MonitorNamespace),
 				Access:    "proxy",
 				IsDefault: true,
 			},
+			{
+				Name:   "Thanos-Query",
+				Type:   "prometheus",
+				Url:    fmt.Sprintf("http://thanos-query.%s:9090", MonitorNamespace),
+				Access: "proxy",
+			},
 		}
+	}
+
+	if cluster.IsSystemCluster() {
+		conf.Grafana.AdditionalDataSources = append(conf.Grafana.AdditionalDataSources,
+			components.GrafanaAdditionalDataSource{
+				Name:     "Influxdb-Telegraf",
+				Type:     "influxdb",
+				Access:   "proxy",
+				Database: "telegraf",
+				Url:      fmt.Sprintf("https://default-influxdb.onecloud:30086"),
+				JsonData: &components.GrafanaDataSourceJsonData{
+					TlsSkipVerify: true,
+				},
+			})
 	}
 
 	// inject loki spec
