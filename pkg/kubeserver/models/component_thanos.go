@@ -72,12 +72,16 @@ func (c componentDriverThanos) validateSetting(ctx context.Context, userCred mcc
 		return err
 	}
 
-	if err := c.validateStorage(userCred, cluster, &conf.Store.Storage); err != nil {
-		return errors.Wrap(err, "validate storegateway storage")
+	if conf.Store.Storage.Enabled {
+		if err := c.validateStorage(userCred, cluster, &conf.Store.Storage); err != nil {
+			return errors.Wrap(err, "validate storegateway storage")
+		}
 	}
 
-	if err := c.validateStorage(userCred, cluster, &conf.Compactor.Storage); err != nil {
-		return errors.Wrap(err, "validate compactor storage")
+	if conf.Compactor.Storage.Enabled {
+		if err := c.validateStorage(userCred, cluster, &conf.Compactor.Storage); err != nil {
+			return errors.Wrap(err, "validate compactor storage")
+		}
 	}
 
 	return nil
@@ -161,15 +165,6 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 
 	input := setting.Thanos
 
-	storePvc, err := components.NewPVCStorage(&input.Store.Storage)
-	if err != nil {
-		return nil, errors.Wrap(err, "new storegateway pvc")
-	}
-	compactorPvc, err := components.NewPVCStorage(&input.Compactor.Storage)
-	if err != nil {
-		return nil, errors.Wrap(err, "new compactor pvc")
-	}
-
 	conf := components.Thanos{
 		Image:         mi("thanos", "v0.16.0"),
 		ClusterDomain: input.ClusterDomain,
@@ -191,13 +186,33 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 			ReplicaCount: 1,
 		},
 		Storegateway: components.ThanosStoregateway{
-			Enabled:     true,
-			Persistence: *storePvc,
+			Enabled: true,
+			Persistence: components.Storage{
+				Enabled: false,
+			},
 		},
 		Compactor: components.ThanosCompactor{
-			Enabled:     true,
-			Persistence: *compactorPvc,
+			Enabled: true,
+			Persistence: components.Storage{
+				Enabled: false,
+			},
 		},
+	}
+
+	if input.Store.Storage.Enabled {
+		storePvc, err := components.NewPVCStorage(&input.Store.Storage)
+		if err != nil {
+			return nil, errors.Wrap(err, "new storegateway pvc")
+		}
+		conf.Storegateway.Persistence = *storePvc
+	}
+
+	if input.Compactor.Storage.Enabled {
+		compactorPvc, err := components.NewPVCStorage(&input.Compactor.Storage)
+		if err != nil {
+			return nil, errors.Wrap(err, "new compactor pvc")
+		}
+		conf.Compactor.Persistence = *compactorPvc
 	}
 
 	return components.GenerateHelmValues(conf), nil

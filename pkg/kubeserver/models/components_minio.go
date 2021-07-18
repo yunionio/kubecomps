@@ -2,16 +2,10 @@ package models
 
 import (
 	"context"
-	"fmt"
 
-	v1 "k8s.io/api/core/v1"
-	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
-	"yunion.io/x/kubecomps/pkg/kubeserver/embed"
-	"yunion.io/x/kubecomps/pkg/kubeserver/templates/components"
 )
 
 const (
@@ -29,88 +23,38 @@ func init() {
 }
 
 type SMinioComponentManager struct {
-	SComponentManager
-	HelmComponentManager
+	SMinioBaseComponentManager
 }
 
 type SMinioComponent struct {
-	SComponent
+	SMinioBaseComponent
 }
 
 func NewMinioComponentManager() *SMinioComponentManager {
-	man := new(SMinioComponentManager)
-	man.SComponentManager = *NewComponentManager(SMinioComponent{},
-		"kubecomponentminio",
-		"kubecomponentminios",
+	bMan := NewMinioBaseComponentManager(
+		"kubecomponentminio", "kubecomponentminios",
+		MinioReleaseName, MinioNamespace,
+		SMinioComponent{},
 	)
-	man.HelmComponentManager = *NewHelmComponentManager(MinioNamespace, MinioReleaseName, embed.MINIO_8_0_6_TGZ)
+	man := &SMinioComponentManager{
+		SMinioBaseComponentManager: *bMan,
+	}
 	man.SetVirtualObject(man)
 	return man
 }
 
 type componentDriverMinio struct {
-	baseComponentDriver
+	*componentDriverMinioBase
 }
 
 func newComponentDriverMinio() IComponentDriver {
-	return new(componentDriverMinio)
-}
-
-func (c componentDriverMinio) GetType() string {
-	return api.ClusterComponentMinio
+	return componentDriverMinio{
+		componentDriverMinioBase: newComponentDriverMinioBase(api.ClusterComponentMinio),
+	}
 }
 
 func (c componentDriverMinio) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentCreateInput) error {
 	return c.validateSetting(ctx, userCred, cluster, input.Minio)
-}
-
-func (c componentDriverMinio) validateSetting(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, conf *api.ComponentSettingMinio) error {
-	if conf == nil {
-		return httperrors.NewNotEmptyError("minio config is empty")
-	}
-
-	if conf.Mode != api.ComponentMinoModeDistributed && conf.Mode != api.ComponentMinoModeStandalone {
-		return httperrors.NewInputParameterError("not support mode %s", conf.Mode)
-	}
-	if conf.Mode == api.ComponentMinoModeStandalone {
-		if conf.Replicas != 1 {
-			return httperrors.NewInputParameterError("standalone mode replica should be 1")
-		}
-	} else {
-		if conf.Replicas < 4 {
-			return httperrors.NewInputParameterError("distributed mode replicas must >= 4, input %d", conf.Replicas)
-		}
-		if conf.Zones == 0 {
-			conf.Zones = 1
-		}
-		if conf.DrivesPerNode == 0 {
-			conf.DrivesPerNode = 1
-		}
-	}
-
-	if conf.AccessKey == "" {
-		return httperrors.NewNotEmptyError("access key is empty")
-	}
-	if len(conf.AccessKey) < 3 {
-		return httperrors.NewInputParameterError("access key length should be at least 3")
-	}
-
-	if conf.SecretKey == "" {
-		return httperrors.NewNotEmptyError("secret key is empty")
-	}
-	if len(conf.SecretKey) < 8 {
-		return httperrors.NewInputParameterError("secret key length should be at least 8")
-	}
-
-	if conf.MountPath == "" {
-		conf.MountPath = "/export"
-	}
-
-	if err := c.validateStorage(userCred, cluster, &conf.Storage); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c componentDriverMinio) ValidateUpdateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentUpdateInput) error {
@@ -118,10 +62,7 @@ func (c componentDriverMinio) ValidateUpdateData(ctx context.Context, userCred m
 }
 
 func (c componentDriverMinio) GetCreateSettings(input *api.ComponentCreateInput) (*api.ComponentSettings, error) {
-	if input.ComponentSettings.Namespace == "" {
-		input.ComponentSettings.Namespace = MinioNamespace
-	}
-	return &input.ComponentSettings, nil
+	return c.getCreateSettings(input, MinioNamespace)
 }
 
 func (c componentDriverMinio) GetUpdateSettings(oldSetting *api.ComponentSettings, input *api.ComponentUpdateInput) (*api.ComponentSettings, error) {
@@ -130,113 +71,41 @@ func (c componentDriverMinio) GetUpdateSettings(oldSetting *api.ComponentSetting
 }
 
 func (c componentDriverMinio) DoEnable(cluster *SCluster, setting *api.ComponentSettings) error {
-	return MinioComponentManager.CreateHelmResource(cluster, setting)
+	return DoEnableMinio(MinioComponentManager, cluster, setting)
 }
 
 // TODO: refactor this deduplicated code
 func (c componentDriverMinio) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	return MinioComponentManager.GetHelmValues(cluster, setting)
+	return GetMinioHelmValues(cluster, setting.Minio)
 }
 
 func (c componentDriverMinio) DoDisable(cluster *SCluster, setting *api.ComponentSettings) error {
-	return MinioComponentManager.DeleteHelmResource(cluster, setting)
+	return DoDisableMinio(MinioComponentManager, cluster, setting)
 }
 
 func (c componentDriverMinio) DoUpdate(cluster *SCluster, setting *api.ComponentSettings) error {
-	return MinioComponentManager.UpdateHelmResource(cluster, setting)
+	return DoUpdateMinio(MinioComponentManager, cluster, setting)
 }
 
 func (c componentDriverMinio) FetchStatus(cluster *SCluster, comp *SComponent, status *api.ComponentsStatus) error {
 	if status.Minio == nil {
 		status.Minio = new(api.ComponentStatus)
 	}
-	c.InitStatus(comp, status.Minio)
-	return nil
+	return c.fetchStatus(cluster, comp, status.Minio)
 }
 
 func (m SMinioComponentManager) CreateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	vals, err := m.GetHelmValues(cluster, setting)
-	if err != nil {
-		return errors.Wrap(err, "get helm config values")
-	}
-	return m.HelmComponentManager.CreateHelmResource(cluster, vals)
+	return CreateMinioHelmResource(m.GetHelmManager(), cluster, setting.Minio)
 }
 
 func (m SMinioComponentManager) DeleteHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	return m.HelmComponentManager.DeleteHelmResource(cluster)
+	return DeleteMinioHelmResource(m.GetHelmManager(), cluster)
 }
 
 func (m SMinioComponentManager) UpdateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	vals, err := m.GetHelmValues(cluster, setting)
-	if err != nil {
-		return errors.Wrap(err, "get helm config values")
-	}
-	return m.HelmComponentManager.UpdateHelmResource(cluster, vals)
+	return UpdateMinioHelmResource(m.HelmComponentManager, cluster, setting.Minio)
 }
 
 func (m SMinioComponentManager) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	imgRepo, err := cluster.GetImageRepository()
-	if err != nil {
-		return nil, errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
-	}
-	repo := imgRepo.Url
-	mi := func(name, tag string) components.Image {
-		return components.Image{
-			Repository: fmt.Sprintf("%s/%s", repo, name),
-			Tag:        tag,
-		}
-	}
-
-	input := setting.Minio
-	conf := components.Minio{
-		Image:              mi("minio", "RELEASE.2020-12-03T05-49-24Z"),
-		McImage:            mi("mc", "RELEASE.2020-11-25T23-04-07Z"),
-		HelmKubectlJqImage: mi("helm-kubectl-jq", "3.1.0"),
-		Mode:               string(input.Mode),
-		Replicas:           input.Replicas,
-		DrivesPerNode:      input.DrivesPerNode,
-		Zones:              input.Zones,
-		AccessKey:          input.AccessKey,
-		SecretKey:          input.SecretKey,
-		MountPath:          input.MountPath,
-		Persistence: components.MinioPersistence{
-			Enabled:      true,
-			StorageClass: input.Storage.ClassName,
-			Size:         fmt.Sprintf("%dGi", input.Storage.SizeMB/1024),
-		},
-	}
-
-	if cluster.IsSystem {
-		// inject tolerations
-		conf.Tolerations = append(conf.Tolerations,
-			v1.Toleration{
-				Key:    "node-role.kubernetes.io/master",
-				Effect: v1.TaintEffectNoSchedule,
-			},
-			v1.Toleration{
-				Key:    "node-role.kubernetes.io/controlplane",
-				Effect: v1.TaintEffectNoSchedule,
-			},
-		)
-		// inject affinity
-		conf.Affinity = &v1.Affinity{
-			NodeAffinity: &v1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-					NodeSelectorTerms: []v1.NodeSelectorTerm{
-						{
-							MatchExpressions: []v1.NodeSelectorRequirement{
-								{
-									Key:      "onecloud.yunion.io/controller",
-									Operator: v1.NodeSelectorOpIn,
-									Values:   []string{"enable"},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-	}
-
-	return components.GenerateHelmValues(conf), nil
+	return GetMinioHelmValues(cluster, setting.Minio)
 }

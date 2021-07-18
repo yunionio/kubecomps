@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -374,10 +375,22 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 	if err != nil {
 		return err
 	}
+
 	settings, err := drv.GetUpdateSettings(oldSettings, input)
 	if err != nil {
 		return err
 	}
+
+	// get oldSettings again
+	oldSettings, err = m.GetSettings()
+	if err != nil {
+		return err
+	}
+
+	if !input.Force && reflect.DeepEqual(oldSettings, settings) {
+		return nil
+	}
+
 	if _, err := db.Update(m, func() error {
 		m.Settings = jsonutils.Marshal(settings)
 		return nil
