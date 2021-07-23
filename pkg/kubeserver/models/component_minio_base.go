@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/pkg/errors"
@@ -172,8 +171,8 @@ func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (ma
 	}
 
 	conf := components.Minio{
-		Image:              mi("minio", "RELEASE.2020-12-03T05-49-24Z"),
-		McImage:            mi("mc", "RELEASE.2020-11-25T23-04-07Z"),
+		Image:              mi("minio", "RELEASE.2021-06-17T00-10-46Z"),
+		McImage:            mi("mc", "RELEASE.2021-06-13T17-48-22Z"),
 		HelmKubectlJqImage: mi("helm-kubectl-jq", "3.1.0"),
 		Mode:               string(input.Mode),
 		Replicas:           input.Replicas,
@@ -189,36 +188,8 @@ func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (ma
 		},
 	}
 
-	if cluster.IsSystem {
-		// inject tolerations
-		conf.Tolerations = append(conf.Tolerations,
-			v1.Toleration{
-				Key:    "node-role.kubernetes.io/master",
-				Effect: v1.TaintEffectNoSchedule,
-			},
-			v1.Toleration{
-				Key:    "node-role.kubernetes.io/controlplane",
-				Effect: v1.TaintEffectNoSchedule,
-			},
-		)
-		// inject affinity
-		conf.Affinity = &v1.Affinity{
-			NodeAffinity: &v1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-					NodeSelectorTerms: []v1.NodeSelectorTerm{
-						{
-							MatchExpressions: []v1.NodeSelectorRequirement{
-								{
-									Key:      "onecloud.yunion.io/controller",
-									Operator: v1.NodeSelectorOpIn,
-									Values:   []string{"enable"},
-								},
-							},
-						},
-					},
-				},
-			},
-		}
+	if cluster.IsSystemCluster() {
+		conf.CommonConfig = getSystemComponentCommonConfig(true)
 	}
 
 	return components.GenerateHelmValues(conf), nil

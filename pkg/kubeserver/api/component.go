@@ -99,6 +99,19 @@ type TLSKeyPair struct {
 	Key         string `json:"key"`
 }
 
+type ComponentSettingMonitorGrafanaOAuth struct {
+	Enabled           bool   `json:"enabled"`
+	ClientId          string `json:"clientId"`
+	ClientSecret      string `json:"clientSecret"`
+	Scopes            string `json:"scopes"`
+	AuthURL           string `json:"authURL"`
+	TokenURL          string `json:"tokenURL"`
+	APIURL            string `json:"apiURL"`
+	AllowedDomains    string `json:"allowedDomains"`
+	AllowSignUp       bool   `json:"allowSignUp"`
+	RoleAttributePath string `json:"roleAttributePath"`
+}
+
 type ComponentSettingMonitorGrafana struct {
 	// grafana 登录用户名
 	// default: admin
@@ -112,13 +125,16 @@ type ComponentSettingMonitorGrafana struct {
 	// grafana ingress public address
 	PublicAddress string `json:"publicAddress"`
 	// grafana ingress host
-	Host string `json:"host"`
+	Host          string `json:"host"`
+	EnforceDomain bool   `json:"enforceDomain"`
 	// Ingress expose https key pair
 	TLSKeyPair *TLSKeyPair `json:"tlsKeyPair"`
 	// Disable subpath /grafana
-	DisableSubpath bool `json:"disableSubpath"`
+	DisableSubpath bool   `json:"disableSubpath"`
+	Subpath        string `json:"subpath"`
 	// Enable thanos query datasource
-	EnableThanosQueryDataSource bool `json:"enableThanosQueryDataSource"`
+	EnableThanosQueryDataSource bool                                 `json:"enableThanosQueryDataSource"`
+	OAuth                       *ComponentSettingMonitorGrafanaOAuth `json:"oauth"`
 }
 
 type ComponentSettingMonitorLoki struct {

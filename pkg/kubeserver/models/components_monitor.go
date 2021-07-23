@@ -352,10 +352,34 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 	}
 	if !input.Grafana.DisableSubpath {
 		serveSubPath = true
-		rootUrl = fmt.Sprintf("%s/grafana/", rootUrl)
+		subpath := input.Grafana.Subpath
+		if subpath == "" {
+			subpath = "grafana"
+		}
+		rootUrl = fmt.Sprintf("%s/%s/", rootUrl, subpath)
 	}
 	grafanaIni.Server.ServeFromSubPath = serveSubPath
 	grafanaIni.Server.RootUrl = rootUrl
+	if input.Grafana.EnforceDomain {
+		grafanaIni.Server.Domain = grafanaHost
+		grafanaIni.Server.EnforceDomain = true
+	}
+
+	if input.Grafana.OAuth != nil {
+		oauth := input.Grafana.OAuth
+		grafanaIni.OAuth = &components.GrafanaIniOAuth{
+			Enabled:           oauth.Enabled,
+			ClientId:          oauth.ClientId,
+			ClientSecret:      oauth.ClientSecret,
+			Scopes:            oauth.Scopes,
+			AuthURL:           oauth.AuthURL,
+			TokenURL:          oauth.TokenURL,
+			APIURL:            oauth.APIURL,
+			AllowedDomains:    oauth.AllowedDomains,
+			AllowSignUp:       oauth.AllowSignUp,
+			RoleAttributePath: oauth.RoleAttributePath,
+		}
+	}
 
 	if input.Grafana.TLSKeyPair == nil {
 		return nil, errors.Errorf("grafana tls key pair not provided")
@@ -368,25 +392,25 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 	conf := components.MonitorStack{
 		Prometheus: components.Prometheus{
 			Spec: components.PrometheusSpec{
-				Image: mi("prometheus", "v2.15.2"),
+				Image: mi("prometheus", "v2.28.1"),
 			},
 		},
 		Alertmanager: components.Alertmanager{
 			Spec: components.AlertmanagerSpec{
-				Image: mi("alertmanager", "v0.20.0"),
+				Image: mi("alertmanager", "v0.22.2"),
 			},
 		},
 		PrometheusNodeExporter: components.PrometheusNodeExporter{
-			Image: mi("node-exporter", "v0.18.1"),
+			Image: mi("node-exporter", "v1.2.0"),
 		},
 		KubeStateMetrics: components.KubeStateMetrics{
-			Image: mi("kube-state-metrics", "v1.9.4"),
+			Image: mi("kube-state-metrics", "v1.9.8"),
 		},
 		Grafana: components.Grafana{
 			AdminUser:     input.Grafana.AdminUser,
 			AdminPassword: input.Grafana.AdminPassword,
 			Sidecar: components.GrafanaSidecar{
-				Image: mi("k8s-sidecar", "0.1.99"),
+				Image: mi("k8s-sidecar", "1.12.2"),
 				Datasources: components.GrafanaSidecarDataSources{
 					DefaultDatasourceEnabled: true,
 				},
@@ -404,23 +428,23 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			GrafanaIni: grafanaIni,
 		},
 		Loki: components.Loki{
-			Image: mi("loki", "2.0.0"),
+			Image: mi("loki", "2.2.1"),
 		},
 		Promtail: components.Promtail{
-			Image: mi("promtail", "2.0.0"),
+			Image: mi("promtail", "2.2.1"),
 		},
 		PrometheusOperator: components.PrometheusOperator{
 			Image:                         mi("prometheus-operator", "v0.37.0"),
-			ConfigmapReloadImage:          mi("configmap-reload", "v0.0.1"),
-			PrometheusConfigReloaderImage: mi("prometheus-config-reloader", "v0.37.0"),
+			ConfigmapReloadImage:          mi("configmap-reload", "v0.5.0"),
+			PrometheusConfigReloaderImage: mi("prometheus-config-reloader", "v0.38.1"),
 			TLSProxy: components.PromTLSProxy{
-				Image: mi("ghostunnel", "v1.5.2"),
+				Image: mi("ghostunnel", "v1.5.3"),
 			},
 			AdmissionWebhooks: components.AdmissionWebhooks{
 				Enabled: false,
 				Patch: components.AdmissionWebhooksPatch{
 					Enabled: false,
-					Image:   mi("kube-webhook-certgen", "v1.0.0"),
+					Image:   mi("kube-webhook-certgen", "v1.5.2"),
 				},
 			},
 		},
@@ -435,7 +459,7 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		conf.Prometheus.Spec.StorageSpec = spec
 	}
 	if input.Prometheus.ThanosSidecar != nil {
-		image := mi("thanos", "v0.16.0")
+		image := mi("thanos", "v0.22.0")
 		conf.Prometheus.Spec.Thanos = components.ThanosSidecarSpec{
 			BaseImage: image.Repository,
 			Version:   image.Tag,
@@ -532,7 +556,23 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 				// WorkingDir:  "/data/loki/boltdb-shipper-compactor",
 				SharedStore: "s3",
 			},
+			TableManager: &components.LokiTableManagerConfig{
+				RetentionDeletesEnabled: true,
+				// 7 days
+				RetentionPeriod: "168h",
+			},
 		}
+	}
+
+	// set system cluster common config
+	if cluster.IsSystemCluster() {
+		cConf := getSystemComponentCommonConfig(false)
+		conf.Grafana.CommonConfig = cConf
+		conf.Loki.CommonConfig = cConf
+		conf.Prometheus.Spec.CommonConfig = cConf
+		conf.Alertmanager.Spec.CommonConfig = cConf
+		conf.PrometheusOperator.CommonConfig = cConf
+		conf.KubeStateMetrics.CommonConfig = cConf
 	}
 
 	return components.GenerateHelmValues(conf), nil

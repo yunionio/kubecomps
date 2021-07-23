@@ -97,6 +97,7 @@ type ThanosSidecarSpec struct {
 }
 
 type PrometheusSpec struct {
+	CommonConfig
 	// image: quay.io/prometheus/prometheus:v2.15.2
 	Image       Image                  `json:"image"`
 	StorageSpec *PrometheusStorageSpec `json:"storageSpec"`
@@ -115,6 +116,7 @@ type Alertmanager struct {
 }
 
 type AlertmanagerSpec struct {
+	CommonConfig
 	// image: quay.io/prometheus/alertmanager:v0.20.0
 	Image Image `json:"image"`
 }
@@ -125,6 +127,7 @@ type PrometheusNodeExporter struct {
 }
 
 type KubeStateMetrics struct {
+	CommonConfig
 	// image: quay.io/coreos/kube-state-metrics:v1.9.4
 	Image Image `json:"image"`
 }
@@ -181,10 +184,26 @@ type GrafanaIngress struct {
 type GrafanaIniServer struct {
 	RootUrl          string `json:"root_url"`
 	ServeFromSubPath bool   `json:"serve_from_sub_path"`
+	Domain           string `json:"domain,omitempty"`
+	EnforceDomain    bool   `json:"enforce_domain,omitempty"`
+}
+
+type GrafanaIniOAuth struct {
+	Enabled           bool   `json:"enabled"`
+	ClientId          string `json:"client_id"`
+	ClientSecret      string `json:"client_secret"`
+	Scopes            string `json:"scopes"`
+	AuthURL           string `json:"auth_url"`
+	TokenURL          string `json:"token_url"`
+	APIURL            string `json:"api_url"`
+	AllowedDomains    string `json:"allowed_domains"`
+	AllowSignUp       bool   `json:"allow_sign_up"`
+	RoleAttributePath string `json:"role_attribute_path"`
 }
 
 type GrafanaIni struct {
 	Server *GrafanaIniServer `json:"server"`
+	OAuth  *GrafanaIniOAuth  `json:"auth.generic_oauth"`
 }
 
 type GrafanaDataSourceJsonData struct {
@@ -205,6 +224,7 @@ type GrafanaAdditionalDataSource struct {
 type GrafanaAdditionalDataSources []GrafanaAdditionalDataSource
 
 type Grafana struct {
+	CommonConfig
 	AdminUser     string         `json:"adminUser"`
 	AdminPassword string         `json:"adminPassword"`
 	Sidecar       GrafanaSidecar `json:"sidecar"`
@@ -272,14 +292,21 @@ type LokiIngesterConfig struct {
 	ChunkRetainPeriod string `json:"check_retain_period"`
 }
 
+type LokiTableManagerConfig struct {
+	RetentionDeletesEnabled bool   `json:"retention_deletes_enabled"`
+	RetentionPeriod         string `json:"retention_period"`
+}
+
 type LokiConfig struct {
 	// Ingester      LokiIngesterConfig     `json:"ingester"`
-	SchemaConfig  LokiConfigSchemaConfig `json:"schema_config"`
-	StorageConfig LokiStorageConfig      `json:"storage_config"`
-	Compactor     LokiCompactorConfig    `json:"compactor"`
+	SchemaConfig  LokiConfigSchemaConfig  `json:"schema_config"`
+	StorageConfig LokiStorageConfig       `json:"storage_config"`
+	Compactor     LokiCompactorConfig     `json:"compactor"`
+	TableManager  *LokiTableManagerConfig `json:"table_manager"`
 }
 
 type Loki struct {
+	CommonConfig
 	Image   Image       `json:"image"`
 	Storage *Storage    `json:"persistence"`
 	Config  *LokiConfig `json:"config"`
@@ -302,6 +329,8 @@ type AdmissionWebhooks struct {
 }
 
 type PrometheusOperator struct {
+	CommonConfig
+	NodeSelector map[string]string `json:"nodeSelector"`
 	// image: squareup/ghostunnel:v1.5.2
 	TLSProxy          PromTLSProxy      `json:"tlsProxy"`
 	AdmissionWebhooks AdmissionWebhooks `json:"admissionWebhooks"`
@@ -343,6 +372,8 @@ type ThanosQueryDnsDiscovery struct {
 }
 
 type ThanosQuery struct {
+	CommonConfig
+
 	Enabled      bool                    `json:"enabled"`
 	DnsDiscovery ThanosQueryDnsDiscovery `json:"dnsDiscovery"`
 	// Statically configure store APIs to connect with Thanos Query
@@ -360,12 +391,16 @@ type Persistence struct {
 }
 
 type ThanosStoregateway struct {
+	CommonConfig
+
 	Enabled     bool      `json:"enabled"`
 	Resources   Resources `json:"resources"`
 	Persistence Storage   `json:"persistence"`
 }
 
 type ThanosCompactor struct {
+	CommonConfig
+
 	Enabled     bool      `json:"enabled"`
 	Resources   Resources `json:"resources"`
 	Persistence Storage   `json:"persistence"`
@@ -386,7 +421,14 @@ type MinioPersistence struct {
 	Size         string `json:"size"`
 }
 
+type CommonConfig struct {
+	Tolerations []v1.Toleration `json:"tolerations"`
+	Affinity    *v1.Affinity    `json:"affinity"`
+}
+
 type Minio struct {
+	CommonConfig
+
 	Image Image `json:"image"`
 	// ClusterDomain string `json:"clusterDomain"`
 	// Minio client image
@@ -406,8 +448,6 @@ type Minio struct {
 	// Default directory mount path, e.g. `/export`
 	MountPath   string           `json:"mountPath"`
 	Persistence MinioPersistence `json:"persistence"`
-	Tolerations []v1.Toleration  `json:"tolerations"`
-	Affinity    *v1.Affinity     `json:"affinity"`
 }
 
 func GenerateHelmValues(config interface{}) map[string]interface{} {

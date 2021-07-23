@@ -847,7 +847,9 @@ compactor:
   ##
   retentionResolutionRaw: 30d
   retentionResolution5m: 30d
-  retentionResolution1h: 10y
+  retentionResolution1h: 30d
+
+  deleteDelay: 0h
 
   ## Minimum age of fresh (non-compacted) blocks
   ## before they are being processed
