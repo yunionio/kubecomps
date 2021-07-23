@@ -166,7 +166,7 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 	input := setting.Thanos
 
 	conf := components.Thanos{
-		Image:         mi("thanos", "v0.16.0"),
+		Image:         mi("thanos", "v0.22.0"),
 		ClusterDomain: input.ClusterDomain,
 		ObjStoreConfig: components.ThanosObjectStoreConfig{
 			Type: "s3",
@@ -213,6 +213,13 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 			return nil, errors.Wrap(err, "new compactor pvc")
 		}
 		conf.Compactor.Persistence = *compactorPvc
+	}
+
+	if cluster.IsSystemCluster() {
+		commonConf := getSystemComponentCommonConfig(false)
+		conf.Query.CommonConfig = commonConf
+		conf.Storegateway.CommonConfig = commonConf
+		conf.Compactor.CommonConfig = commonConf
 	}
 
 	return components.GenerateHelmValues(conf), nil
