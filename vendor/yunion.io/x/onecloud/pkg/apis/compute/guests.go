@@ -54,15 +54,17 @@ type ServerListInput struct {
 	Hypervisor []string `json:"hypervisor"`
 	// 列出绑定了弹性IP（EIP）的主机
 	WithEip *bool `json:"with_eip"`
-	// 列出未绑定弹性IP（EIO）的主机
+	// 列出未绑定弹性IP（EIP）的主机
 	WithoutEip *bool `json:"without_eip"`
+	// 列出可绑定弹性IP的主机
+	EipAssociable *bool `json:"eip_associable"`
 	// 列出操作系统为指定值的主机
 	// enum: linux,windows,vmware
 	OsType []string `json:"os_type"`
 
-	// 对列表结果按照磁盘进行排序
+	// 对列表结果按照磁盘大小进行排序
 	// enum: asc,desc
-	// OrderByDisk string `json:"order_by_disk"`
+	OrderByDisk string `json:"order_by_disk"`
 
 	// 根据ip查找机器
 	IpAddr string `json:"ip_addr"`
@@ -217,6 +219,8 @@ type ServerDetails struct {
 	Vpc string `json:"vpc"`
 	// 归属VPC ID
 	VpcId string `json:"vpc_id"`
+	// Vpc外网访问模式
+	VpcExternalAccessMode string `json:"vpc_external_access_mode"`
 
 	// 关联安全组列表
 	Secgroups []apis.StandaloneShortDesc `json:"secgroups"`
@@ -368,7 +372,10 @@ type GuestMigrateInput struct {
 }
 
 type GuestLiveMigrateInput struct {
+	// 指定期望的迁移目标宿主机
 	PreferHost string `json:"prefer_host"`
+	// 是否跳过CPU检查，默认要做CPU检查
+	SkipCpuCheck *bool `json:"skip_cpu_check"`
 }
 
 type GuestSetSecgroupInput struct {
@@ -452,4 +459,86 @@ type ServerStopInput struct {
 	// 是否关机停止计费, 若平台不支持停止计费，此参数无作用
 	// 目前仅阿里云，腾讯云此参数生效
 	StopCharging bool `json:"stop_charging"`
+}
+
+type ServerSaveImageInput struct {
+	// 镜像名称
+	Name         string
+	GenerateName string
+	Notes        string
+	IsPublic     bool
+	// 镜像格式
+	Format string
+
+	// 保存镜像后是否自动启动,若实例状态为运行中,则会先关闭实例
+	// default: false
+	AutoStart bool
+	// swagger: ignore
+	Restart bool
+
+	// swagger: ignore
+	OsType string
+
+	// swagger: ignore
+	OsArch string
+
+	// swagger: ignore
+	ImageId string
+}
+
+type ServerDeleteInput struct {
+	// 是否越过回收站直接删除
+	// default: false
+	OverridePendingDelete bool
+
+	// 是否仅删除本地资源
+	// default: false
+	Purge bool
+
+	// 是否删除快照
+	// default: false
+	DeleteSnapshots bool
+
+	// 是否删除关联的EIP
+	// default: false
+	DeleteEip bool
+
+	// 是否删除关联的数据盘
+	// default: false
+	DeleteDisks bool
+}
+
+type ServerDetachnetworkInput struct {
+	// 是否保留IP地址(ip地址会进入到预留ip)
+	Reserve bool `json:"reserve"`
+	// 通过IP子网地址, 优先级最高
+	NetId string `json:"net_id"`
+	// 通过IP解绑网卡, 优先级高于mac
+	IpAddr string `json:"ip_addr"`
+	// 通过Mac解绑网卡, 优先级低于ip_addr
+	Mac string `json:"mac"`
+}
+
+type ServerMigrateForecastInput struct {
+	PreferHostId string `json:"prefer_host_id"`
+	// Deprecated
+	PreferHost   string `json:"prefer_host" yunion-deprecated-by:"prefer_host_id"`
+	LiveMigrate  bool   `json:"live_migrate"`
+	SkipCpuCheck bool   `josn:"skip_cpu_check"`
+}
+
+type ServerResizeDiskInput struct {
+	// swagger: ignore
+	Disk string `json:"disk" yunion-deprecated-by:"disk_id"`
+	// 磁盘Id
+	DiskId string `json:"disk_id"`
+
+	DiskResizeInput
+}
+
+type ServerMigrateNetworkInput struct {
+	// Source network Id
+	Src string `json:"src"`
+	// Destination network Id
+	Dest string `json:"dest"`
 }

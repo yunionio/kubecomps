@@ -144,7 +144,7 @@ func (c *selfBuildDriver) ValidateCreateData(ctx context.Context, userCred mccli
 		return httperrors.NewInputParameterError("No controlplane nodes")
 	}
 
-	ctx = context.WithValue(ctx, "VmNamePrefix", input.Name)
+	ctx = context.WithValue(ctx, "VmNamePrefix", strings.ToLower(input.Name))
 	info := &api.ClusterMachineCommonInfo{
 		CloudregionId: input.CloudregionId,
 		VpcId:         input.VpcId,

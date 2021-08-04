@@ -39,12 +39,15 @@ const (
 	STORAGE_EPHEMERAL_SSD    = "ephemeral_ssd"  //单块本地SSD盘, 容量最大不能超过800 GiB
 
 	//Azure hdd and ssd storagetype
-	STORAGE_STANDARD_LRS    = "standard_lrs"
-	STORAGE_STANDARDSSD_LRS = "standardssd_lrs"
-	STORAGE_PREMIUM_LRS     = "premium_lrs"
+	STORAGE_STANDARD_LRS          = "standard_lrs"
+	STORAGE_STANDARDSSD_LRS       = "standardssd_lrs"
+	STORAGE_PREMIUM_LRS           = "premium_lrs"
+	STORAGE_AZURE_BASIC           = "basic_storage"
+	STORAGE_AZURE_GENERAL_PURPOSE = "general_purpose_storage"
 
 	// aws storage type
 	STORAGE_GP2_SSD      = "gp2"      // aws general purpose ssd
+	STORAGE_GP3_SSD      = "gp3"      // aws General Purpose SSD (gp3)
 	STORAGE_IO1_SSD      = "io1"      // aws Provisioned IOPS SSD
 	STORAGE_IO2_SSD      = "io2"      // aws Provisioned IOPS 2 SSD
 	STORAGE_ST1_HDD      = "st1"      // aws Throughput Optimized HDD
@@ -61,9 +64,10 @@ const (
 	STORAGE_CLOUD_HSSD    = "cloud_hssd"    //增强型SSD云硬盘
 
 	// huawei storage type
-	STORAGE_HUAWEI_SSD  = "SSD"  // 超高IO云硬盘
-	STORAGE_HUAWEI_SAS  = "SAS"  // 高IO云硬盘
-	STORAGE_HUAWEI_SATA = "SATA" // 普通IO云硬盘
+	STORAGE_HUAWEI_SSD   = "SSD"   // 超高IO云硬盘
+	STORAGE_HUAWEI_SAS   = "SAS"   // 高IO云硬盘
+	STORAGE_HUAWEI_SATA  = "SATA"  // 普通IO云硬盘
+	STORAGE_HUAWEI_GPSSD = "GPSSD" // 通用型SSD
 
 	// openstack
 	STORAGE_OPENSTACK_ISCSI = "iscsi"
@@ -90,6 +94,12 @@ const (
 	STORAGE_CTYUN_SSD  = "SSD"  // 超高IO云硬盘
 	STORAGE_CTYUN_SAS  = "SAS"  // 高IO云硬盘
 	STORAGE_CTYUN_SATA = "SATA" // 普通IO云硬盘
+
+	STORAGE_ECLOUD_CAPEBS = "capebs" // 容量盘
+	STORAGE_ECLOUD_EBS    = "ebs"    // 性能盘
+	STORAGE_ECLOUD_SSD    = "ssd"    // 高性能盘
+	STORAGE_ECLOUD_SSDEBS = "ssdebs" // 性能优化盘
+	STORAGE_ECLOUD_SYSTEM = "system" // 系统盘
 )
 
 const (
@@ -125,7 +135,7 @@ var (
 		STORAGE_PUBLIC_CLOUD, STORAGE_CLOUD_SSD, STORAGE_CLOUD_ESSD, STORAGE_CLOUD_ESSD_PL2, STORAGE_CLOUD_ESSD_PL3,
 		STORAGE_EPHEMERAL_SSD, STORAGE_CLOUD_EFFICIENCY,
 		STORAGE_STANDARD_LRS, STORAGE_STANDARDSSD_LRS, STORAGE_PREMIUM_LRS,
-		STORAGE_GP2_SSD, STORAGE_IO1_SSD, STORAGE_ST1_HDD, STORAGE_SC1_HDD, STORAGE_STANDARD_HDD,
+		STORAGE_GP2_SSD, STORAGE_GP3_SSD, STORAGE_IO1_SSD, STORAGE_ST1_HDD, STORAGE_SC1_HDD, STORAGE_STANDARD_HDD,
 		STORAGE_LOCAL_BASIC, STORAGE_LOCAL_SSD, STORAGE_CLOUD_BASIC, STORAGE_CLOUD_PREMIUM,
 		STORAGE_HUAWEI_SSD, STORAGE_HUAWEI_SAS, STORAGE_HUAWEI_SATA,
 		STORAGE_OPENSTACK_ISCSI, STORAGE_UCLOUD_CLOUD_NORMAL, STORAGE_UCLOUD_CLOUD_SSD,
@@ -143,6 +153,25 @@ var (
 	// 目前来说只支持这些
 	SHARED_STORAGE = []string{STORAGE_NFS, STORAGE_GPFS, STORAGE_RBD}
 )
+
+func IsDiskTypeMatch(t1, t2 string) bool {
+	switch t1 {
+	case DISK_TYPE_ROTATE:
+		if t2 == DISK_TYPE_SSD {
+			return false
+		} else {
+			return true
+		}
+	case DISK_TYPE_SSD:
+		if t2 == DISK_TYPE_ROTATE {
+			return false
+		} else {
+			return true
+		}
+	default:
+		return true
+	}
+}
 
 type StorageResourceInput struct {
 	// 存储（ID或Name）
@@ -193,4 +222,7 @@ type StorageListInput struct {
 
 	// filter by cachedimage
 	ImageId string `json:"image_id"`
+
+	// filter storages which attached the specified host
+	HostId string `json:"host_id"`
 }

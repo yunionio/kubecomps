@@ -166,11 +166,7 @@ type SDBInstanceChangeConfigInput struct {
 	apis.Meta
 
 	InstanceType string
-	VCpuCount    int
-	VmemSizeMb   int
-	StorageType  string
 	DiskSizeGB   int
-	Category     string
 }
 
 type SDBInstanceRecoveryConfigInput struct {
@@ -294,6 +290,8 @@ type DBInstanceDetails struct {
 
 	SDBInstance
 
+	Secgroups []apis.StandaloneShortDesc `json:"secgroups"`
+
 	// 安全组名称
 	// example: Default
 	Secgroup string `json:"secgroup"`
@@ -367,4 +365,8 @@ type DBInstanceNetworkListInput struct {
 type DBInstanceAutoRenewInput struct {
 	// 是否自动续费
 	AutoRenew bool `json:"auto_renew"`
+}
+
+type DBInstanceSetSecgroupInput struct {
+	SecgroupIds []string `json:"secgroup_ids"`
 }

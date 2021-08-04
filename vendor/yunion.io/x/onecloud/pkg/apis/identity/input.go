@@ -346,6 +346,12 @@ type PolicyListInput struct {
 
 	// 是否显示系统权限
 	IsSystem *bool `json:"is_system"`
+
+	// filter policies by role id
+	RoleId string `json:"role_id"`
+	// swagger: ignore
+	// Deprecated
+	Role string `json:"role" yunion-deprecated-by:"role_id"`
 }
 
 type RegionFilterListInput struct {
@@ -450,6 +456,8 @@ type UserUpdateInput struct {
 	Password string `json:"password"`
 
 	SkipPasswordComplexityCheck *bool `json:"skip_password_complexity_check"`
+
+	Lang string `json:"lang"`
 }
 
 type UserCreateInput struct {
@@ -474,6 +482,8 @@ type UserCreateInput struct {
 	IdpId string `json:"idp_id"`
 
 	IdpEntityId string `json:"idp_entity_id"`
+
+	Lang string `json:"lang"`
 }
 
 type ProjectCreateInput struct {
