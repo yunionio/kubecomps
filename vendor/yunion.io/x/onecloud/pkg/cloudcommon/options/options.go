@@ -73,9 +73,9 @@ type BaseOptions struct {
 	NotifyAdminUsers  []string `default:"sysadmin" help:"System administrator user ID or name to notify system events, if domain is not default, specify domain as prefix ending with double backslash, e.g. domain\\\\user"`
 	NotifyAdminGroups []string `help:"System administrator group ID or name to notify system events, if domain is not default, specify domain as prefix ending with double backslash, e.g. domain\\\\group"`
 
-	EnableRbac                  bool `help:"Switch on Role-based Access Control" default:"true"`
-	RbacDebug                   bool `help:"turn on rbac debug log" default:"false"`
-	RbacPolicySyncPeriodSeconds int  `help:"policy sync interval in seconds, default half a minute" default:"30"`
+	EnableRbac                       bool `help:"Switch on Role-based Access Control" default:"true"`
+	RbacDebug                        bool `help:"turn on rbac debug log" default:"false"`
+	RbacPolicyRefreshIntervalSeconds int  `help:"policy refresh interval in seconds, default half a minute" default:"30"`
 	// RbacPolicySyncFailedRetrySeconds int  `help:"seconds to wait after a failed sync, default 30 seconds" default:"30"`
 
 	ConfigSyncPeriodSeconds int `help:"service config sync interval in seconds, default 30 minutes" default:"1800"`
@@ -112,10 +112,10 @@ const (
 type CommonOptions struct {
 	AuthURL            string `help:"Keystone auth URL" alias:"auth-uri"`
 	AdminUser          string `help:"Admin username"`
-	AdminDomain        string `help:"Admin user domain"`
+	AdminDomain        string `help:"Admin user domain" default:"default"`
 	AdminPassword      string `help:"Admin password" alias:"admin-passwd"`
 	AdminProject       string `help:"Admin project" default:"system" alias:"admin-tenant-name"`
-	AdminProjectDomain string `help:"Domain of Admin project"`
+	AdminProjectDomain string `help:"Domain of Admin project" default:"default"`
 	AuthTokenCacheSize uint32 `help:"Auth token Cache Size" default:"2048"`
 
 	TenantCacheExpireSeconds int `help:"expire seconds of cached tenant/domain info. defailt 15 minutes" default:"900"`

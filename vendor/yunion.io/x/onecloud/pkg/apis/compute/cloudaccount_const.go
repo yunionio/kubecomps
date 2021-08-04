@@ -17,6 +17,7 @@ package compute
 import (
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/cloudprovider"
+	"yunion.io/x/onecloud/pkg/util/choices"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 	CLOUD_PROVIDER_DELETING      = "deleting"
 	CLOUD_PROVIDER_DELETED       = "deleted"
 	CLOUD_PROVIDER_DELETE_FAILED = "delete_failed"
+	CLOUD_PROVIDER_SYNC_NETWORK  = "sync_network"
 
 	CLOUD_PROVIDER_SYNC_STATUS_QUEUING = "queuing"
 	CLOUD_PROVIDER_SYNC_STATUS_QUEUED  = "queued"
@@ -47,6 +49,7 @@ const (
 	CLOUD_PROVIDER_ZSTACK    = "ZStack"
 	CLOUD_PROVIDER_GOOGLE    = "Google"
 	CLOUD_PROVIDER_CTYUN     = "Ctyun"
+	CLOUD_PROVIDER_ECLOUD    = "Ecloud"
 
 	CLOUD_PROVIDER_GENERICS3 = "S3"
 	CLOUD_PROVIDER_CEPH      = "Ceph"
@@ -67,6 +70,12 @@ const (
 	CLOUD_ACCOUNT_WIRE_LEVEL_CLUSTER    = "cluster"
 )
 
+var CLOUD_ACCOUNT_WIRE_LEVELS = choices.NewChoices(
+	CLOUD_ACCOUNT_WIRE_LEVEL_VCENTER,
+	CLOUD_ACCOUNT_WIRE_LEVEL_DATACENTER,
+	CLOUD_ACCOUNT_WIRE_LEVEL_CLUSTER,
+)
+
 const (
 	CLOUD_ACCESS_ENV_AWS_GLOBAL          = CLOUD_PROVIDER_AWS + "-int"
 	CLOUD_ACCESS_ENV_AWS_CHINA           = CLOUD_PROVIDER_AWS
@@ -79,6 +88,7 @@ const (
 	CLOUD_ACCESS_ENV_ALIYUN_GLOBAL       = CLOUD_PROVIDER_ALIYUN
 	CLOUD_ACCESS_ENV_ALIYUN_FINANCE      = CLOUD_PROVIDER_ALIYUN + "-fin"
 	CLOUD_ACCESS_ENV_CTYUN_CHINA         = CLOUD_PROVIDER_CTYUN
+	CLOUD_ACCESS_ENV_ECLOUD_CHINA        = CLOUD_PROVIDER_ECLOUD
 )
 
 var (
@@ -100,6 +110,54 @@ var (
 		CLOUD_PROVIDER_ZSTACK,
 		CLOUD_PROVIDER_GOOGLE,
 		CLOUD_PROVIDER_CTYUN,
+		CLOUD_PROVIDER_ECLOUD,
+	}
+
+	CLOUD_PROVIDER_HOST_TYPE_MAP = map[string][]string{
+		CLOUD_PROVIDER_ONECLOUD: []string{
+			HOST_TYPE_KVM,
+			HOST_TYPE_BAREMETAL,
+			HOST_TYPE_HYPERVISOR,
+		},
+		CLOUD_PROVIDER_VMWARE: []string{
+			HOST_TYPE_ESXI,
+		},
+		CLOUD_PROVIDER_ALIYUN: []string{
+			HOST_TYPE_ALIYUN,
+		},
+		CLOUD_PROVIDER_APSARA: []string{
+			HOST_TYPE_APSARA,
+		},
+		CLOUD_PROVIDER_QCLOUD: []string{
+			HOST_TYPE_QCLOUD,
+		},
+		CLOUD_PROVIDER_AZURE: []string{
+			HOST_TYPE_AZURE,
+		},
+		CLOUD_PROVIDER_AWS: []string{
+			HOST_TYPE_AWS,
+		},
+		CLOUD_PROVIDER_HUAWEI: []string{
+			HOST_TYPE_HUAWEI,
+		},
+		CLOUD_PROVIDER_OPENSTACK: []string{
+			HOST_TYPE_OPENSTACK,
+		},
+		CLOUD_PROVIDER_UCLOUD: []string{
+			HOST_TYPE_UCLOUD,
+		},
+		CLOUD_PROVIDER_ZSTACK: []string{
+			HOST_TYPE_ZSTACK,
+		},
+		CLOUD_PROVIDER_GOOGLE: []string{
+			HOST_TYPE_GOOGLE,
+		},
+		CLOUD_PROVIDER_CTYUN: []string{
+			HOST_TYPE_CTYUN,
+		},
+		CLOUD_PROVIDER_ECLOUD: {
+			HOST_TYPE_ECLOUD,
+		},
 	}
 )
 
@@ -123,4 +181,37 @@ var (
 		CLOUD_ACCOUNT_SHARE_MODE_SYSTEM,
 		CLOUD_ACCOUNT_SHARE_MODE_PROVIDER_DOMAIN,
 	}
+
+	CLOUD_ENV_MAP = map[string]map[string]string{
+		CLOUD_PROVIDER_AZURE: map[string]string{
+			"AzureGermanCloud":       CLOUD_ACCESS_ENV_AZURE_GERMAN,
+			"AzureChinaCloud":        CLOUD_ACCESS_ENV_AZURE_CHINA,
+			"AzureUSGovernmentCloud": CLOUD_ACCESS_ENV_AZURE_US_GOVERNMENT,
+			"AzurePublicCloud":       CLOUD_ACCESS_ENV_AZURE_GLOBAL,
+		},
+		CLOUD_PROVIDER_AWS: map[string]string{
+			"InternationalCloud": CLOUD_ACCESS_ENV_AWS_GLOBAL,
+			"ChinaCloud":         CLOUD_ACCESS_ENV_AWS_CHINA,
+		},
+		CLOUD_PROVIDER_HUAWEI: map[string]string{
+			"InternationalCloud": CLOUD_ACCESS_ENV_HUAWEI_GLOBAL,
+			"ChinaCloud":         CLOUD_ACCESS_ENV_HUAWEI_CHINA,
+		},
+		CLOUD_PROVIDER_ALIYUN: map[string]string{
+			"InternationalCloud": CLOUD_PROVIDER_ALIYUN,
+			"FinanceCloud":       CLOUD_ACCESS_ENV_ALIYUN_FINANCE,
+		},
+	}
 )
+
+func GetCloudEnv(provider, accessUrl string) string {
+	envMap, ok := CLOUD_ENV_MAP[provider]
+	if !ok {
+		return provider
+	}
+	env, ok := envMap[accessUrl]
+	if !ok {
+		return provider
+	}
+	return env
+}

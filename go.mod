@@ -41,12 +41,12 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.6.4
 	sigs.k8s.io/yaml v1.2.0
-	yunion.io/x/code-generator v0.0.0-20201109104841-9a6ae1b631f7
-	yunion.io/x/jsonutils v0.0.0-20201110084044-3e4e1cb49769
+	yunion.io/x/code-generator v0.0.0-20210727035420-bc4620019c46
+	yunion.io/x/jsonutils v0.0.0-20210709075951-798a67800349
 	yunion.io/x/log v0.0.0-20201210064738-43181789dc74
-	yunion.io/x/onecloud v0.0.0-20201211161754-474831d98346
-	yunion.io/x/pkg v0.0.0-20201123083159-ca3aea986ff2
-	yunion.io/x/sqlchemy v0.0.0-20201208011733-4adc2e143fde
+	yunion.io/x/onecloud v0.0.0-20210804081451-066d0c6a879d
+	yunion.io/x/pkg v0.0.0-20210721081124-55078288ca4c
+	yunion.io/x/sqlchemy v0.0.0-20210619142628-653684d2c4f8
 )
 
 replace (

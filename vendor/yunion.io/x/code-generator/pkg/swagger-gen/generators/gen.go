@@ -382,7 +382,7 @@ const (
 	// model or model manager func keyword
 	Create                      = "ValidateCreateData"
 	List                        = "ListItemFilter"
-	Get                         = "GetExtraDetails"
+	Get                         = "FetchCustomizeColumns"
 	GetCustomizedGetDetailsBody = "CustomizedGetDetailsBody"
 	GetSpec                     = "GetDetails"
 	GetProperty                 = "GetProperty"
@@ -565,6 +565,9 @@ func isValidType(t *types.Type) error {
 	}
 	rt := GetValidType(t)
 	if rt == nil {
+		if common.IsJSONObject(t) {
+			return nil
+		}
 		return fmt.Errorf("invalid type %s", t.String())
 	}
 	if rt.Name.Name == "struct{}" {
@@ -603,13 +606,13 @@ func (p *typeParser) listM() *Method {
 }
 
 func (p *typeParser) getM() *Method {
-	return p.getMethod(Get, p.model,
+	return p.getMethod(Get, p.manager,
 		func(m *Method) bool {
 			sig := m.Signature()
 			paramsLen := len(sig.Parameters)
 			retLen := len(sig.Results)
-			// GetExtraDetails(context.Context, userCred mcclient.TokenCredential, query Object) (Object, error)
-			if (paramsLen == 3 || paramsLen == 4) && retLen == 2 {
+			// FetchCustomizeColumns(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, objs []interface{}, fields stringutils2.SSortedStrings, isList bool) []api.ScriptApplyRecordDetails
+			if (paramsLen == 6) && retLen == 1 {
 				return true
 			}
 			return false
@@ -732,6 +735,9 @@ func (p *typeParser) getMethod(funcPreKeyword string, model *types.Type, preF fu
 }
 
 func getArgs(t *types.Type) interface{} {
+	if t == nil {
+		return nil
+	}
 	return common.GetArgs(t)
 }
 

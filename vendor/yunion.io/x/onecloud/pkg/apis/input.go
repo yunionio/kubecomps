@@ -14,6 +14,8 @@
 
 package apis
 
+import "time"
+
 type DomainizedResourceInput struct {
 	// 指定项目归属域名称或ID
 	// required: false
@@ -115,6 +117,18 @@ type EnabledBaseResourceCreateInput struct {
 	Disabled *bool `json:"disabled" help:"turn off enabled flag"`
 }
 
+func (self *EnabledBaseResourceCreateInput) SetEnabled() {
+	enabled := true
+	self.Enabled = &enabled
+	self.Disabled = nil
+}
+
+func (self *EnabledBaseResourceCreateInput) SetDisabled() {
+	disabled := true
+	self.Disabled = &disabled
+	self.Enabled = nil
+}
+
 func (input *EnabledBaseResourceCreateInput) AfterUnmarshal() {
 	if input.Disabled != nil && input.Enabled == nil {
 		enabled := !(*input.Disabled)
@@ -205,6 +219,8 @@ type PerformStatusInput struct {
 	// 更改的目标状态值
 	// required:true
 	Status string `json:"status"`
+	// swagger:ignore
+	BlockJobsCount int `json:"block_jobs_count"`
 
 	// 更改状态的原因描述
 	// required:false
@@ -343,3 +359,22 @@ type GetMetadataInput struct {
 
 // 获取资源标签（元数据）输出
 type GetMetadataOutput map[string]string
+
+type DistinctFieldInput struct {
+	Field      []string
+	ExtraField []string
+}
+
+type PostpaidExpireInput struct {
+	Duration   string    `json:"duration"`
+	ExpireTime time.Time `json:"expire_time"`
+}
+
+type AutoRenewInput struct {
+	// 是否自动续费
+	AutoRenew bool `json:"auto_renew"`
+}
+
+type RenewInput struct {
+	Duration string `json:"duration"`
+}
