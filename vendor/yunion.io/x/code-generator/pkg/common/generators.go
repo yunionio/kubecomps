@@ -3,6 +3,7 @@ package common
 import (
 	"io"
 	"strings"
+	"unicode"
 
 	"k8s.io/gengo/generator"
 	"k8s.io/gengo/types"
@@ -24,6 +25,14 @@ import (
 	}
 	return false
 }*/
+
+func IsJSONObject(t *types.Type) bool {
+	return strings.Contains(t.String(), "yunion.io/x/jsonutils")
+}
+
+func IsPrivateStruct(name string) bool {
+	return unicode.IsLower([]rune(name)[0])
+}
 
 func IsResourceModel(t *types.Type) bool {
 	// ignore SModelBase itself
@@ -77,6 +86,11 @@ func CollectModelManager(srcPkg string, pkgTypes []*types.Type, modelTypes sets.
 		if !InSourcePackage(t, srcPkg) {
 			continue
 		}
+
+		if IsPrivateStruct(t.Name.Name) {
+			continue
+		}
+
 		if IsResourceModel(t) {
 			modelTypes.Insert(t.String())
 		} else {

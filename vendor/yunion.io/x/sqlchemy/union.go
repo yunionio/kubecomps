@@ -15,10 +15,12 @@
 package sqlchemy
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/errors"
 )
 
 type SUnionQueryField struct {
@@ -28,7 +30,11 @@ type SUnionQueryField struct {
 }
 
 func (sqf *SUnionQueryField) Expression() string {
-	return sqf.name
+	if len(sqf.alias) > 0 {
+		return fmt.Sprintf("`%s`.`%s` as `%s`", sqf.union.Alias(), sqf.name, sqf.alias)
+	} else {
+		return fmt.Sprintf("`%s`.`%s`", sqf.union.Alias(), sqf.name)
+	}
 }
 
 func (sqf *SUnionQueryField) Name() string {
@@ -40,7 +46,7 @@ func (sqf *SUnionQueryField) Name() string {
 }
 
 func (sqf *SUnionQueryField) Reference() string {
-	return fmt.Sprintf("`%s`.`%s`", sqf.union.Alias(), sqf.name)
+	return fmt.Sprintf("`%s`.`%s`", sqf.union.Alias(), sqf.Name())
 }
 
 func (sqf *SUnionQueryField) Label(label string) IQueryField {
@@ -48,6 +54,10 @@ func (sqf *SUnionQueryField) Label(label string) IQueryField {
 		sqf.alias = label
 	}
 	return sqf
+}
+
+func (sqf *SUnionQueryField) Variables() []interface{} {
+	return nil
 }
 
 type SUnion struct {
@@ -156,6 +166,10 @@ func Union(query ...IQuery) *SUnion {
 }
 
 func UnionWithError(query ...IQuery) (*SUnion, error) {
+	if len(query) == 0 {
+		return nil, errors.Wrap(sql.ErrNoRows, "empty union query")
+	}
+
 	fieldNames := make([]string, 0)
 	for _, f := range query[0].QueryFields() {
 		fieldNames = append(fieldNames, f.Name())

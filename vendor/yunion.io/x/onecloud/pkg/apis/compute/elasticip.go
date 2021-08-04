@@ -67,6 +67,8 @@ type SElasticipCreateInput struct {
 	// 子网Id
 	// 私有云创建此参数必传,例如Openstack, ZStack
 	NetworkId string `json:"network_id"`
+	// 指定新建EIP的地址
+	IpAddr string `json:"ip_addr"`
 
 	// description: BgpType for the new eip
 	BgpType string `json:"bgp_type"`
@@ -84,4 +86,19 @@ type ElasticipDetails struct {
 }
 
 type ElasticipSyncstatusInput struct {
+}
+
+type ElasticipAssociateInput struct {
+	// 待绑定实例Id
+	InstanceId string `json:"instance_id"`
+	// swagger:ignore
+	InstanceExternalId string `json:"instance_external_id"`
+
+	// swagger:ignore
+	Instance string `json:"instance" yunion-deprecated-by:"instance_id"`
+
+	// 实例类型
+	// enmu: server, natgateway
+	// default: server
+	InstanceType string `json:"instance_type"`
 }
