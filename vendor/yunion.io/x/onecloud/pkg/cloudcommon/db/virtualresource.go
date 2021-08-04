@@ -87,6 +87,57 @@ func (manager *SVirtualResourceBaseManager) GetIVirtualModelManager() IVirtualMo
 	return q
 }*/
 
+func (manager *SVirtualResourceBaseManager) AllowGetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
+	return IsAdminAllowGetSpec(userCred, manager, "statistics")
+}
+
+func (manager *SVirtualResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (map[string]apis.StatusStatistic, error) {
+	im, ok := manager.GetVirtualObject().(IModelManager)
+	if !ok {
+		im = manager
+	}
+
+	var err error
+	q := manager.Query()
+	q, err = ListItemFilter(im, ctx, q, userCred, query)
+	if err != nil {
+		return nil, err
+	}
+
+	sq := q.SubQuery()
+	statQ := sq.Query(sq.Field("status"), sqlchemy.COUNT("total_count", sq.Field("id")), sqlchemy.SUM("pending_deleted_count", sq.Field("pending_deleted")))
+	_, queryScope, err := FetchCheckQueryOwnerScope(ctx, userCred, query, manager, rbacutils.ActionList, true)
+	if err != nil {
+		return nil, httperrors.NewGeneralError(err)
+	}
+
+	statQ = manager.FilterByOwner(statQ, userCred, queryScope)
+	statQ = manager.FilterBySystemAttributes(statQ, userCred, query, queryScope)
+	statQ = manager.FilterByHiddenSystemAttributes(statQ, userCred, query, queryScope)
+	statQ = statQ.GroupBy(sq.Field("status"))
+	ret := []struct {
+		Status              string
+		TotalCount          int64
+		PendingDeletedCount int64
+	}{}
+	err = statQ.All(&ret)
+	if err != nil {
+		return nil, errors.Wrapf(err, "q.All")
+	}
+	type sStatistic struct {
+		TotalCount          int64
+		PendingDeletedCount int64
+	}
+	result := map[string]apis.StatusStatistic{}
+	for _, s := range ret {
+		result[s.Status] = apis.StatusStatistic{
+			TotalCount:          s.TotalCount,
+			PendingDeletedCount: s.PendingDeletedCount,
+		}
+	}
+	return result, nil
+}
+
 func (manager *SVirtualResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
 	q = manager.SStatusStandaloneResourceBaseManager.FilterByHiddenSystemAttributes(q, userCred, query, scope)
 
@@ -111,6 +162,14 @@ func (manager *SVirtualResourceBaseManager) FilterByHiddenSystemAttributes(q *sq
 		q = q.Filter(sqlchemy.OR(sqlchemy.IsNull(q.Field("is_system")), sqlchemy.IsFalse(q.Field("is_system"))))
 	}
 	return q
+}
+
+func (model *SVirtualResourceBase) SetSystemInfo(isSystem bool) error {
+	_, err := Update(model, func() error {
+		model.IsSystem = isSystem
+		return nil
+	})
+	return err
 }
 
 func (model *SVirtualResourceBase) SetProjectInfo(ctx context.Context, userCred mcclient.TokenCredential, projectId, domainId string) error {
@@ -619,5 +678,29 @@ func (manager *SVirtualResourceBaseManager) ListItemExportKeys(ctx context.Conte
 	if err != nil {
 		return nil, errors.Wrap(err, "SProjectizedResourceBaseManager.ListItemExportKeys")
 	}
+
+	if keys.Contains("user_tags") {
+		guestUserTagsQuery := Metadata.Query().Startswith("id", manager.keyword+"::").
+			Startswith("key", USER_TAG_PREFIX).GroupBy("id")
+		guestUserTagsQuery.AppendField(sqlchemy.SubStr("resource_id", guestUserTagsQuery.Field("id"), len(manager.keyword)+3, 0))
+		guestUserTagsQuery.AppendField(
+			sqlchemy.GROUP_CONCAT("user_tags", sqlchemy.CONCAT("",
+				sqlchemy.SubStr("", guestUserTagsQuery.Field("key"), len(USER_TAG_PREFIX)+1, 0),
+				sqlchemy.NewStringField(":"),
+				guestUserTagsQuery.Field("value"),
+			)))
+		subQ := guestUserTagsQuery.SubQuery()
+		q.LeftJoin(subQ, sqlchemy.Equals(q.Field("id"), subQ.Field("resource_id")))
+		q.AppendField(subQ.Field("user_tags"))
+	}
+
 	return q, nil
+}
+
+func (manager *SVirtualResourceBaseManager) GetExportExtraKeys(ctx context.Context, keys stringutils2.SSortedStrings, rowMap map[string]string) *jsonutils.JSONDict {
+	res := manager.SStatusStandaloneResourceBaseManager.GetExportExtraKeys(ctx, keys, rowMap)
+	if userTags, ok := rowMap["user_tags"]; ok && len(userTags) > 0 {
+		res.Set("user_tags", jsonutils.NewString(userTags))
+	}
+	return res
 }

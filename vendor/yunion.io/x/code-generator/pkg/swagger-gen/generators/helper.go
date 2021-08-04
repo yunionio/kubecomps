@@ -360,7 +360,7 @@ func getValidType(t *types.Type) *types.Type {
 	switch t.Kind {
 	case types.Pointer:
 		return t.Elem
-	case types.Struct, types.Map, types.Slice, types.Builtin:
+	case types.Struct, types.Map, types.Builtin, types.Slice:
 		return t
 	case types.Alias:
 		return getValidType(t.Underlying)
@@ -407,8 +407,8 @@ func (r parameter) do(sw *generator.SnippetWriter, h *snippetWriter) {
 		sw.Do("$.type|raw$\n", args)
 	}
 	body := r.getBody()
-	if r.body != nil {
-		args := getArgs(body)
+	args := getArgs(body)
+	if r.body != nil && args != nil {
 		sw.Do("// in:body\n", nil)
 		if r.singular != "" {
 			sw.Do("Body struct {", nil)
@@ -508,6 +508,10 @@ func (f *responseFactory) resultByMethod(method *Method, resultIdx int, bodyKey 
 	params := sig.Results
 	out := params[resultIdx]
 	if err := isValidType(out); err == nil {
+		// FetchCustomColumes return []api.SGuest
+		if method.name == Get && out.Kind == types.Slice {
+			out = out.Elem
+		}
 		r.output = out
 	} else if !ignoreErr {
 		r.errorMsgs = append(r.errorMsgs, fmt.Sprintf("%v", err))
