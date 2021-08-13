@@ -3,11 +3,12 @@ package api
 import "yunion.io/x/onecloud/pkg/apis"
 
 const (
-	ClusterComponentCephCSI   = "cephCSI"
-	ClusterComponentMonitor   = "monitor"
-	ClusterComponentFluentBit = "fluentbit"
-	ClusterComponentMinio     = "minio"
-	ClusterComponentThanos    = "thanos"
+	ClusterComponentCephCSI      = "cephCSI"
+	ClusterComponentMonitor      = "monitor"
+	ClusterComponentFluentBit    = "fluentbit"
+	ClusterComponentMinio        = "minio"
+	ClusterComponentMonitorMinio = "monitorMinio"
+	ClusterComponentThanos       = "thanos"
 )
 
 const (
@@ -52,6 +53,8 @@ type ComponentSettings struct {
 	Thanos *ComponentSettingThanos `json:"thanos"`
 	// Minio 对象存储配置
 	Minio *ComponentSettingMinio `json:"minio"`
+	// Monitor Minio 对象存储配置
+	MonitorMinio *ComponentSettingMinio `json:"monitorMinio"`
 }
 
 type ComponentCephCSIConfigCluster struct {
@@ -96,6 +99,19 @@ type TLSKeyPair struct {
 	Key         string `json:"key"`
 }
 
+type ComponentSettingMonitorGrafanaOAuth struct {
+	Enabled           bool   `json:"enabled"`
+	ClientId          string `json:"clientId"`
+	ClientSecret      string `json:"clientSecret"`
+	Scopes            string `json:"scopes"`
+	AuthURL           string `json:"authURL"`
+	TokenURL          string `json:"tokenURL"`
+	APIURL            string `json:"apiURL"`
+	AllowedDomains    string `json:"allowedDomains"`
+	AllowSignUp       bool   `json:"allowSignUp"`
+	RoleAttributePath string `json:"roleAttributePath"`
+}
+
 type ComponentSettingMonitorGrafana struct {
 	// grafana 登录用户名
 	// default: admin
@@ -109,13 +125,16 @@ type ComponentSettingMonitorGrafana struct {
 	// grafana ingress public address
 	PublicAddress string `json:"publicAddress"`
 	// grafana ingress host
-	Host string `json:"host"`
+	Host          string `json:"host"`
+	EnforceDomain bool   `json:"enforceDomain"`
 	// Ingress expose https key pair
 	TLSKeyPair *TLSKeyPair `json:"tlsKeyPair"`
 	// Disable subpath /grafana
-	DisableSubpath bool `json:"disableSubpath"`
+	DisableSubpath bool   `json:"disableSubpath"`
+	Subpath        string `json:"subpath"`
 	// Enable thanos query datasource
-	EnableThanosQueryDataSource bool `json:"enableThanosQueryDataSource"`
+	EnableThanosQueryDataSource bool                                 `json:"enableThanosQueryDataSource"`
+	OAuth                       *ComponentSettingMonitorGrafanaOAuth `json:"oauth"`
 }
 
 type ComponentSettingMonitorLoki struct {
@@ -347,11 +366,12 @@ type ComponentSettingMinio struct {
 type ComponentsStatus struct {
 	apis.Meta
 
-	CephCSI   *ComponentStatusCephCSI   `json:"cephCSI"`
-	Monitor   *ComponentStatusMonitor   `json:"monitor"`
-	FluentBit *ComponentStatusFluentBit `json:"fluentbit"`
-	Thanos    *ComponentStatus          `json:"thanos"`
-	Minio     *ComponentStatus          `json:"minio"`
+	CephCSI      *ComponentStatusCephCSI   `json:"cephCSI"`
+	Monitor      *ComponentStatusMonitor   `json:"monitor"`
+	FluentBit    *ComponentStatusFluentBit `json:"fluentbit"`
+	Thanos       *ComponentStatus          `json:"thanos"`
+	Minio        *ComponentStatus          `json:"minio"`
+	MonitorMinio *ComponentStatus          `json:"monitorMinio"`
 }
 
 type ComponentStatus struct {
@@ -376,7 +396,8 @@ type ComponentStatusFluentBit struct {
 type ComponentUpdateInput struct {
 	apis.Meta
 
-	Type string `json:"type"`
+	Type  string `json:"type"`
+	Force bool   `json:"force"`
 
 	ComponentSettings
 }
