@@ -216,7 +216,7 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 	}
 
 	if cluster.IsSystemCluster() {
-		commonConf := getSystemComponentCommonConfig(false)
+		commonConf := getSystemComponentCommonConfig(false, false)
 		conf.Query.CommonConfig = commonConf
 		conf.Storegateway.CommonConfig = commonConf
 		conf.Compactor.CommonConfig = commonConf
