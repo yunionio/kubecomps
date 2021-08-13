@@ -51,8 +51,9 @@ type SComponent struct {
 
 	Enabled tristate.TriState `nullable:"false" default:"false" list:"user" create:"optional"`
 
-	Type     string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
-	Settings jsonutils.JSONObject `nullable:"false" list:"user" create:"optional" update:"user"`
+	Type                  string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
+	Settings              jsonutils.JSONObject `nullable:"false" list:"user" create:"optional" update:"user"`
+	ApplyedConfigChecksum string               `width:"64" charset:"ascii" list:"user"`
 }
 
 type IComponentDriver interface {
@@ -61,6 +62,7 @@ type IComponentDriver interface {
 	ValidateUpdateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentUpdateInput) error
 	GetCreateSettings(input *api.ComponentCreateInput) (*api.ComponentSettings, error)
 	GetUpdateSettings(oldSetting *api.ComponentSettings, input *api.ComponentUpdateInput) (*api.ComponentSettings, error)
+	GetApplyedConfigCheckSum(cls *SCluster, setting *api.ComponentSettings) string
 	DoEnable(cluster *SCluster, settings *api.ComponentSettings) error
 	DoDisable(cluster *SCluster, settings *api.ComponentSettings) error
 	DoUpdate(cluster *SCluster, settings *api.ComponentSettings) error
@@ -80,6 +82,10 @@ func (m baseComponentDriver) InitStatus(comp *SComponent, out *api.ComponentStat
 	out.Created = true
 	out.Enabled = comp.Enabled.Bool()
 	out.Status = comp.Status
+}
+
+func (m baseComponentDriver) GetApplyedConfigCheckSum(cls *SCluster, setting *api.ComponentSettings) string {
+	return ""
 }
 
 func (m *SComponentManager) RegisterDriver(drv IComponentDriver) {
@@ -188,6 +194,11 @@ func (m *SComponent) CustomizeCreate(
 	if err != nil {
 		return errors.Wrapf(err, "get component %s settings", input.Type)
 	}
+	cls, err := ClusterManager.GetClusterByIdOrName(userCred, input.Cluster)
+	if err != nil {
+		return errors.Wrapf(err, "get component %s cluster", input.Type)
+	}
+	m.ApplyedConfigChecksum = drv.GetApplyedConfigCheckSum(cls, settings)
 	m.Settings = jsonutils.Marshal(settings)
 	return nil
 }
@@ -383,18 +394,25 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 		return err
 	}
 
+	cls, err := m.GetCluster()
+	if err != nil {
+		return errors.Wrapf(err, "get component %s cluster", m.GetName())
+	}
+	applyCheckSum := drv.GetApplyedConfigCheckSum(cls, settings)
+
 	// get oldSettings again
 	oldSettings, err = m.GetSettings()
 	if err != nil {
 		return err
 	}
 
-	if !input.Force && reflect.DeepEqual(oldSettings, settings) {
+	if !input.Force && reflect.DeepEqual(oldSettings, settings) && applyCheckSum == m.ApplyedConfigChecksum {
 		return nil
 	}
 
 	if _, err := db.Update(m, func() error {
 		m.Settings = jsonutils.Marshal(settings)
+		m.ApplyedConfigChecksum = applyCheckSum
 		return nil
 	}); err != nil {
 		return err

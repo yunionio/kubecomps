@@ -41,7 +41,8 @@ type PromAdmissionWebhooks struct {
 }
 
 type Prometheus struct {
-	Spec PrometheusSpec `json:"prometheusSpec"`
+	Enabled bool           `json:"enabled"`
+	Spec    PrometheusSpec `json:"prometheusSpec"`
 }
 
 type Resources struct {
@@ -112,7 +113,8 @@ type PrometheusSpec struct {
 }
 
 type Alertmanager struct {
-	Spec AlertmanagerSpec `json:"alertmanagerSpec"`
+	Enabled bool             `json:"enabled"`
+	Spec    AlertmanagerSpec `json:"alertmanagerSpec"`
 }
 
 type AlertmanagerSpec struct {
@@ -122,6 +124,7 @@ type AlertmanagerSpec struct {
 }
 
 type PrometheusNodeExporter struct {
+	Enabled bool `json:"enabled"`
 	// image: quay.io/prometheus/node-exporter:v0.18.1
 	Image Image `json:"image"`
 }
@@ -136,9 +139,14 @@ type GrafanaSidecarDataSources struct {
 	DefaultDatasourceEnabled bool `json:"defaultDatasourceEnabled"`
 }
 
+type GrafanaSidecarDashboards struct {
+	Enabled bool `json:"enabled"`
+}
+
 type GrafanaSidecar struct {
 	// image: kiwigrid/k8s-sidecar:0.1.99
 	Image       Image                     `json:"image"`
+	Dashboards  GrafanaSidecarDashboards  `json:"dashboards"`
 	Datasources GrafanaSidecarDataSources `json:"datasources"`
 }
 
@@ -313,6 +321,7 @@ type Loki struct {
 }
 
 type Promtail struct {
+	Enabled      bool   `json:"enabled"`
 	BusyboxImage string `json:"busyboxImage"`
 	Image        Image  `json:"image"`
 }
@@ -347,7 +356,7 @@ type PrometheusOperator struct {
 type MonitorStack struct {
 	Prometheus             Prometheus             `json:"prometheus"`
 	Alertmanager           Alertmanager           `json:"alertmanager"`
-	PrometheusNodeExporter PrometheusNodeExporter `json:"prometheus-node-exporter"`
+	PrometheusNodeExporter PrometheusNodeExporter `json:"nodeExporter"`
 	KubeStateMetrics       KubeStateMetrics       `json:"kube-state-metrics"`
 	Grafana                Grafana                `json:"grafana"`
 	Loki                   Loki                   `json:"loki"`
@@ -422,6 +431,7 @@ type MinioPersistence struct {
 }
 
 type CommonConfig struct {
+	Enabled     bool            `json:"enabled"`
 	Tolerations []v1.Toleration `json:"tolerations"`
 	Affinity    *v1.Affinity    `json:"affinity"`
 }
