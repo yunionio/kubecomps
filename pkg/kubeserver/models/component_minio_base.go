@@ -171,6 +171,9 @@ func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (ma
 	}
 
 	conf := components.Minio{
+		CommonConfig: components.CommonConfig{
+			Enabled: true,
+		},
 		Image:              mi("minio", "RELEASE.2021-06-17T00-10-46Z"),
 		McImage:            mi("mc", "RELEASE.2021-06-13T17-48-22Z"),
 		HelmKubectlJqImage: mi("helm-kubectl-jq", "3.1.0"),
@@ -189,7 +192,7 @@ func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (ma
 	}
 
 	if cluster.IsSystemCluster() {
-		conf.CommonConfig = getSystemComponentCommonConfig(true)
+		conf.CommonConfig = getSystemComponentCommonConfig(true, false)
 	}
 
 	return components.GenerateHelmValues(conf), nil

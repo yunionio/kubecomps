@@ -113,6 +113,7 @@ type ComponentSettingMonitorGrafanaOAuth struct {
 }
 
 type ComponentSettingMonitorGrafana struct {
+	Disable bool `json:"disable"`
 	// grafana 登录用户名
 	// default: admin
 	AdminUser string `json:"adminUser"`
@@ -138,6 +139,7 @@ type ComponentSettingMonitorGrafana struct {
 }
 
 type ComponentSettingMonitorLoki struct {
+	Disable bool `json:"disable"`
 	// loki 持久化存储配置
 	Storage *ComponentStorage `json:"storage"`
 	// loki s3 对象存储配置
@@ -154,6 +156,7 @@ type ComponentSettingMonitorPrometheusThanos struct {
 }
 
 type ComponentSettingMonitorPrometheus struct {
+	Disable bool `json:"disable"`
 	// prometheus 持久化存储配置
 	Storage       *ComponentStorage                        `json:"storage"`
 	ThanosSidecar *ComponentSettingMonitorPrometheusThanos `json:"thanosSidecar"`
@@ -165,6 +168,7 @@ type ComponentSettingVolume struct {
 }
 
 type ComponentSettingMonitorPromtail struct {
+	Disable           bool                   `json:"disable"`
 	DockerVolumeMount ComponentSettingVolume `json:"dockerVolumeMount"`
 	PodsVolumeMount   ComponentSettingVolume `json:"podsVolumeMount"`
 }
