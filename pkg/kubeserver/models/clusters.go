@@ -2400,3 +2400,7 @@ func (c *SCluster) DisableBidirectionalSync() error {
 func (c *SCluster) IsInClassicNetwork() bool {
 	return c.VpcId == computeapi.DEFAULT_VPC_ID
 }
+
+func (c *SCluster) IsSystemCluster() bool {
+	return c.Provider == string(api.ProviderTypeSystem) && c.GetName() == SystemClusterName
+}

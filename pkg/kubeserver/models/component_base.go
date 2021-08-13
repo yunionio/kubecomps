@@ -8,12 +8,14 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
+	v1 "k8s.io/api/core/v1"
 
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/embed"
 	"yunion.io/x/kubecomps/pkg/kubeserver/helm"
 	"yunion.io/x/kubecomps/pkg/kubeserver/k8s/client/cmd"
+	"yunion.io/x/kubecomps/pkg/kubeserver/templates/components"
 )
 
 type K8SComponentManager struct{}
@@ -164,4 +166,58 @@ func (m HelmComponentManager) DeleteHelmResource(cluster *SCluster) error {
 func (m HelmComponentManager) UpdateHelmResource(cluster *SCluster, vals map[string]interface{}) error {
 	_, err := m.HelmUpdate(cluster, m.namespace, m.embedChartName, m.releaseName, vals)
 	return err
+}
+
+func getSystemComponentCommonConfig(controllerPrefer bool) components.CommonConfig {
+	conf := components.CommonConfig{}
+	// inject tolerations
+	conf.Tolerations = append(conf.Tolerations,
+		v1.Toleration{
+			Key:    "node-role.kubernetes.io/master",
+			Effect: v1.TaintEffectNoSchedule,
+		},
+		v1.Toleration{
+			Key:    "node-role.kubernetes.io/controlplane",
+			Effect: v1.TaintEffectNoSchedule,
+		},
+	)
+
+	controllerNodeTerm := v1.NodeSelectorTerm{
+		MatchExpressions: []v1.NodeSelectorRequirement{
+			{
+				Key:      "onecloud.yunion.io/controller",
+				Operator: v1.NodeSelectorOpIn,
+				Values:   []string{"enable"},
+			},
+		},
+	}
+
+	controllerNodeSelector := &v1.NodeSelector{
+		NodeSelectorTerms: []v1.NodeSelectorTerm{controllerNodeTerm},
+	}
+
+	requiredAffinity := &v1.NodeAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution: controllerNodeSelector,
+	}
+
+	preferredAffinity := &v1.NodeAffinity{
+		PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
+			{
+				Weight:     1,
+				Preference: controllerNodeTerm,
+			},
+		},
+	}
+
+	// inject affinity
+	if controllerPrefer {
+		conf.Affinity = &v1.Affinity{
+			NodeAffinity: preferredAffinity,
+		}
+	} else {
+		conf.Affinity = &v1.Affinity{
+			NodeAffinity: requiredAffinity,
+		}
+	}
+	return conf
 }

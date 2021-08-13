@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -364,7 +365,9 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 		return httperrors.NewBadRequestError("component %s not enabled", m.Type)
 	}
 	if !utils.IsInStringArray(m.Status, []string{api.ComponentStatusDeployed, api.ComponentStatusUpdateFail}) {
-		return httperrors.NewBadRequestError("component can't update when status is %s", m.Status)
+		if !input.Force {
+			return httperrors.NewBadRequestError("component can't update when status is %s", m.Status)
+		}
 	}
 	drv, err := m.GetDriver()
 	if err != nil {
@@ -374,10 +377,22 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 	if err != nil {
 		return err
 	}
+
 	settings, err := drv.GetUpdateSettings(oldSettings, input)
 	if err != nil {
 		return err
 	}
+
+	// get oldSettings again
+	oldSettings, err = m.GetSettings()
+	if err != nil {
+		return err
+	}
+
+	if !input.Force && reflect.DeepEqual(oldSettings, settings) {
+		return nil
+	}
+
 	if _, err := db.Update(m, func() error {
 		m.Settings = jsonutils.Marshal(settings)
 		return nil
