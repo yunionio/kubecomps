@@ -3,6 +3,7 @@
 PROJ_DIR="$(dirname $(dirname "${BASH_SOURCE[0]}"))"
 MANIFESTS_DIR="$PROJ_DIR/manifests"
 HELM_DIR="$MANIFESTS_DIR/helm"
+GRAFANA_DSB_DIR="$MANIFESTS_DIR/grafana-dashboards"
 STATIC_DIR="$PROJ_DIR/static"
 
 rm -rf "$STATIC_DIR"
@@ -19,3 +20,6 @@ for chart in "${CHARTS[@]}"; do
     echo package "$chart"
     helm package "$chart" --destination "$STATIC_DIR"
 done
+
+# cp others to STATIC_DIR
+cp -a "$GRAFANA_DSB_DIR"/* "$STATIC_DIR"

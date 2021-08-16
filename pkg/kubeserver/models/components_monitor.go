@@ -20,8 +20,10 @@ import (
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/embed"
+	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 	"yunion.io/x/kubecomps/pkg/kubeserver/templates/components"
 	"yunion.io/x/kubecomps/pkg/utils/certificates"
+	"yunion.io/x/kubecomps/pkg/utils/grafana"
 	"yunion.io/x/kubecomps/pkg/utils/objstore/s3"
 )
 
@@ -34,6 +36,8 @@ const (
 	MonitorReleaseName                = "monitor"
 	ThanosObjectStoreConfigSecretName = "thanos-objstore-config"
 	ThanosObjectStoreConfigSecretKey  = "thanos.yaml"
+
+	InfluxdbTelegrafDS = "Influxdb-Telegraf"
 )
 
 func init() {
@@ -567,7 +571,7 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 	if cluster.IsSystemCluster() {
 		conf.Grafana.AdditionalDataSources = append(conf.Grafana.AdditionalDataSources,
 			components.GrafanaAdditionalDataSource{
-				Name:     "Influxdb-Telegraf",
+				Name:     InfluxdbTelegrafDS,
 				Type:     "influxdb",
 				Access:   "proxy",
 				Database: "telegraf",
@@ -658,4 +662,73 @@ func (m SMonitorComponentManager) UpdateHelmResource(cluster *SCluster, setting 
 		return errors.Wrap(err, "get helm config values")
 	}
 	return m.HelmComponentManager.UpdateHelmResource(cluster, vals)
+}
+
+func (m SMonitorComponentManager) SyncSystemGrafanaDashboard(ctx context.Context, userCred mcclient.TokenCredential, isStart bool) {
+	if err := m.syncSystemGrafanaDashboard(ctx); err != nil {
+		log.Errorf("Sync system grafana dashboard error: %v", err)
+		return
+	}
+	log.Debugf("System telegraf dashboard to grafana synced")
+}
+
+func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context) error {
+	sysCls, err := ClusterManager.GetSystemCluster()
+	if err != nil {
+		return errors.Wrap(err, "get system cluster")
+	}
+
+	comp, err := sysCls.GetComponentByType(api.ClusterComponentMonitor)
+	if err != nil {
+		return errors.Wrap(err, "get monitor component")
+	}
+
+	if comp == nil {
+		return nil
+	}
+
+	settings, err := comp.GetSettings()
+	if err != nil {
+		return errors.Wrap(err, "get component settings")
+	}
+
+	setting := settings.Monitor
+	if setting == nil {
+		return errors.Wrap(err, "monitor setting is nil")
+	}
+
+	gs := setting.Grafana
+	if gs == nil {
+		return errors.Wrap(err, "grafana setting is nil")
+	}
+
+	if gs.Disable {
+		return nil
+	}
+
+	// FIX: hard code
+	defaultDBInputs := []grafana.ImportDashboardInput{
+		{
+			Name:     "DS_LINUXSERVER",
+			PluginId: "influxdb",
+			Type:     "datasource",
+			Value:    InfluxdbTelegrafDS,
+		},
+	}
+
+	apiUrl := fmt.Sprintf("http://monitor-grafana.%s", MonitorNamespace)
+	cli := grafana.NewClient(apiUrl, gs.AdminUser, gs.AdminPassword).
+		SetDebug(options.Options.LogLevel == "debug")
+	if err := cli.ImportDashboard(ctx,
+		embed.Get(embed.LINUX_SERVER_REV1_JSON),
+		grafana.ImportDashboardParams{
+			FolderId:  0,
+			Overwrite: true,
+			Inputs:    defaultDBInputs,
+		},
+	); err != nil {
+		return errors.Wrap(err, "import telegraf system dashboard to grafana")
+	}
+
+	return nil
 }
