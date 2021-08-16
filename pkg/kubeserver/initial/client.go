@@ -22,4 +22,5 @@ func InitClient(cron *cronman.SCronJobManager) {
 
 	cron.AddJobAtIntervalsWithStartRun("StartKubeClusterHealthCheck", 5*time.Minute, models.ClusterManager.ClusterHealthCheckTask, true)
 	cron.AddJobAtIntervalsWithStartRun("StartKubeClusterAutoSyncTask", 30*time.Minute, models.ClusterManager.StartAutoSyncTask, true)
+	cron.AddJobAtIntervalsWithStartRun("StartSyncSystemGrafanaDashboard", 1*time.Minute, models.MonitorComponentManager.SyncSystemGrafanaDashboard, true)
 }
