@@ -23,6 +23,9 @@ type KubeServerOptions struct {
 
 	// GuestDefaultTemplate string `help:"Guest kubernetes default image id" default:"k8s-centos7-base.qcow2"`
 	// GuestDefaultTemplate string `help:"Guest kubernetes default image id" default:"CentOS-7.6.1810-20190430.qcow2"`
+
+	// hack: repo charts filter
+	ChartIgnores []string `help:"Repo chart ignore config, e.g. 'vm-repo:onecloud-jenkins:0.2.0'"`
 }
 
 func OnOptionsChange(oldO, newO interface{}) bool {
