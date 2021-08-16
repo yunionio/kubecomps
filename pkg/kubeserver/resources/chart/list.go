@@ -1,8 +1,11 @@
 package chart
 
 import (
+	"strings"
+
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/helm"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
@@ -44,10 +47,20 @@ func (man *SChartManager) List(userCred mcclient.TokenCredential, query *api.Cha
 	if err != nil {
 		return nil, err
 	}
+
+	inputAllVersion := query.AllVersion
+	if len(options.Options.ChartIgnores) != 0 {
+		query.AllVersion = true
+	}
+
 	list, err := cli.SearchRepo(*query, query.Version) //, query.RepoUrl, query.Keyword)
 	if err != nil {
 		return nil, err
 	}
+
+	// execute ChartIngores
+	list = man.executeChartIngores(query.Repo, inputAllVersion, list, options.Options.ChartIgnores)
+
 	chartList := &ChartList{
 		ListMeta: dataselect.NewListMeta(),
 		Charts:   make([]Chart, 0),
@@ -60,4 +73,45 @@ func (man *SChartManager) List(userCred mcclient.TokenCredential, query *api.Cha
 		dsQuery,
 	)
 	return chartList, err
+}
+
+func (man *SChartManager) executeChartIngores(repo string, allVersion bool, list []*api.ChartResult, filters []string) []*api.ChartResult {
+	if len(filters) == 0 {
+		return list
+	}
+	records := make(map[string]bool)
+	ret := make([]*api.ChartResult, 0)
+	for _, chart := range list {
+		if man.shouldIngoreChart(repo, chart, filters) {
+			continue
+		}
+		if !allVersion {
+			if ok := records[chart.Name]; !ok {
+				records[chart.Name] = true
+				ret = append(ret, chart)
+			}
+		} else {
+			ret = append(ret, chart)
+		}
+	}
+	return ret
+}
+
+func (man *SChartManager) shouldIngoreChart(repo string, chart *api.ChartResult, filters []string) bool {
+	for _, filter := range filters {
+		parts := strings.Split(filter, ":")
+		if len(parts) != 3 {
+			continue
+		}
+		fRepo := parts[0]
+		fChart := parts[1]
+		fVersion := parts[2]
+		if repo != fRepo {
+			return false
+		}
+		if chart.Name == fChart && chart.Version == fVersion {
+			return true
+		}
+	}
+	return false
 }
