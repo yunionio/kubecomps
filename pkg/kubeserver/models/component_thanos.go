@@ -48,15 +48,13 @@ func NewThanosComponentManager() *SThanosComponentManager {
 }
 
 type componentDriverThanos struct {
-	baseComponentDriver
+	helmComponentDriver
 }
 
 func newComponentDriverThanos() IComponentDriver {
-	return new(componentDriverThanos)
-}
-
-func (c componentDriverThanos) GetType() string {
-	return api.ClusterComponentThanos
+	return &componentDriverThanos{
+		helmComponentDriver: newHelmComponentDriver(api.ClusterComponentThanos, ThanosComponentManager),
+	}
 }
 
 func (c componentDriverThanos) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentCreateInput) error {
@@ -105,11 +103,6 @@ func (c componentDriverThanos) GetUpdateSettings(oldSetting *api.ComponentSettin
 
 func (c componentDriverThanos) DoEnable(cluster *SCluster, setting *api.ComponentSettings) error {
 	return ThanosComponentManager.CreateHelmResource(cluster, setting)
-}
-
-// TODO: refactor this deduplicated code
-func (c componentDriverThanos) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	return ThanosComponentManager.GetHelmValues(cluster, setting)
 }
 
 func (c componentDriverThanos) DoDisable(cluster *SCluster, setting *api.ComponentSettings) error {
@@ -216,7 +209,15 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 	}
 
 	if cluster.IsSystemCluster() {
-		commonConf := getSystemComponentCommonConfig(false, false)
+		commonConf := getSystemComponentCommonConfig(
+			components.CommonConfig{
+				Enabled: true,
+				Resources: &api.HelmValueResources{
+					Limits:   api.NewHelmValueResource("1", "1024Mi"),
+					Requests: api.NewHelmValueResource("0.01", "10Mi"),
+				},
+			},
+			false, false)
 		conf.Query.CommonConfig = commonConf
 		conf.Storegateway.CommonConfig = commonConf
 		conf.Compactor.CommonConfig = commonConf

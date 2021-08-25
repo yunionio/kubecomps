@@ -2,8 +2,13 @@ package models
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"reflect"
+
+	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -86,6 +91,120 @@ func (m baseComponentDriver) InitStatus(comp *SComponent, out *api.ComponentStat
 
 func (m baseComponentDriver) GetApplyedConfigCheckSum(cls *SCluster, setting *api.ComponentSettings) string {
 	return ""
+}
+
+type iHelmComponentManager interface {
+	GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error)
+}
+
+type helmComponentDriver struct {
+	baseComponentDriver
+	driverType   string
+	modelManager iHelmComponentManager
+}
+
+func newHelmComponentDriver(
+	drvType string,
+	helmMan iHelmComponentManager,
+) helmComponentDriver {
+	return helmComponentDriver{
+		baseComponentDriver: baseComponentDriver{},
+		driverType:          drvType,
+		modelManager:        helmMan,
+	}
+}
+
+func (c helmComponentDriver) GetType() string {
+	return c.driverType
+}
+
+func (c helmComponentDriver) GetHelmValues(cls *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
+	return c.modelManager.GetHelmValues(cls, setting)
+}
+
+func (c helmComponentDriver) GetApplyedConfigCheckSum(cls *SCluster, setting *api.ComponentSettings) string {
+	vals, err := c.GetHelmValues(cls, setting)
+	if err != nil {
+		log.Warningf("GetHelmValues for monitor error: %v", err)
+		return ""
+	}
+	content, err := yaml.Marshal(vals)
+	if err != nil {
+		log.Warningf("yaml.Marshal vals %v: %v", vals, err)
+		return ""
+	}
+	hasher := md5.New()
+	hasher.Write(content)
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func (m helmComponentDriver) setDefaultHelmValueResources(input *api.HelmValueResources, defLimit, defReq *api.HelmValueResource) (*api.HelmValueResources, error) {
+	input = m.getDefaultHelmValueResources(input, defLimit, defReq)
+	if err := m.validateHelmValueResources(input); err != nil {
+		return nil, err
+	}
+	return input, nil
+}
+
+func (m helmComponentDriver) getDefaultHelmValueResources(input *api.HelmValueResources, defLimit, defReq *api.HelmValueResource) *api.HelmValueResources {
+	if input == nil {
+		input = &api.HelmValueResources{
+			Limits:   defLimit,
+			Requests: defReq,
+		}
+	}
+	input.Limits = m.getDefaultHelmValueResource(input.Limits, defLimit)
+	input.Requests = m.getDefaultHelmValueResource(input.Requests, defReq)
+	return input
+}
+
+func (m helmComponentDriver) getDefaultHelmValueResource(input *api.HelmValueResource, def *api.HelmValueResource) *api.HelmValueResource {
+	if input == nil {
+		return def
+	}
+	if input.CPU == "" {
+		input.CPU = def.CPU
+	}
+	if input.Memory == "" {
+		input.Memory = def.Memory
+	}
+	return input
+}
+
+func (m helmComponentDriver) validateHelmValueResources(input *api.HelmValueResources) error {
+	if input == nil {
+		return nil
+	}
+	if err := m.validateHelmValueResource(input.Limits); err != nil {
+		return errors.Wrap(err, "validate limits")
+	}
+	if err := m.validateHelmValueResource(input.Requests); err != nil {
+		return errors.Wrap(err, "validate requests")
+	}
+	return nil
+}
+
+func (m helmComponentDriver) validateHelmValueResource(input *api.HelmValueResource) error {
+	if input == nil {
+		return nil
+	}
+	if err := m.validateResourceQuantity(input.CPU); err != nil {
+		return errors.Wrap(err, "cpu")
+	}
+	if err := m.validateResourceQuantity(input.Memory); err != nil {
+		return errors.Wrap(err, "memory")
+	}
+	return nil
+}
+
+func (m helmComponentDriver) validateResourceQuantity(input string) error {
+	if input == "" {
+		return nil
+	}
+	if _, err := resource.ParseQuantity(input); err != nil {
+		return errors.Wrapf(err, "parse quantity %q", input)
+	}
+	return nil
 }
 
 func (m *SComponentManager) RegisterDriver(drv IComponentDriver) {

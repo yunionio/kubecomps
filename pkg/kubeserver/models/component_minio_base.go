@@ -42,18 +42,13 @@ func (m SMinioBaseComponentManager) GetHelmManager() HelmComponentManager {
 }
 
 type componentDriverMinioBase struct {
-	baseComponentDriver
-	driverType string
+	helmComponentDriver
 }
 
-func newComponentDriverMinioBase(typ string) *componentDriverMinioBase {
+func newComponentDriverMinioBase(drvType string, man iHelmComponentManager) *componentDriverMinioBase {
 	return &componentDriverMinioBase{
-		driverType: typ,
+		helmComponentDriver: newHelmComponentDriver(drvType, man),
 	}
-}
-
-func (b componentDriverMinioBase) GetType() string {
-	return b.driverType
 }
 
 func (c componentDriverMinioBase) validateSetting(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, conf *api.ComponentSettingMinio) error {
@@ -173,6 +168,10 @@ func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (ma
 	conf := components.Minio{
 		CommonConfig: components.CommonConfig{
 			Enabled: true,
+			Resources: &api.HelmValueResources{
+				Limits:   api.NewHelmValueResource("2", "2048Mi"),
+				Requests: api.NewHelmValueResource("0.01", "10Mi"),
+			},
 		},
 		Image:              mi("minio", "RELEASE.2021-06-17T00-10-46Z"),
 		McImage:            mi("mc", "RELEASE.2021-06-13T17-48-22Z"),
@@ -192,7 +191,9 @@ func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (ma
 	}
 
 	if cluster.IsSystemCluster() {
-		conf.CommonConfig = getSystemComponentCommonConfig(true, false)
+		conf.CommonConfig = getSystemComponentCommonConfig(
+			conf.CommonConfig,
+			true, false)
 	}
 
 	return components.GenerateHelmValues(conf), nil

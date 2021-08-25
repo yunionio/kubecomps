@@ -123,6 +123,10 @@ type AlertmanagerSpec struct {
 	Image Image `json:"image"`
 }
 
+type NodeExporter struct {
+	Enabled bool `json:"enabled"`
+}
+
 type PrometheusNodeExporter struct {
 	Enabled bool `json:"enabled"`
 	// image: quay.io/prometheus/node-exporter:v0.18.1
@@ -321,9 +325,10 @@ type Loki struct {
 }
 
 type Promtail struct {
-	Enabled      bool   `json:"enabled"`
-	BusyboxImage string `json:"busyboxImage"`
-	Image        Image  `json:"image"`
+	Enabled      bool                    `json:"enabled"`
+	Resources    *api.HelmValueResources `json:"resources"`
+	BusyboxImage string                  `json:"busyboxImage"`
+	Image        Image                   `json:"image"`
 }
 
 type AdmissionWebhooksPatch struct {
@@ -356,7 +361,8 @@ type PrometheusOperator struct {
 type MonitorStack struct {
 	Prometheus             Prometheus             `json:"prometheus"`
 	Alertmanager           Alertmanager           `json:"alertmanager"`
-	PrometheusNodeExporter PrometheusNodeExporter `json:"nodeExporter"`
+	NodeExporter           NodeExporter           `json:"nodeExporter"`
+	PrometheusNodeExporter PrometheusNodeExporter `json:"prometheus-node-exporter"`
 	KubeStateMetrics       KubeStateMetrics       `json:"kube-state-metrics"`
 	Grafana                Grafana                `json:"grafana"`
 	Loki                   Loki                   `json:"loki"`
@@ -431,9 +437,10 @@ type MinioPersistence struct {
 }
 
 type CommonConfig struct {
-	Enabled     bool            `json:"enabled"`
-	Tolerations []v1.Toleration `json:"tolerations"`
-	Affinity    *v1.Affinity    `json:"affinity"`
+	Enabled     bool                    `json:"enabled"`
+	Tolerations []v1.Toleration         `json:"tolerations"`
+	Affinity    *v1.Affinity            `json:"affinity"`
+	Resources   *api.HelmValueResources `json:"resources"`
 }
 
 type Minio struct {
