@@ -168,10 +168,8 @@ func (m HelmComponentManager) UpdateHelmResource(cluster *SCluster, vals map[str
 	return err
 }
 
-func getSystemComponentCommonConfig(controllerPrefer bool, disable bool) components.CommonConfig {
-	conf := components.CommonConfig{
-		Enabled: !disable,
-	}
+func getSystemComponentCommonConfig(conf components.CommonConfig, controllerPrefer bool, disable bool) components.CommonConfig {
+	conf.Enabled = !disable
 	// inject tolerations
 	conf.Tolerations = append(conf.Tolerations,
 		v1.Toleration{
