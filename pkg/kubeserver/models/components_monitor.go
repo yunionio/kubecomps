@@ -34,7 +34,8 @@ const (
 	ThanosObjectStoreConfigSecretName = "thanos-objstore-config"
 	ThanosObjectStoreConfigSecretKey  = "thanos.yaml"
 
-	InfluxdbTelegrafDS = "Influxdb-Telegraf"
+	GrafanaSystemFolder = "Cloud-System"
+	InfluxdbTelegrafDS  = "Influxdb-Telegraf"
 )
 
 func init() {
@@ -704,7 +705,7 @@ func (m SMonitorComponentManager) SyncSystemGrafanaDashboard(ctx context.Context
 		log.Errorf("Sync system grafana dashboard error: %v", err)
 		return
 	}
-	log.Debugf("System telegraf dashboard to grafana synced")
+	log.Infof("System telegraf dashboard to grafana synced")
 }
 
 func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context) error {
@@ -752,11 +753,46 @@ func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context
 	}
 
 	apiUrl := fmt.Sprintf("http://monitor-grafana.%s", MonitorNamespace)
+	if gs.Host != "" {
+		apiUrl = fmt.Sprintf("https://%s", gs.Host)
+		if !gs.DisableSubpath && gs.Subpath != "" {
+			apiUrl = fmt.Sprintf("%s/%s", apiUrl, gs.Subpath)
+		}
+	}
 	cli := grafana.NewClient(apiUrl, gs.AdminUser, gs.AdminPassword).
 		SetDebug(options.Options.LogLevel == "debug")
+
+	// ensure system folder
+	/*
+	 * folders, err := cli.ListFolders(ctx)
+	 * if err != nil {
+	 * 	return errors.Wrap(err, "list grafana folders")
+	 * }
+	 * var sysFolder *grafana.FolderHit
+	 * for _, f := range folders {
+	 * 	if f.Title == GrafanaSystemFolder {
+	 * 		tmp := f
+	 * 		sysFolder = &tmp
+	 * 		break
+	 * 	}
+	 * }
+	 * if sysFolder == nil {
+	 * 	// create folder
+	 * 	f, err := cli.CreateFolder(ctx, grafana.CreateFolderParams{
+	 * 		Title: GrafanaSystemFolder,
+	 * 	})
+	 * 	if err != nil {
+	 * 		return errors.Wrap(err, "create system folder")
+	 * 	}
+	 * 	log.Errorf("===create folders %#v", f)
+	 * 	sysFolder = &f.FolderHit
+	 * }
+	 */
+
 	if err := cli.ImportDashboard(ctx,
 		embed.Get(embed.LINUX_SERVER_REV1_JSON),
 		grafana.ImportDashboardParams{
+			// FolderId:  sysFolder.Id,
 			FolderId:  0,
 			Overwrite: true,
 			Inputs:    defaultDBInputs,
