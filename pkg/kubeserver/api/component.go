@@ -113,7 +113,9 @@ type ComponentSettingMonitorGrafanaOAuth struct {
 }
 
 type ComponentSettingMonitorGrafana struct {
-	Disable bool `json:"disable"`
+	Disable   bool                `json:"disable"`
+	Resources *HelmValueResources `json:"resources"`
+
 	// grafana 登录用户名
 	// default: admin
 	AdminUser string `json:"adminUser"`
@@ -139,7 +141,9 @@ type ComponentSettingMonitorGrafana struct {
 }
 
 type ComponentSettingMonitorLoki struct {
-	Disable bool `json:"disable"`
+	Disable   bool                `json:"disable"`
+	Resources *HelmValueResources `json:"resources"`
+
 	// loki 持久化存储配置
 	Storage *ComponentStorage `json:"storage"`
 	// loki s3 对象存储配置
@@ -156,7 +160,8 @@ type ComponentSettingMonitorPrometheusThanos struct {
 }
 
 type ComponentSettingMonitorPrometheus struct {
-	Disable bool `json:"disable"`
+	Disable   bool                `json:"disable"`
+	Resources *HelmValueResources `json:"resources"`
 	// prometheus 持久化存储配置
 	Storage       *ComponentStorage                        `json:"storage"`
 	ThanosSidecar *ComponentSettingMonitorPrometheusThanos `json:"thanosSidecar"`
@@ -169,8 +174,26 @@ type ComponentSettingVolume struct {
 
 type ComponentSettingMonitorPromtail struct {
 	Disable           bool                   `json:"disable"`
+	Resources         *HelmValueResources    `json:"resources"`
 	DockerVolumeMount ComponentSettingVolume `json:"dockerVolumeMount"`
 	PodsVolumeMount   ComponentSettingVolume `json:"podsVolumeMount"`
+}
+
+type HelmValueResource struct {
+	CPU    string `json:"cpu"`
+	Memory string `json:"memory"`
+}
+
+func NewHelmValueResource(cpu string, memory string) *HelmValueResource {
+	return &HelmValueResource{
+		CPU:    cpu,
+		Memory: memory,
+	}
+}
+
+type HelmValueResources struct {
+	Limits   *HelmValueResource `json:"limits"`
+	Requests *HelmValueResource `json:"requests"`
 }
 
 type ComponentSettingMonitor struct {

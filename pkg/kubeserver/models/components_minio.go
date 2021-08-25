@@ -49,7 +49,7 @@ type componentDriverMinio struct {
 
 func newComponentDriverMinio() IComponentDriver {
 	return componentDriverMinio{
-		componentDriverMinioBase: newComponentDriverMinioBase(api.ClusterComponentMinio),
+		componentDriverMinioBase: newComponentDriverMinioBase(api.ClusterComponentMinio, MinioComponentManager),
 	}
 }
 
@@ -72,11 +72,6 @@ func (c componentDriverMinio) GetUpdateSettings(oldSetting *api.ComponentSetting
 
 func (c componentDriverMinio) DoEnable(cluster *SCluster, setting *api.ComponentSettings) error {
 	return DoEnableMinio(MinioComponentManager, cluster, setting)
-}
-
-// TODO: refactor this deduplicated code
-func (c componentDriverMinio) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	return GetMinioHelmValues(cluster, setting.Minio)
 }
 
 func (c componentDriverMinio) DoDisable(cluster *SCluster, setting *api.ComponentSettings) error {
