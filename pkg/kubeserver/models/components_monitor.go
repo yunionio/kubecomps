@@ -2,12 +2,9 @@ package models
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/minio/minio-go/v7"
-	"gopkg.in/yaml.v2"
 	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +34,8 @@ const (
 	ThanosObjectStoreConfigSecretName = "thanos-objstore-config"
 	ThanosObjectStoreConfigSecretKey  = "thanos.yaml"
 
-	InfluxdbTelegrafDS = "Influxdb-Telegraf"
+	GrafanaSystemFolder = "Cloud-System"
+	InfluxdbTelegrafDS  = "Influxdb-Telegraf"
 )
 
 func init() {
@@ -65,31 +63,16 @@ func NewMonitorComponentManager() *SMonitorComponentManager {
 }
 
 type componentDriverMonitor struct {
-	baseComponentDriver
+	helmComponentDriver
 }
 
 func newComponentDriverMonitor() IComponentDriver {
-	return new(componentDriverMonitor)
-}
-
-func (c componentDriverMonitor) GetType() string {
-	return api.ClusterComponentMonitor
-}
-
-func (c componentDriverMonitor) GetApplyedConfigCheckSum(cls *SCluster, setting *api.ComponentSettings) string {
-	vals, err := c.GetHelmValues(cls, setting)
-	if err != nil {
-		log.Warningf("GetHelmValues for monitor error: %v", err)
-		return ""
+	return componentDriverMonitor{
+		helmComponentDriver: newHelmComponentDriver(
+			api.ClusterComponentMonitor,
+			MonitorComponentManager,
+		),
 	}
-	content, err := yaml.Marshal(vals)
-	if err != nil {
-		log.Warningf("yaml.Marshal vals %v: %v", vals, err)
-		return ""
-	}
-	hasher := md5.New()
-	hasher.Write(content)
-	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func (c componentDriverMonitor) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentCreateInput) error {
@@ -118,6 +101,15 @@ func (c componentDriverMonitor) validateSetting(ctx context.Context, userCred mc
 func (c componentDriverMonitor) validateGrafana(userCred mcclient.TokenCredential, cluster *SCluster, conf *api.ComponentSettingMonitorGrafana) error {
 	if conf.Disable {
 		return nil
+	}
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("1", "1024Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
 	}
 	if conf.Storage.Enabled {
 		if err := c.validateStorage(userCred, cluster, conf.Storage); err != nil {
@@ -206,6 +198,15 @@ func (c componentDriverMonitor) validateLoki(ctx context.Context, userCred mccli
 			return err
 		}
 	}
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("2", "2048Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 
 	if conf.ObjectStoreConfig != nil {
 		if err := validateObjectStore(ctx, conf.ObjectStoreConfig); err != nil {
@@ -226,6 +227,15 @@ func (c componentDriverMonitor) validatePrometheus(ctx context.Context, userCred
 		if err := c.validateStorage(userCred, cluster, conf.Storage); err != nil {
 			return err
 		}
+	}
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("2", "2048Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
 	}
 	if conf.ThanosSidecar != nil {
 		if err := c.validatePrometheusThanos(ctx, cluster, conf.ThanosSidecar); err != nil {
@@ -302,6 +312,15 @@ func (c componentDriverMonitor) validatePromtail(conf *api.ComponentSettingMonit
 	if conf.Disable {
 		return nil
 	}
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("1", "1024Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -333,11 +352,6 @@ func (c componentDriverMonitor) GetUpdateSettings(oldSetting *api.ComponentSetti
 
 func (c componentDriverMonitor) DoEnable(cluster *SCluster, setting *api.ComponentSettings) error {
 	return MonitorComponentManager.CreateHelmResource(cluster, setting)
-}
-
-// TODO: refactor this deduplicated code
-func (c componentDriverMonitor) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	return MonitorComponentManager.GetHelmValues(cluster, setting)
 }
 
 func (c componentDriverMonitor) DoDisable(cluster *SCluster, setting *api.ComponentSettings) error {
@@ -430,7 +444,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Enabled: !input.Prometheus.Disable,
 			Spec: components.PrometheusSpec{
 				CommonConfig: components.CommonConfig{
-					Enabled: !input.Prometheus.Disable,
+					Enabled:   !input.Prometheus.Disable,
+					Resources: input.Prometheus.Resources,
 				},
 				Image: mi("prometheus", "v2.28.1"),
 			},
@@ -439,10 +454,14 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Enabled: !input.Prometheus.Disable,
 			Spec: components.AlertmanagerSpec{
 				CommonConfig: components.CommonConfig{
-					Enabled: !input.Prometheus.Disable,
+					Enabled:   !input.Prometheus.Disable,
+					Resources: input.Prometheus.Resources,
 				},
 				Image: mi("alertmanager", "v0.22.2"),
 			},
+		},
+		NodeExporter: components.NodeExporter{
+			Enabled: !input.Prometheus.Disable,
 		},
 		PrometheusNodeExporter: components.PrometheusNodeExporter{
 			Enabled: !input.Prometheus.Disable,
@@ -450,13 +469,15 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		},
 		KubeStateMetrics: components.KubeStateMetrics{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Prometheus.Disable,
+				Enabled:   !input.Prometheus.Disable,
+				Resources: input.Prometheus.Resources,
 			},
 			Image: mi("kube-state-metrics", "v1.9.8"),
 		},
 		Grafana: components.Grafana{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Grafana.Disable,
+				Enabled:   !input.Grafana.Disable,
+				Resources: input.Grafana.Resources,
 			},
 			AdminUser:     input.Grafana.AdminUser,
 			AdminPassword: input.Grafana.AdminPassword,
@@ -483,18 +504,21 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		},
 		Loki: components.Loki{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Loki.Disable,
+				Enabled:   !input.Loki.Disable,
+				Resources: input.Loki.Resources,
 			},
 			Image: mi("loki", "2.2.1"),
 		},
 		Promtail: components.Promtail{
-			Enabled: !input.Loki.Disable,
-			Image:   mi("promtail", "2.2.1"),
+			Enabled:   !input.Loki.Disable,
+			Resources: input.Promtail.Resources,
+			Image:     mi("promtail", "2.2.1"),
 		},
 		PrometheusOperator: components.PrometheusOperator{
 			CommonConfig: components.CommonConfig{
 				// must enable to controll prometheus lifecycle
-				Enabled: true,
+				Enabled:   true,
+				Resources: input.Prometheus.Resources,
 			},
 			Image:                         mi("prometheus-operator", "v0.37.0"),
 			ConfigmapReloadImage:          mi("configmap-reload", "v0.5.0"),
@@ -633,12 +657,24 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 
 	// set system cluster common config
 	if cluster.IsSystemCluster() {
-		conf.Grafana.CommonConfig = getSystemComponentCommonConfig(false, input.Grafana.Disable)
-		conf.Loki.CommonConfig = getSystemComponentCommonConfig(false, input.Loki.Disable)
-		conf.Prometheus.Spec.CommonConfig = getSystemComponentCommonConfig(false, input.Prometheus.Disable)
-		conf.Alertmanager.Spec.CommonConfig = getSystemComponentCommonConfig(false, input.Prometheus.Disable)
-		conf.PrometheusOperator.CommonConfig = getSystemComponentCommonConfig(false, false)
-		conf.KubeStateMetrics.CommonConfig = getSystemComponentCommonConfig(false, input.Prometheus.Disable)
+		conf.Grafana.CommonConfig = getSystemComponentCommonConfig(
+			conf.Grafana.CommonConfig,
+			false, input.Grafana.Disable)
+		conf.Loki.CommonConfig = getSystemComponentCommonConfig(
+			conf.Loki.CommonConfig,
+			false, input.Loki.Disable)
+		conf.Prometheus.Spec.CommonConfig = getSystemComponentCommonConfig(
+			conf.Prometheus.Spec.CommonConfig,
+			false, input.Prometheus.Disable)
+		conf.Alertmanager.Spec.CommonConfig = getSystemComponentCommonConfig(
+			conf.Alertmanager.Spec.CommonConfig,
+			false, input.Prometheus.Disable)
+		conf.PrometheusOperator.CommonConfig = getSystemComponentCommonConfig(
+			conf.PrometheusOperator.CommonConfig,
+			false, false)
+		conf.KubeStateMetrics.CommonConfig = getSystemComponentCommonConfig(
+			conf.KubeStateMetrics.CommonConfig,
+			false, input.Prometheus.Disable)
 	}
 
 	return components.GenerateHelmValues(conf), nil
@@ -669,7 +705,7 @@ func (m SMonitorComponentManager) SyncSystemGrafanaDashboard(ctx context.Context
 		log.Errorf("Sync system grafana dashboard error: %v", err)
 		return
 	}
-	log.Debugf("System telegraf dashboard to grafana synced")
+	log.Infof("System telegraf dashboard to grafana synced")
 }
 
 func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context) error {
@@ -717,11 +753,46 @@ func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context
 	}
 
 	apiUrl := fmt.Sprintf("http://monitor-grafana.%s", MonitorNamespace)
+	if gs.Host != "" {
+		apiUrl = fmt.Sprintf("https://%s", gs.Host)
+		if !gs.DisableSubpath && gs.Subpath != "" {
+			apiUrl = fmt.Sprintf("%s/%s", apiUrl, gs.Subpath)
+		}
+	}
 	cli := grafana.NewClient(apiUrl, gs.AdminUser, gs.AdminPassword).
 		SetDebug(options.Options.LogLevel == "debug")
+
+	// ensure system folder
+	/*
+	 * folders, err := cli.ListFolders(ctx)
+	 * if err != nil {
+	 * 	return errors.Wrap(err, "list grafana folders")
+	 * }
+	 * var sysFolder *grafana.FolderHit
+	 * for _, f := range folders {
+	 * 	if f.Title == GrafanaSystemFolder {
+	 * 		tmp := f
+	 * 		sysFolder = &tmp
+	 * 		break
+	 * 	}
+	 * }
+	 * if sysFolder == nil {
+	 * 	// create folder
+	 * 	f, err := cli.CreateFolder(ctx, grafana.CreateFolderParams{
+	 * 		Title: GrafanaSystemFolder,
+	 * 	})
+	 * 	if err != nil {
+	 * 		return errors.Wrap(err, "create system folder")
+	 * 	}
+	 * 	log.Errorf("===create folders %#v", f)
+	 * 	sysFolder = &f.FolderHit
+	 * }
+	 */
+
 	if err := cli.ImportDashboard(ctx,
 		embed.Get(embed.LINUX_SERVER_REV1_JSON),
 		grafana.ImportDashboardParams{
+			// FolderId:  sysFolder.Id,
 			FolderId:  0,
 			Overwrite: true,
 			Inputs:    defaultDBInputs,
