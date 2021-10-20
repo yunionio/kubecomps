@@ -36,19 +36,22 @@ sync_x86_arm_64_img() {
     docker manifest push $dest_img
 }
 
-sync_x86_arm_64_img grafana grafana 6.7.1
-sync_x86_arm_64_img kiwigrid k8s-sidecar 1.12.2
-sync_x86_arm_64_img grafana loki 2.2.1
-sync_x86_arm_64_img grafana promtail 2.2.1
-sync_x86_arm_64_img prom prometheus v2.28.1
-sync_x86_arm_64_img carlosedp prometheus-operator v0.37.0
-sync_x86_arm_64_img liaoronghui prometheus-config-reloader v0.38.1
-sync_x86_arm_64_img prom node-exporter v1.2.0
-sync_x86_arm_64_img prom alertmanager v0.22.2
-sync_x86_arm_64_img k8s.gcr.io/kube-state-metrics kube-state-metrics v1.9.8
-sync_x86_arm_64_img minio minio RELEASE.2021-06-17T00-10-46Z
-sync_x86_arm_64_img minio mc RELEASE.2021-06-13T17-48-22Z
-sync_x86_arm_64_img raspbernetes thanos v0.22.0
-sync_x86_arm_64_img jimmidyson configmap-reload v0.5.0
-sync_x86_arm_64_img jettech kube-webhook-certgen v1.5.2
-sync_x86_arm_64_img ghostunnel ghostunnel v1.5.3
+# sync_x86_arm_64_img grafana grafana 6.7.1
+# sync_x86_arm_64_img kiwigrid k8s-sidecar 1.12.2
+# sync_x86_arm_64_img grafana loki 2.2.1
+# sync_x86_arm_64_img grafana promtail 2.2.1
+# sync_x86_arm_64_img prom prometheus v2.28.1
+# sync_x86_arm_64_img carlosedp prometheus-operator v0.37.0
+# sync_x86_arm_64_img liaoronghui prometheus-config-reloader v0.38.1
+# sync_x86_arm_64_img prom node-exporter v1.2.0
+# sync_x86_arm_64_img prom alertmanager v0.22.2
+# sync_x86_arm_64_img k8s.gcr.io/kube-state-metrics kube-state-metrics v1.9.8
+# sync_x86_arm_64_img minio minio RELEASE.2021-06-17T00-10-46Z
+# sync_x86_arm_64_img minio mc RELEASE.2021-06-13T17-48-22Z
+# sync_x86_arm_64_img raspbernetes thanos v0.22.0
+# sync_x86_arm_64_img jimmidyson configmap-reload v0.5.0
+# sync_x86_arm_64_img jettech kube-webhook-certgen v1.5.2
+# sync_x86_arm_64_img ghostunnel ghostunnel v1.5.3
+
+# ceph related
+sync_x86_arm_64_img quay.io/ceph ceph v14.2.22
