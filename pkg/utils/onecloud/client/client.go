@@ -11,6 +11,7 @@ type IClient interface {
 	Networks() *NetworkHelper
 	Servers() *ServerHelper
 	Skus() *SkuHelper
+	CloudKubeClusters() *CloudKubeClusterHelper
 	GetCloudSSHPrivateKey() (string, error)
 }
 
@@ -51,4 +52,8 @@ func (c *sClient) Skus() *SkuHelper {
 
 func (c *sClient) GetCloudSSHPrivateKey() (string, error) {
 	return GetCloudSSHPrivateKey(c.s)
+}
+
+func (c *sClient) CloudKubeClusters() *CloudKubeClusterHelper {
+	return NewCloudKubeClusterHelper(c.s)
 }

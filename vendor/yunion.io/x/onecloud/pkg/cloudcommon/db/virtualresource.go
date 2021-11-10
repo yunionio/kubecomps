@@ -99,21 +99,13 @@ func (manager *SVirtualResourceBaseManager) GetPropertyStatistics(ctx context.Co
 
 	var err error
 	q := manager.Query()
-	q, err = ListItemFilter(im, ctx, q, userCred, query)
+	q, err = ListItemQueryFilters(im, ctx, q, userCred, query, policy.PolicyActionList)
 	if err != nil {
 		return nil, err
 	}
 
 	sq := q.SubQuery()
 	statQ := sq.Query(sq.Field("status"), sqlchemy.COUNT("total_count", sq.Field("id")), sqlchemy.SUM("pending_deleted_count", sq.Field("pending_deleted")))
-	_, queryScope, err := FetchCheckQueryOwnerScope(ctx, userCred, query, manager, rbacutils.ActionList, true)
-	if err != nil {
-		return nil, httperrors.NewGeneralError(err)
-	}
-
-	statQ = manager.FilterByOwner(statQ, userCred, queryScope)
-	statQ = manager.FilterBySystemAttributes(statQ, userCred, query, queryScope)
-	statQ = manager.FilterByHiddenSystemAttributes(statQ, userCred, query, queryScope)
 	statQ = statQ.GroupBy(sq.Field("status"))
 	ret := []struct {
 		Status              string
@@ -136,6 +128,72 @@ func (manager *SVirtualResourceBaseManager) GetPropertyStatistics(ctx context.Co
 		}
 	}
 	return result, nil
+}
+
+func (manager *SVirtualResourceBaseManager) AllowGetPropertyProjectStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
+	return IsAdminAllowGetSpec(userCred, manager, "project-statistics")
+}
+
+func (manager *SVirtualResourceBaseManager) GetPropertyProjectStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) ([]apis.ProjectStatistic, error) {
+	im, ok := manager.GetVirtualObject().(IModelManager)
+	if !ok {
+		im = manager
+	}
+
+	tenants := TenantCacheManager.GetTenantQuery().Equals("domain_id", userCred.GetProjectDomainId()).SubQuery()
+
+	_q, err := ListItemQueryFilters(im, ctx, im.Query(), userCred, query, policy.PolicyActionList)
+	if err != nil {
+		return nil, err
+	}
+
+	sq := _q.SubQuery()
+
+	q := sq.Query(
+		sq.Field("tenant_id"),
+		sqlchemy.COUNT("count"),
+	).GroupBy(sq.Field("tenant_id"))
+
+	q.Join(tenants, sqlchemy.Equals(q.Field("tenant_id"), tenants.Field("id")))
+
+	q.AppendField(tenants.Field("id"))
+	q.AppendField(tenants.Field("name"))
+
+	result := []apis.ProjectStatistic{}
+	return result, q.All(&result)
+}
+
+func (manager *SVirtualResourceBaseManager) AllowGetPropertyDomainStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
+	return IsAdminAllowGetSpec(userCred, manager, "domain-statistics")
+}
+
+func (manager *SVirtualResourceBaseManager) GetPropertyDomainStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) ([]apis.ProjectStatistic, error) {
+	im, ok := manager.GetVirtualObject().(IModelManager)
+	if !ok {
+		im = manager
+	}
+
+	domains := TenantCacheManager.GetDomainQuery().SubQuery()
+
+	_q, err := ListItemQueryFilters(im, ctx, im.Query(), userCred, query, policy.PolicyActionList)
+	if err != nil {
+		return nil, err
+	}
+
+	sq := _q.SubQuery()
+
+	q := sq.Query(
+		sq.Field("domain_id"),
+		sqlchemy.COUNT("count"),
+	).GroupBy(sq.Field("domain_id"))
+
+	q.Join(domains, sqlchemy.Equals(q.Field("domain_id"), domains.Field("id")))
+
+	q.AppendField(domains.Field("id"))
+	q.AppendField(domains.Field("name"))
+
+	result := []apis.ProjectStatistic{}
+	return result, q.All(&result)
 }
 
 func (manager *SVirtualResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
@@ -262,10 +320,6 @@ func (model *SVirtualResourceBase) AllowGetDetails(ctx context.Context, userCred
 
 func (manager *SVirtualResourceBaseManager) AllowCreateItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
 	return true
-}
-
-func (model *SVirtualResourceBase) GetExtraDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, isList bool) (apis.VirtualResourceDetails, error) {
-	return apis.VirtualResourceDetails{}, nil
 }
 
 func (manager *SVirtualResourceBaseManager) FetchCustomizeColumns(
@@ -551,12 +605,12 @@ func (model *SVirtualResourceBase) MarkCancelPendingDelete(ctx context.Context, 
 	manager := model.GetModelManager()
 	ownerId := model.GetOwnerId()
 
-	lockman.LockClass(ctx, manager, GetLockClassKey(manager, ownerId))
-	defer lockman.ReleaseClass(ctx, manager, GetLockClassKey(manager, ownerId))
+	lockman.LockRawObject(ctx, manager.Keyword(), "name")
+	defer lockman.ReleaseRawObject(ctx, manager.Keyword(), "name")
 
-	newName, err := GenerateName(manager, ownerId, model.Name)
+	newName, err := GenerateName(ctx, manager, ownerId, model.Name)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "GenerateNam")
 	}
 	diff, err := Update(model, func() error {
 		model.Name = newName
@@ -565,8 +619,7 @@ func (model *SVirtualResourceBase) MarkCancelPendingDelete(ctx context.Context, 
 		return nil
 	})
 	if err != nil {
-		log.Errorf("MarkCancelPendingDelete fail %s", err)
-		return err
+		return errors.Wrapf(err, "MarkCancelPendingDelete.Update")
 	}
 	OpsLog.LogEvent(model, ACT_CANCEL_DELETE, diff, userCred)
 	return nil

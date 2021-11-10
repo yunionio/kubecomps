@@ -8,7 +8,8 @@ import (
 
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules"
+	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
+	imagemod "yunion.io/x/onecloud/pkg/mcclient/modules/image"
 )
 
 func GetCloudSSHPrivateKey(session *mcclient.ClientSession) (string, error) {
@@ -32,7 +33,7 @@ func GetCloudSSHPrivateKey(session *mcclient.ClientSession) (string, error) {
 func GetKubernetesImage(session *mcclient.ClientSession) (string, error) {
 	query := jsonutils.NewDict()
 	query.Add(jsonutils.JSONTrue, "admin")
-	ret, err := cloudmod.Images.List(session, query)
+	ret, err := imagemod.Images.List(session, query)
 	if err != nil {
 		return "", fmt.Errorf("Get kubernetes image: %v", err)
 	}
@@ -44,7 +45,7 @@ func GetKubernetesImage(session *mcclient.ClientSession) (string, error) {
 }
 
 func GetImage(session *mcclient.ClientSession, name string) (jsonutils.JSONObject, error) {
-	return cloudmod.Images.Get(session, name, nil)
+	return imagemod.Images.Get(session, name, nil)
 }
 
 func GetPublicCloudImage(s *mcclient.ClientSession, input map[string]interface{}) (*jsonutils.JSONDict, error) {

@@ -85,9 +85,11 @@ type SCluster struct {
 	db.SStatusDomainLevelResourceBase
 	SSyncableK8sBaseResource
 
-	// imported cluster CloudregionId and VpcId is null
-	CloudregionId string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"cloudregion_id"`
-	VpcId         string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"vpc_id"`
+	// external imported cluster CloudregionId and VpcId is null
+	CloudregionId     string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"cloudregion_id"`
+	VpcId             string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"vpc_id"`
+	ExternalClusterId string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cluster_id"`
+	ManagerId         string `width:"128" charset:"ascii" nullable:"true" list:"user" create:"optional"`
 
 	IsSystem bool `nullable:"true" default:"false" list:"admin" create:"optional" json:"is_system"`
 
@@ -445,25 +447,39 @@ func (m *SClusterManager) setCreateDataProvider(input *api.ClusterCreateInput) e
 	if input.Mode == "" {
 		return httperrors.NewNotEmptyError("Mode is empty")
 	}
-	if input.Provider != "" {
-		return nil
-	}
-	if input.Mode == api.ModeTypeImport {
-		return httperrors.NewNotEmptyError("Provider must specified when mode is import")
-	}
-	if input.VpcId == "" {
-		input.VpcId = computeapi.DEFAULT_VPC_ID
-	}
 	s, err := m.GetSession()
 	if err != nil {
 		return errors.Wrap(err, "get cloud session")
 	}
 	helper := onecloudcli.NewClientSets(s)
-	vpc, err := helper.Vpcs().GetDetails(input.VpcId)
-	if err != nil {
-		return errors.Wrap(err, "get cloud vpc")
+	if input.ExternalClusterId != "" {
+		ccls, err := helper.CloudKubeClusters().GetDetails(input.ExternalClusterId)
+		if err != nil {
+			return errors.Wrapf(err, "get cloud_kube_cluster by %q", input.ExternalClusterId)
+		}
+		// TODO: fix this id missing
+		if ccls.Id != "" {
+			input.ExternalClusterId = ccls.Id
+		}
+		input.Provider = api.ProviderType(strings.ToLower(ccls.Provider))
+		input.ManagerId = ccls.ManagerId
+		input.CloudregionId = ccls.RegionId
+	} else {
+		if input.Provider != "" {
+			return nil
+		}
+		if input.Mode == api.ModeTypeImport {
+			return httperrors.NewNotEmptyError("Provider must specified when mode is import")
+		}
+		if input.VpcId == "" {
+			input.VpcId = computeapi.DEFAULT_VPC_ID
+		}
+		vpc, err := helper.Vpcs().GetDetails(input.VpcId)
+		if err != nil {
+			return errors.Wrap(err, "get cloud vpc")
+		}
+		input.Provider = api.ProviderType(strings.ToLower(vpc.Provider))
 	}
-	input.Provider = api.ProviderType(strings.ToLower(vpc.Provider))
 	return nil
 }
 
@@ -939,15 +955,6 @@ func (m *SClusterManager) FetchCustomizeColumns(
 		rows[i] = objs[i].(*SCluster).moreExtraInfo(rows[i])
 	}
 	return rows
-}
-
-func (c *SCluster) GetExtraDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, isList bool) (*jsonutils.JSONDict, error) {
-	extra, err := c.SStatusDomainLevelResourceBase.GetExtraDetails(ctx, userCred, query, isList)
-	if err != nil {
-		return nil, err
-	}
-
-	return c.moreExtraInfo(jsonutils.Marshal(extra).(*jsonutils.JSONDict)), nil
 }
 
 func (c *SCluster) moreExtraInfo(extra *jsonutils.JSONDict) *jsonutils.JSONDict {
@@ -2057,11 +2064,13 @@ func (c *SCluster) PerformEnableComponent(ctx context.Context, userCred mcclient
 	if err != nil {
 		return nil, err
 	}
-	ret, err := comp.GetExtraDetails(ctx, userCred, query, false)
-	if err != nil {
-		return nil, err
-	}
-	return jsonutils.Marshal(ret), nil
+	/*
+	 * ret, err := comp.GetExtraDetails(ctx, userCred, query, false)
+	 * if err != nil {
+	 * 	return nil, err
+	 * }
+	 */
+	return jsonutils.Marshal(comp), nil
 }
 
 func (c *SCluster) AllowPerformDisableComponent(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
@@ -2210,6 +2219,26 @@ func (c *SCluster) SyncCallSyncTask(ctx context.Context, userCred mcclient.Token
 	return <-waitCh
 }
 
+type funcTaskWrapper struct {
+	dumpString string
+	runFunc    func()
+}
+
+func newFuncTaskWrapper(dumpString string, f func()) *funcTaskWrapper {
+	return &funcTaskWrapper{
+		dumpString: dumpString,
+		runFunc:    f,
+	}
+}
+
+func (w *funcTaskWrapper) Dump() string {
+	return w.dumpString
+}
+
+func (w *funcTaskWrapper) Run() {
+	w.runFunc()
+}
+
 func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCredential, waitChan chan error) {
 	if err := c.DisableBidirectionalSync(); err != nil {
 		if waitChan != nil {
@@ -2218,7 +2247,7 @@ func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCr
 		}
 		return
 	}
-	RunSyncClusterTask(func() {
+	RunSyncClusterTask(newFuncTaskWrapper("Sync cluster task", func() {
 		log.Infof("start sync cluster %s", c.GetName())
 		if err := c.prepareStartSync(); err != nil {
 			log.Errorf("sync cluster task error: %v", err)
@@ -2264,7 +2293,7 @@ func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCr
 			waitChan <- nil
 			return
 		}
-	})
+	}))
 }
 
 func (c *SCluster) GetK8sResourceManager(kindName string) manager.IK8sResourceManager {

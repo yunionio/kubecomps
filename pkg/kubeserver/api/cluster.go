@@ -43,9 +43,9 @@ const (
 	// Alibaba cloud provider
 	ProviderTypeAliyun ProviderType = "aliyun"
 	// Azure provider
-	// ProviderTypeAzure ProviderType = "azure"
+	ProviderTypeAzure ProviderType = "azure"
 	// Tencent cloud provider
-	// ProviderTypeQcloud ProviderType = "qcloud"
+	ProviderTypeQcloud ProviderType = "qcloud"
 	// External provider type by import
 	ProviderTypeExternal ProviderType = "external"
 )
@@ -123,20 +123,22 @@ type ClusterPreCheckResp struct {
 type ClusterCreateInput struct {
 	apis.StatusDomainLevelResourceCreateInput
 
-	IsSystem        *bool                `json:"is_system"`
-	ClusterType     ClusterType          `json:"cluster_type"`
-	ResourceType    ClusterResourceType  `json:"resource_type"`
-	Mode            ModeType             `json:"mode"`
-	Provider        ProviderType         `json:"provider"`
-	ServiceCidr     string               `json:"service_cidr"`
-	ServiceDomain   string               `json:"service_domain"`
-	PodCidr         string               `json:"pod_cidr"`
-	Version         string               `json:"version"`
-	HA              bool                 `json:"ha"`
-	Machines        []*CreateMachineData `json:"machines"`
-	ImageRepository *ImageRepository     `json:"image_repository"`
-	CloudregionId   string               `json:"cloudregion_id"`
-	VpcId           string               `json:"vpc_id"`
+	IsSystem          *bool                `json:"is_system"`
+	ClusterType       ClusterType          `json:"cluster_type"`
+	ResourceType      ClusterResourceType  `json:"resource_type"`
+	Mode              ModeType             `json:"mode"`
+	Provider          ProviderType         `json:"provider"`
+	ServiceCidr       string               `json:"service_cidr"`
+	ServiceDomain     string               `json:"service_domain"`
+	PodCidr           string               `json:"pod_cidr"`
+	Version           string               `json:"version"`
+	HA                bool                 `json:"ha"`
+	Machines          []*CreateMachineData `json:"machines"`
+	ImageRepository   *ImageRepository     `json:"image_repository"`
+	CloudregionId     string               `json:"cloudregion_id"`
+	VpcId             string               `json:"vpc_id"`
+	ManagerId         string               `json:"manager_id"`
+	ExternalClusterId string               `json:"external_cluster_id"`
 
 	// imported cluster data
 	ImportData *ImportClusterData `json:"import_data"`

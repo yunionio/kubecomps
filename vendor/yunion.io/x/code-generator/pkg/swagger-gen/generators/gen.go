@@ -216,7 +216,7 @@ func extractSwaggerModelManagerPlural(t *types.Type) string {
 	return extractTagSingleValue(t, tagModelPlural)
 }
 
-func includeIgnoreTag(t *types.Type) bool {
+func IncludeIgnoreTag(t *types.Type) bool {
 	vals := extractIgnoreTag(t.CommentLines)
 	if len(vals) != 0 {
 		return true
@@ -313,7 +313,7 @@ func (g *swaggerGen) getModelManager(t *types.Type) *types.Type {
 }
 
 func (g *swaggerGen) Filter(c *generator.Context, t *types.Type) bool {
-	if includeIgnoreTag(t) {
+	if IncludeIgnoreTag(t) {
 		return false
 	}
 	if t.Kind == types.DeclarationOf {
@@ -350,7 +350,7 @@ func (g *swaggerGen) generateDeclarationCode(t *types.Type, sw *generator.Snippe
 }
 
 func (g *swaggerGen) generateCode(manType *types.Type, modelType *types.Type, sw *generator.SnippetWriter) {
-	if includeIgnoreTag(manType) || includeIgnoreTag(modelType) {
+	if IncludeIgnoreTag(manType) || IncludeIgnoreTag(modelType) {
 		// do nothing
 		return
 	}
@@ -477,7 +477,7 @@ func _getTypeMethods(
 			continue
 		}
 		if strings.HasPrefix(name, funcPrefixKeyword) {
-			if includeIgnoreTag(m) {
+			if IncludeIgnoreTag(m) {
 				blacklist[name] = true
 				continue
 			}

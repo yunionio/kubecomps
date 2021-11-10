@@ -22,6 +22,7 @@ import (
 
 type ConfigCreateInput struct {
 	apis.StandaloneResourceCreateInput
+	apis.DomainizedResourceInput
 
 	// description: config type
 	// required: true
@@ -32,6 +33,12 @@ type ConfigCreateInput struct {
 	// required: true
 	// example: {"app_id": "123456", "app_secret": "feishu_nihao"}
 	Content jsonutils.JSONObject `json:"content"`
+
+	// description: attribution
+	// required: true
+	// enum: system,domain
+	// example: system
+	Attribution string `json:"attribution"`
 }
 
 type ConfigUpdateInput struct {
@@ -43,13 +50,16 @@ type ConfigUpdateInput struct {
 
 type ConfigDetails struct {
 	apis.StandaloneResourceDetails
+	apis.DomainizedResourceInfo
 
 	SConfig
 }
 
 type ConfigListInput struct {
 	apis.StandaloneResourceListInput
-	Type string `json:"type"`
+	apis.DomainizedResourceListInput
+	Type        string `json:"type"`
+	Attribution string `json:"attribution"`
 }
 
 type ConfigValidateInput struct {
@@ -70,10 +80,16 @@ type ConfigValidateOutput struct {
 }
 
 type ConfigManagerGetTypesInput struct {
-	// description: Filter about robot
-	// enum: no,yes,only
-	// example: yes
-	Robot string `json:"robot"`
+	// description: View the available notification channels for the receivers
+	// required: false
+	Receivers []string `json:"receivers"`
+	// description: View the available notification channels for the domains with these DomainIds
+	// required: false
+	DomainIds []string `json:"domain_ids"`
+	// description: Operation of reduce
+	// required: false
+	// enum: union,merge
+	Operation string `json:"operation"`
 }
 
 type ConfigManagerGetTypesOutput struct {

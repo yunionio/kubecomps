@@ -10,7 +10,7 @@ import (
 	ocapi "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules"
+	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"

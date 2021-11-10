@@ -16,6 +16,7 @@ package notifyclient
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"yunion.io/x/jsonutils"
@@ -25,7 +26,7 @@ import (
 	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	"yunion.io/x/onecloud/pkg/mcclient/modules/identity"
 	npk "yunion.io/x/onecloud/pkg/mcclient/modules/notify"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
@@ -118,22 +119,29 @@ func NotifyCriticalWithCtx(ctx context.Context, recipientId []string, isGroup bo
 
 // NotifyAllWithoutRobot will send messages via all contacnt type from exclude robot contact type such as dingtalk-robot.
 func NotifyAllWithoutRobot(recipientId []string, isGroup bool, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) error {
-	return notifyRobot(context.Background(), "no", recipientId, isGroup, priority, event, data)
+	return notifyAll(context.Background(), recipientId, isGroup, priority, event, data)
 }
 
 // NotifyAllWithoutRobot will send messages via all contacnt type from exclude robot contact type such as dingtalk-robot.
 func NotifyAllWithoutRobotWithCtx(ctx context.Context, recipientId []string, isGroup bool, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) error {
-	return notifyRobot(ctx, "no", recipientId, isGroup, priority, event, data)
+	return notifyAll(ctx, recipientId, isGroup, priority, event, data)
 }
 
 // NotifyRobot will send messages via all robot contact type such as dingtalk-robot.
-func NotifyRobot(recipientId []string, isGroup bool, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) error {
-	return notifyRobot(context.Background(), "only", recipientId, isGroup, priority, event, data)
+func NotifyRobot(robotIds []string, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) error {
+	return NotifyRobotWithCtx(context.Background(), robotIds, priority, event, data)
 }
 
 // NotifyRobot will send messages via all robot contact type such as dingtalk-robot.
-func NotifyRobotWithCtx(ctx context.Context, recipientId []string, isGroup bool, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) error {
-	return notifyRobot(ctx, "only", recipientId, isGroup, priority, event, data)
+func NotifyRobotWithCtx(ctx context.Context, robotIds []string, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) error {
+	rawNotify(ctx, sNotifyParams{
+		robots:   robotIds,
+		channel:  npk.NotifyByRobot,
+		priority: priority,
+		event:    event,
+		data:     data,
+	})
+	return nil
 }
 
 func SystemNotify(priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) {
@@ -213,29 +221,60 @@ type SEventMessage struct {
 
 type SEventNotifyParam struct {
 	Obj                 db.IModel
+	ResourceType        string
 	Action              api.SAction
+	IsFail              bool
 	ObjDetailsDecorator func(context.Context, *jsonutils.JSONDict)
 	AdvanceDays         int
 }
 
-func EventNotify(ctx context.Context, userCred mcclient.TokenCredential, ep SEventNotifyParam) {
-	// disable EventNotify for now
-	return
+type eventTask struct {
+	params api.NotificationManagerEventNotifyInput
+}
 
-	ret, err := db.FetchCustomizeColumns(ep.Obj.GetModelManager(), ctx, userCred, jsonutils.NewDict(), []interface{}{ep.Obj}, stringutils2.SSortedStrings{}, false)
+func (t *eventTask) Dump() string {
+	return fmt.Sprintf("eventTask params: %v", t.params)
+}
+
+func (t *eventTask) Run() {
+	s, err := AdminSessionGenerator(context.Background(), "", "")
 	if err != nil {
-		log.Errorf("unable to FetchCustomizeColumns: %v", err)
+		log.Errorf("unable to get admin session: %v", err)
 		return
 	}
-	if len(ret) == 0 {
-		log.Errorf("unable to FetchCustomizeColumns: details of model %q is empty", ep.Obj.GetId())
-		return
+	_, err = npk.Notification.PerformClassAction(s, "event-notify", jsonutils.Marshal(t.params))
+	if err != nil {
+		log.Errorf("unable to EventNotify: %s", err)
 	}
-	objDetails := ret[0]
+}
+
+func EventNotify(ctx context.Context, userCred mcclient.TokenCredential, ep SEventNotifyParam) {
+	var objDetails *jsonutils.JSONDict
+	if ep.Action == ActionDelete || ep.Action == ActionSyncDelete {
+		objDetails = jsonutils.Marshal(ep.Obj).(*jsonutils.JSONDict)
+	} else {
+		ret, err := db.FetchCustomizeColumns(ep.Obj.GetModelManager(), ctx, userCred, jsonutils.NewDict(), []interface{}{ep.Obj}, stringutils2.SSortedStrings{}, false)
+		if err != nil {
+			log.Errorf("unable to FetchCustomizeColumns: %v", err)
+			return
+		}
+		if len(ret) == 0 {
+			log.Errorf("unable to FetchCustomizeColumns: details of model %q is empty", ep.Obj.GetId())
+			return
+		}
+		objDetails = ret[0]
+	}
 	if ep.ObjDetailsDecorator != nil {
 		ep.ObjDetailsDecorator(ctx, objDetails)
 	}
-	event := api.Event.WithAction(ep.Action).WithResourceType(ep.Obj.GetModelManager().Keyword())
+	rt := ep.ResourceType
+	if len(rt) == 0 {
+		rt = ep.Obj.GetModelManager().Keyword()
+	}
+	event := api.Event.WithAction(ep.Action).WithResourceType(rt)
+	if ep.IsFail {
+		event = event.WithResult(api.ResultFailed)
+	}
 	var (
 		projectId       string
 		projectDomainId string
@@ -246,23 +285,18 @@ func EventNotify(ctx context.Context, userCred mcclient.TokenCredential, ep SEve
 		projectDomainId = ownerId.GetProjectDomainId()
 	}
 	params := api.NotificationManagerEventNotifyInput{
+		ReceiverIds:     []string{userCred.GetUserId()},
 		ResourceDetails: objDetails,
 		Event:           event.String(),
 		AdvanceDays:     ep.AdvanceDays,
+		Priority:        string(npk.NotifyPriorityNormal),
 		ProjectId:       projectId,
 		ProjectDomainId: projectDomainId,
 	}
-	notifyClientWorkerMan.Run(func() {
-		s, err := AdminSessionGenerator(context.Background(), "", "")
-		if err != nil {
-			log.Errorf("unable to get admin session: %v", err)
-			return
-		}
-		_, err = modules.Notification.PerformClassAction(s, "event-notify", jsonutils.Marshal(params))
-		if err != nil {
-			log.Errorf("unable to EventNotify: %s", err)
-		}
-	}, nil, nil)
+	t := eventTask{
+		params: params,
+	}
+	notifyClientWorkerMan.Run(&t, nil, nil)
 }
 
 func RawNotifyWithCtx(ctx context.Context, recipientId []string, isGroup bool, channel npk.TNotifyChannel, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) {
@@ -308,7 +342,7 @@ func FetchNotifyAdminRecipients(ctx context.Context, region string, users []stri
 
 	notifyAdminUsers = make([]string, 0)
 	for _, u := range users {
-		uId, err := getIdentityId(s, u, &modules.UsersV3)
+		uId, err := getIdentityId(s, u, &identity.UsersV3)
 		if err != nil {
 			log.Warningf("fetch user %s fail: %s", u, err)
 		} else {
@@ -317,7 +351,7 @@ func FetchNotifyAdminRecipients(ctx context.Context, region string, users []stri
 	}
 	notifyAdminGroups = make([]string, 0)
 	for _, g := range groups {
-		gId, err := getIdentityId(s, g, &modules.Groups)
+		gId, err := getIdentityId(s, g, &identity.Groups)
 		if err != nil {
 			log.Warningf("fetch group %s fail: %s", g, err)
 		} else {

@@ -414,15 +414,6 @@ func (m *SMachine) moreExtraInfo(userCred mcclient.TokenCredential, extra *jsonu
 	return extra
 }
 
-func (m *SMachine) GetExtraDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, isList bool) (*jsonutils.JSONDict, error) {
-	extra, err := m.SVirtualResourceBase.GetExtraDetails(ctx, userCred, query, isList)
-	if err != nil {
-		return nil, err
-	}
-
-	return m.moreExtraInfo(userCred, jsonutils.Marshal(extra).(*jsonutils.JSONDict)), nil
-}
-
 func (m *SMachine) allowPerformAction(userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
 	return m.IsOwner(userCred)
 }
