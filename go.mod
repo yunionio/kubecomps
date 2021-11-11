@@ -22,9 +22,10 @@ require (
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.6.1
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
-	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	gopkg.in/go-playground/validator.v9 v9.29.1 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/api v0.19.4
@@ -41,12 +42,12 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.6.4
 	sigs.k8s.io/yaml v1.2.0
-	yunion.io/x/code-generator v0.0.0-20210727035420-bc4620019c46
-	yunion.io/x/jsonutils v0.0.0-20210709075951-798a67800349
+	yunion.io/x/code-generator v0.0.0-20211009131119-fdd7452b40a7
+	yunion.io/x/jsonutils v0.0.0-20211105163012-d846c05a3c9a
 	yunion.io/x/log v0.0.0-20201210064738-43181789dc74
-	yunion.io/x/onecloud v0.0.0-20210804081451-066d0c6a879d
-	yunion.io/x/pkg v0.0.0-20210721081124-55078288ca4c
-	yunion.io/x/sqlchemy v0.0.0-20210619142628-653684d2c4f8
+	yunion.io/x/onecloud v0.0.0-20211110042210-d07702c57f15
+	yunion.io/x/pkg v0.0.0-20210918114143-ce839f862c5f
+	yunion.io/x/sqlchemy v0.0.0-20210918113031-c1c107f37ada
 )
 
 replace (

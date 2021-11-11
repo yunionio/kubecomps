@@ -1,3 +1,17 @@
+// Copyright 2019 Yunion
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package notifyclient
 
 import (
@@ -17,7 +31,7 @@ import (
 	"yunion.io/x/onecloud/pkg/i18n"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
-	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	"yunion.io/x/onecloud/pkg/mcclient/modules/identity"
 	npk "yunion.io/x/onecloud/pkg/mcclient/modules/notify"
 )
 
@@ -51,7 +65,7 @@ func getUserLang(uids []string) (map[string]string, error) {
 		params.Set("details", jsonutils.JSONFalse)
 		params.Set("scope", jsonutils.NewString("system"))
 		params.Set("system", jsonutils.JSONTrue)
-		ret, err := modules.UsersV3.List(s, params)
+		ret, err := identity.UsersV3.List(s, params)
 		if err != nil {
 			return nil, err
 		}
@@ -62,6 +76,29 @@ func getUserLang(uids []string) (map[string]string, error) {
 		}
 	}
 	return uidLang, nil
+}
+
+func getRobotLang(robots []string) (map[string]string, error) {
+	s, err := AdminSessionGenerator(context.Background(), consts.GetRegion(), "")
+	if err != nil {
+		return nil, err
+	}
+	robotLang := make(map[string]string)
+	if len(robots) > 0 {
+		params := jsonutils.NewDict()
+		params.Set("filter", jsonutils.NewString(fmt.Sprintf("id.in(%s)", strings.Join(robots, ","))))
+		params.Set("scope", jsonutils.NewString("system"))
+		ret, err := npk.NotifyRobot.List(s, params)
+		if err != nil {
+			return nil, err
+		}
+		for i := range ret.Data {
+			id, _ := ret.Data[i].GetString("id")
+			langStr, _ := ret.Data[i].GetString("lang")
+			robotLang[id] = langStr
+		}
+	}
+	return robotLang, nil
 }
 
 func init() {

@@ -5,7 +5,7 @@ import (
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	modules "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 )
 
 type SkuHelper struct {

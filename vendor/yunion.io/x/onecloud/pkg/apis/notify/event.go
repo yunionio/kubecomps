@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	Event SEvent
+	Event SNotifyEvent
 
 	ActionCreate         SAction = "create"
 	ActionDelete         SAction = "delete"
@@ -32,6 +32,20 @@ var (
 	ActionResize         SAction = "resize"
 	ActionExpiredRelease SAction = "expired_release"
 	ActionExecute        SAction = "execute"
+	ActionChangeIpaddr   SAction = "change_ipaddr"
+	ActionSyncStatus     SAction = "sync_status"
+	ActionCleanData      SAction = "clean_data"
+	ActionMigrate        SAction = "migrate"
+
+	ActionCreateBackupServer SAction = "add_backup_server"
+	ActionDelBackupServer    SAction = "delete_backup_server"
+
+	ActionSyncCreate SAction = "sync_create"
+	ActionSyncUpdate SAction = "sync_update"
+	ActionSyncDelete SAction = "sync_delete"
+
+	ResultFailed  SResult = "failed"
+	ResultSucceed SResult = "succeed"
 )
 
 const (
@@ -40,29 +54,60 @@ const (
 
 type SAction string
 
-type SEvent struct {
+type SResult string
+
+type SNotifyEvent struct {
 	resourceType string
 	action       SAction
+	result       SResult
 }
 
-func (se SEvent) WithResourceType(rt string) SEvent {
+func (se SNotifyEvent) WithResourceType(rt string) SNotifyEvent {
 	se.resourceType = rt
 	return se
 }
 
-func (se SEvent) WithAction(a SAction) SEvent {
+func (se SNotifyEvent) WithAction(a SAction) SNotifyEvent {
 	se.action = a
 	return se
 }
 
-func (se SEvent) ResourceType() string {
+func (se SNotifyEvent) WithResult(r SResult) SNotifyEvent {
+	se.result = r
+	return se
+}
+
+func (se SNotifyEvent) ResourceType() string {
 	return se.resourceType
 }
 
-func (se SEvent) Action() SAction {
+func (se SNotifyEvent) Action() SAction {
 	return se.action
 }
 
-func (se SEvent) String() string {
-	return strings.ToUpper(fmt.Sprintf("%s%s%s", se.ResourceType(), DelimiterInEvent, se.Action()))
+func (se SNotifyEvent) ActionWithResult(delimiter string) string {
+	ar := string(se.action)
+	if len(se.result) > 0 {
+		ar += delimiter + string(se.result)
+	}
+	return strings.ToUpper(ar)
+}
+
+func (se SNotifyEvent) Result() SResult {
+	if se.result == "" {
+		return ResultSucceed
+	}
+	return se.result
+}
+
+func (se SNotifyEvent) String() string {
+	return se.StringWithDeli(DelimiterInEvent)
+}
+
+func (se SNotifyEvent) StringWithDeli(delimiter string) string {
+	str := strings.ToUpper(fmt.Sprintf("%s%s%s", se.ResourceType(), delimiter, se.Action()))
+	if se.result != "" {
+		str += delimiter + strings.ToUpper(string(se.result))
+	}
+	return str
 }

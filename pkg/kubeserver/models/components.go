@@ -239,7 +239,7 @@ func (m *SComponentManager) CreateByCluster(
 	cluster *SCluster,
 	input *api.ComponentCreateInput) (*SComponent, error) {
 	if input.Name == "" {
-		newName, err := db.GenerateName(m, userCred, fmt.Sprintf("%s-%s", cluster.GetName(), input.Type))
+		newName, err := db.GenerateName(ctx, m, userCred, fmt.Sprintf("%s-%s", cluster.GetName(), input.Type))
 		if err != nil {
 			return nil, errors.Wrap(err, "generate component name")
 		}

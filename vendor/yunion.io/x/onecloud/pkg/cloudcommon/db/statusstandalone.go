@@ -22,9 +22,9 @@ import (
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
+	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -68,20 +68,13 @@ func (manager *SStatusStandaloneResourceBaseManager) GetPropertyStatistics(ctx c
 
 	var err error
 	q := manager.Query()
-	q, err = ListItemFilter(im, ctx, q, userCred, query)
+	q, err = ListItemQueryFilters(im, ctx, q, userCred, query, policy.PolicyActionList)
 	if err != nil {
 		return nil, err
 	}
 
 	sq := q.SubQuery()
 	statQ := sq.Query(sq.Field("status"), sqlchemy.COUNT("total_count", sq.Field("id")))
-	_, queryScope, err := FetchCheckQueryOwnerScope(ctx, userCred, query, im, rbacutils.ActionList, true)
-	if err != nil {
-		return nil, httperrors.NewGeneralError(err)
-	}
-	statQ = manager.FilterByOwner(statQ, userCred, queryScope)
-	statQ = manager.FilterBySystemAttributes(statQ, userCred, query, queryScope)
-	statQ = manager.FilterByHiddenSystemAttributes(statQ, userCred, query, queryScope)
 	statQ = statQ.GroupBy(sq.Field("status"))
 
 	ret := []struct {
@@ -112,6 +105,19 @@ func (self *SStatusStandaloneResourceBase) PerformStatus(ctx context.Context, us
 
 func (model *SStatusStandaloneResourceBase) SetStatus(userCred mcclient.TokenCredential, status string, reason string) error {
 	return statusBaseSetStatus(model.GetIStatusStandaloneModel(), userCred, status, reason)
+}
+
+func (model *SStatusStandaloneResourceBase) SetProgress(progress float32) error {
+	return statusBaseSetProgress(model.GetIStatusStandaloneModel(), progress)
+}
+
+func (model *SStatusStandaloneResourceBase) PreUpdate(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) {
+	// 减少更新日志
+	progress, _ := data.Float("progress")
+	if progress > 0 {
+		model.SetProgress(float32(progress))
+	}
+	model.SStandaloneResourceBase.PreUpdate(ctx, userCred, query, data)
 }
 
 func (manager *SStatusStandaloneResourceBaseManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input apis.StatusStandaloneResourceCreateInput) (apis.StatusStandaloneResourceCreateInput, error) {
@@ -176,15 +182,6 @@ func (manager *SStatusStandaloneResourceBaseManager) FetchCustomizeColumns(
 		}
 	}
 	return rows
-}
-
-func (model *SStatusStandaloneResourceBase) GetExtraDetails(
-	ctx context.Context,
-	userCred mcclient.TokenCredential,
-	query jsonutils.JSONObject,
-	isList bool,
-) (apis.StatusStandaloneResourceDetails, error) {
-	return apis.StatusStandaloneResourceDetails{}, nil
 }
 
 func (model *SStatusStandaloneResourceBase) ValidateUpdateData(

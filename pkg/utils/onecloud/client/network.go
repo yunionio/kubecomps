@@ -1,9 +1,10 @@
 package client
+
 import (
 	api "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
-	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	modules "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 )
 
 type NetworkHelper struct {

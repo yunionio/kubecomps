@@ -2,7 +2,7 @@ package clusters
 
 import (
 	"yunion.io/x/jsonutils"
-	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	"yunion.io/x/onecloud/pkg/mcclient/modules/identity"
 	perrors "yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/addons"
@@ -27,7 +27,7 @@ func GetAddonYunionAuthConfig(cluster *models.SCluster) (addons.YunionAuthConfig
 	params.Add(jsonutils.NewString("public"), "interface")
 	params.Add(jsonutils.NewString(o.Region), "region")
 	params.Add(jsonutils.NewString("keystone"), "service")
-	ret, err := modules.EndpointsV3.List(s, params)
+	ret, err := identity.EndpointsV3.List(s, params)
 	if err != nil {
 		return authConfig, err
 	}

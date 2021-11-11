@@ -17,6 +17,6 @@ func init() {
 	)
 }
 
-func RunSyncClusterTask(probeF func()) {
-	syncClusterWorker.Run(probeF, nil, nil)
+func RunSyncClusterTask(task appsrv.IWorkerTask) {
+	syncClusterWorker.Run(task, nil, nil)
 }

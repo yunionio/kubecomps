@@ -176,7 +176,7 @@ github.com/emicklei/go-restful/log
 github.com/evanphx/json-patch
 # github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d
 github.com/exponent-io/jsonpath
-# github.com/fatih/color v1.9.0
+# github.com/fatih/color v1.10.0
 github.com/fatih/color
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
@@ -184,9 +184,10 @@ github.com/fsnotify/fsnotify
 github.com/ghodss/yaml
 # github.com/gin-contrib/sse v0.1.0
 github.com/gin-contrib/sse
-# github.com/gin-gonic/gin v1.5.0
+# github.com/gin-gonic/gin v1.7.0
 github.com/gin-gonic/gin
 github.com/gin-gonic/gin/binding
+github.com/gin-gonic/gin/internal/bytesconv
 github.com/gin-gonic/gin/internal/json
 github.com/gin-gonic/gin/render
 # github.com/go-logr/logr v0.2.0
@@ -199,11 +200,13 @@ github.com/go-openapi/jsonreference
 github.com/go-openapi/spec
 # github.com/go-openapi/swag v0.19.5
 github.com/go-openapi/swag
-# github.com/go-playground/locales v0.12.1
+# github.com/go-playground/locales v0.13.0
 github.com/go-playground/locales
 github.com/go-playground/locales/currency
-# github.com/go-playground/universal-translator v0.16.0
+# github.com/go-playground/universal-translator v0.17.0
 github.com/go-playground/universal-translator
+# github.com/go-playground/validator/v10 v10.4.1
+github.com/go-playground/validator/v10
 # github.com/go-sql-driver/mysql v1.5.0
 github.com/go-sql-driver/mysql
 # github.com/gobwas/glob v0.2.3
@@ -292,7 +295,7 @@ github.com/klauspost/cpuid
 github.com/lann/builder
 # github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0
 github.com/lann/ps
-# github.com/leodido/go-urn v1.1.0
+# github.com/leodido/go-urn v1.2.0
 github.com/leodido/go-urn
 # github.com/lib/pq v1.8.0
 github.com/lib/pq
@@ -306,11 +309,11 @@ github.com/ma314smith/signedxml
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/mattn/go-colorable v0.1.4
+# github.com/mattn/go-colorable v0.1.8
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.11
+# github.com/mattn/go-isatty v0.0.14
 github.com/mattn/go-isatty
-# github.com/mattn/go-runewidth v0.0.4
+# github.com/mattn/go-runewidth v0.0.13
 github.com/mattn/go-runewidth
 # github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -426,6 +429,8 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/rivo/uniseg v0.2.0
+github.com/rivo/uniseg
 # github.com/rs/xid v1.2.1
 github.com/rs/xid
 # github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351
@@ -516,7 +521,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
+# golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 golang.org/x/crypto/argon2
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blake2b
@@ -524,6 +529,7 @@ golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
+golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
@@ -537,6 +543,7 @@ golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/scrypt
+golang.org/x/crypto/sha3
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
@@ -546,7 +553,7 @@ golang.org/x/lint/golint
 # golang.org/x/mod v0.3.0
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+# golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -568,11 +575,14 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20201202213521-69691e467435
+# golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
+golang.org/x/term
 # golang.org/x/text v0.3.3
 golang.org/x/text/encoding
 golang.org/x/text/encoding/internal
@@ -1251,22 +1261,21 @@ sigs.k8s.io/kustomize/pkg/types
 sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
-# yunion.io/x/code-generator v0.0.0-20210727035420-bc4620019c46
+# yunion.io/x/code-generator v0.0.0-20211009131119-fdd7452b40a7
 yunion.io/x/code-generator/pkg/common
 yunion.io/x/code-generator/pkg/common/inflection
 yunion.io/x/code-generator/pkg/swagger-gen/generators
-# yunion.io/x/executor v0.0.0-20210310041834-3fcd1574f68e
+# yunion.io/x/executor v0.0.0-20211018100936-39a2cd966656
 yunion.io/x/executor/apis
 yunion.io/x/executor/client
-# yunion.io/x/jsonutils v0.0.0-20210709075951-798a67800349
+# yunion.io/x/jsonutils v0.0.0-20211105163012-d846c05a3c9a
 yunion.io/x/jsonutils
 # yunion.io/x/log v0.0.0-20201210064738-43181789dc74
 yunion.io/x/log
 yunion.io/x/log/hooks
-# yunion.io/x/onecloud v0.0.0-20210804081451-066d0c6a879d
+# yunion.io/x/onecloud v0.0.0-20211110042210-d07702c57f15
 yunion.io/x/onecloud/locales
 yunion.io/x/onecloud/pkg/apis
-yunion.io/x/onecloud/pkg/apis/ansible
 yunion.io/x/onecloud/pkg/apis/billing
 yunion.io/x/onecloud/pkg/apis/cloudcommon/db
 yunion.io/x/onecloud/pkg/apis/cloudcommon/proxy
@@ -1274,7 +1283,6 @@ yunion.io/x/onecloud/pkg/apis/cloudprovider
 yunion.io/x/onecloud/pkg/apis/compute
 yunion.io/x/onecloud/pkg/apis/identity
 yunion.io/x/onecloud/pkg/apis/notify
-yunion.io/x/onecloud/pkg/apis/scheduler
 yunion.io/x/onecloud/pkg/appctx
 yunion.io/x/onecloud/pkg/appsrv
 yunion.io/x/onecloud/pkg/appsrv/dispatcher
@@ -1305,8 +1313,14 @@ yunion.io/x/onecloud/pkg/mcclient/informer
 yunion.io/x/onecloud/pkg/mcclient/models
 yunion.io/x/onecloud/pkg/mcclient/modulebase
 yunion.io/x/onecloud/pkg/mcclient/modules
+yunion.io/x/onecloud/pkg/mcclient/modules/compute
+yunion.io/x/onecloud/pkg/mcclient/modules/identity
+yunion.io/x/onecloud/pkg/mcclient/modules/image
+yunion.io/x/onecloud/pkg/mcclient/modules/logger
 yunion.io/x/onecloud/pkg/mcclient/modules/notify
+yunion.io/x/onecloud/pkg/mcclient/modules/websocket
 yunion.io/x/onecloud/pkg/monitor/notifydrivers/feishu
+yunion.io/x/onecloud/pkg/multicloud/esxi/vcenter
 yunion.io/x/onecloud/pkg/proxy
 yunion.io/x/onecloud/pkg/util/ansible
 yunion.io/x/onecloud/pkg/util/atexit
@@ -1329,7 +1343,7 @@ yunion.io/x/onecloud/pkg/util/splitable
 yunion.io/x/onecloud/pkg/util/ssh
 yunion.io/x/onecloud/pkg/util/streamutils
 yunion.io/x/onecloud/pkg/util/stringutils2
-# yunion.io/x/pkg v0.0.0-20210721081124-55078288ca4c
+# yunion.io/x/pkg v0.0.0-20210918114143-ce839f862c5f
 yunion.io/x/pkg/errors
 yunion.io/x/pkg/gotypes
 yunion.io/x/pkg/sortedmap
@@ -1358,7 +1372,7 @@ yunion.io/x/pkg/util/workqueue
 yunion.io/x/pkg/utils
 # yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e
 yunion.io/x/s3cli
-# yunion.io/x/sqlchemy v0.0.0-20210619142628-653684d2c4f8
+# yunion.io/x/sqlchemy v0.0.0-20210918113031-c1c107f37ada
 yunion.io/x/sqlchemy
 # yunion.io/x/structarg v0.0.0-20200720093445-9f850fa222ce
 yunion.io/x/structarg
