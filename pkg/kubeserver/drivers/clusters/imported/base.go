@@ -76,13 +76,11 @@ func (d *cloudK8sBaseDriver) ValidateCreateData(ctx context.Context, userCred mc
 	if input.CloudregionId == "" {
 		return httperrors.NewNotEmptyError("cloudregion_id is empty")
 	}
-	helper := onecloudcli.NewCloudregionHelper(s)
-	obj, err := helper.GetDetails(input.CloudregionId)
+	cli := onecloudcli.NewClientSets(s)
+	obj, err := cli.Cloudregions().GetDetails(input.CloudregionId)
 	if err != nil {
 		return errors.Wrapf(err, "get cloudregion_id %s", input.CloudregionId)
 	}
 	input.CloudregionId = obj.Id
-
-	// check cloud kube cluster
 	return nil
 }

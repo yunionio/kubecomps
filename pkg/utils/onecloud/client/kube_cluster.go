@@ -25,8 +25,9 @@ func (h *CloudKubeClusterHelper) KubeClusters() modulebase.Manager {
 
 type KubeClusterDetails struct {
 	api.KubeClusterDetails
-	Id        string `json:"id"`
-	ManagerId string `json:"manager_id"`
+	Id         string `json:"id"`
+	ManagerId  string `json:"manager_id"`
+	ExternalId string `json:"external_id"`
 }
 
 func (h *CloudKubeClusterHelper) GetDetails(id string) (*KubeClusterDetails, error) {
