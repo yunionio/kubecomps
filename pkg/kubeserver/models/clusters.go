@@ -86,10 +86,11 @@ type SCluster struct {
 	SSyncableK8sBaseResource
 
 	// external imported cluster CloudregionId and VpcId is null
-	CloudregionId     string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"cloudregion_id"`
-	VpcId             string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"vpc_id"`
-	ExternalClusterId string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cluster_id"`
-	ManagerId         string `width:"128" charset:"ascii" nullable:"true" list:"user" create:"optional"`
+	CloudregionId          string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"cloudregion_id"`
+	VpcId                  string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"vpc_id"`
+	ExternalClusterId      string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cluster_id"`
+	ExternalCloudClusterId string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cloud_cluster_id"`
+	ManagerId              string `width:"128" charset:"ascii" nullable:"true" list:"user" create:"optional"`
 
 	IsSystem bool `nullable:"true" default:"false" list:"admin" create:"optional" json:"is_system"`
 
@@ -461,6 +462,7 @@ func (m *SClusterManager) setCreateDataProvider(input *api.ClusterCreateInput) e
 		if ccls.Id != "" {
 			input.ExternalClusterId = ccls.Id
 		}
+		input.ExternalCloudClusterId = ccls.ExternalId
 		input.Provider = api.ProviderType(strings.ToLower(ccls.Provider))
 		input.ManagerId = ccls.ManagerId
 		input.CloudregionId = ccls.RegionId
@@ -1044,7 +1046,7 @@ func (c *SCluster) CheckPVCEmpty() error {
 	return nil
 }
 
-func (c *SCluster) ValidateDeleteCondition(ctx context.Context) error {
+func (c *SCluster) ValidateDeleteCondition(ctx context.Context, info jsonutils.JSONObject) error {
 	if err := c.GetDriver().ValidateDeleteCondition(); err != nil {
 		return err
 	}
@@ -1159,7 +1161,7 @@ func (c *SCluster) AllowPerformPurge(ctx context.Context, userCred mcclient.Toke
 
 func (c *SCluster) PerformPurge(ctx context.Context, userCred mcclient.TokenCredential, query, input api.ClusterPurgeInput) (jsonutils.JSONObject, error) {
 	if !input.Force {
-		if err := c.ValidateDeleteCondition(ctx); err != nil {
+		if err := c.ValidateDeleteCondition(ctx, jsonutils.Marshal(input)); err != nil {
 			return nil, err
 		}
 	}
