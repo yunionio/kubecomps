@@ -432,6 +432,24 @@ func (m *SClusterManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery
 			q = q.NotIn("id", sq)
 		}
 	}
+
+	if input.ManagerId != "" {
+		q = q.Equals("manager_id", input.ManagerId)
+	}
+	if input.CloudregionId != "" {
+		q = q.Equals("cloudregion_id", input.CloudregionId)
+	}
+
+	if len(input.Provider) != 0 {
+		providers := make([]string, len(input.Provider))
+		for i := range input.Provider {
+			providers[i] = strings.ToLower(input.Provider[i])
+		}
+		q = q.In("provider", providers)
+	}
+	if input.Mode != "" {
+		q = q.Equals("mode", input.Mode)
+	}
 	return q, nil
 }
 
