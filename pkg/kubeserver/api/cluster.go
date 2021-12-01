@@ -219,6 +219,12 @@ func (input FederatedResourceUsedInput) ShouldDo() bool {
 type ClusterListInput struct {
 	apis.StatusDomainLevelResourceListInput
 	FederatedResourceUsedInput
+
+	ManagerId     string   `json:"manager_id"`
+	Manager       string   `json:"manager" yunion-deprecated-by:"manager_id"`
+	CloudregionId string   `json:"cloudregion_id"`
+	Provider      []string `json:"provider"`
+	Mode          ModeType `json:"mode"`
 }
 
 type ClusterSyncInput struct {
