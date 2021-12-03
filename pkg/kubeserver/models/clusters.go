@@ -89,7 +89,7 @@ type SCluster struct {
 	CloudregionId          string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"cloudregion_id"`
 	VpcId                  string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" json:"vpc_id"`
 	ExternalClusterId      string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cluster_id"`
-	ExternalCloudClusterId string `width:"36" charset:"ascii" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cloud_cluster_id"`
+	ExternalCloudClusterId string `width:"256" charset:"utf8" nullable:"true" list:"user" create:"optional" update:"admin" list:"user" json:"external_cloud_cluster_id"`
 	ManagerId              string `width:"128" charset:"ascii" nullable:"true" list:"user" create:"optional"`
 
 	IsSystem bool `nullable:"true" default:"false" list:"admin" create:"optional" json:"is_system"`
