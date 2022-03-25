@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -391,6 +392,9 @@ func (m *SClusterManager) RegisterSystemCluster() error {
 			log.Warningf("system cluster status %s != running", sysCluster.GetStatus())
 			time.Sleep(5 * time.Second)
 			continue
+		}
+		if err := sysCluster.ReRunDeployingComponents(); err != nil {
+			return errors.Wrap(err, "ReRunDeployingComponents")
 		}
 		return nil
 	}
@@ -2003,6 +2007,26 @@ func (c *SCluster) EnableComponent(
 		return err
 	}
 	return nil
+}
+
+func (c *SCluster) ReRunDeployingComponents() error {
+	comps, err := c.GetComponents()
+	if err != nil {
+		return errors.Wrapf(err, "get cluster %s components", c.GetName())
+	}
+	errgrp := new(errgroup.Group)
+	for i := range comps {
+		comp := comps[i]
+		errgrp.Go(func() error {
+			if comp.GetStatus() == api.ComponentStatusDeploying {
+				if err := comp.StartSelfUpdate(GetAdminCred(), c); err != nil {
+					return errors.Wrap(err, "start component self update")
+				}
+			}
+			return nil
+		})
+	}
+	return errgrp.Wait()
 }
 
 func (c *SCluster) AllowGetDetailsComponentsStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
