@@ -540,6 +540,32 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 	return m.StartComponentUpdateTask(ctx, userCred, input.JSON(input), "")
 }
 
+func (m *SComponent) StartSelfUpdate(userCred mcclient.TokenCredential, cls *SCluster) error {
+	settings, err := m.GetSettings()
+	if err != nil {
+		return errors.Wrap(err, "GetSettings")
+	}
+	drv, err := m.GetDriver()
+	if err != nil {
+		return err
+	}
+	applyCheckSum := drv.GetApplyedConfigCheckSum(cls, settings)
+	if _, err := db.Update(m, func() error {
+		m.Settings = jsonutils.Marshal(settings)
+		m.ApplyedConfigChecksum = applyCheckSum
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := drv.DoUpdate(cls, settings); err != nil {
+		msg := fmt.Sprintf("Start component %s self update error: %v", m.Type, err)
+		m.SetStatus(userCred, api.ComponentStatusUpdateFail, msg)
+		return errors.Error(msg)
+	}
+	m.SetStatus(userCred, api.ComponentStatusDeployed, "")
+	return nil
+}
+
 func (m *SComponent) StartComponentUpdateTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
 	if err := m.SetStatus(userCred, api.ComponentStatusUpdating, ""); err != nil {
 		return err
