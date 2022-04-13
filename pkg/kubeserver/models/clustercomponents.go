@@ -16,8 +16,8 @@ type SClusterComponentManager struct {
 
 var ClusterComponentManager *SClusterComponentManager
 
-func init() {
-	db.InitManager(func() {
+func GetClusterComponentManager() *SClusterComponentManager {
+	if ClusterComponentManager == nil {
 		ClusterComponentManager = &SClusterComponentManager{
 			SClusterJointsManager: NewClusterJointsManager(
 				SClusterComponent{},
@@ -28,6 +28,13 @@ func init() {
 		}
 		ClusterComponentManager.SetVirtualObject(ClusterComponentManager)
 		ClusterComponentManager.TableSpec().AddIndex(true, "component_id", "cluster_id")
+	}
+	return ClusterComponentManager
+}
+
+func init() {
+	db.InitManager(func() {
+		GetClusterComponentManager()
 	})
 }
 
