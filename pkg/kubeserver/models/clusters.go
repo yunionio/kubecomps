@@ -1937,7 +1937,7 @@ func (c *SCluster) GetVersion() string {
 
 func (c *SCluster) GetClusterComponents() ([]SClusterComponent, error) {
 	cs := make([]SClusterComponent, 0)
-	q := ClusterComponentManager.Query().Equals("cluster_id", c.GetId())
+	q := GetClusterComponentManager().Query().Equals("cluster_id", c.GetId())
 	if err := db.FetchModelObjects(ClusterComponentManager, q, &cs); err != nil {
 		return nil, err
 	}
