@@ -73,6 +73,11 @@ func Run(ctx context.Context) error {
 
 	httpsAddr := net.JoinHostPort(opt.Address, strconv.Itoa(opt.HttpsPort))
 
+	cron := cronman.InitCronJobManager(true, options.Options.CronJobWorkerCount)
+	initial.InitClient(cron)
+	cron.Start()
+	defer cron.Stop()
+
 	if err := models.GetClusterManager().RegisterSystemCluster(); err != nil {
 		log.Fatalf("Register system cluster %v", err)
 	}
@@ -81,11 +86,6 @@ func Run(ctx context.Context) error {
 		// log.Fatalf("Sync clusters from cloud: %v", err)
 		log.Errorf("Sync clusters from cloud: %v", err)
 	}
-
-	cron := cronman.InitCronJobManager(true, options.Options.CronJobWorkerCount)
-	initial.InitClient(cron)
-	cron.Start()
-	defer cron.Stop()
 
 	if err := server.Start(httpsAddr, app); err != nil {
 		return err
