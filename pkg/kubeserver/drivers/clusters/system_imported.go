@@ -6,13 +6,17 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
+	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/imported"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 )
 
 func init() {
-	models.RegisterClusterDriver(NewDefaultSystemImportDriver())
+	sysDriver := NewDefaultSystemImportDriver()
+	sysDriver.registerDriver(imported.NewExternalK8s())
+	models.RegisterClusterDriver(sysDriver)
 }
 
 type SSystemImportDriver struct {
@@ -34,7 +38,7 @@ func (d *SSystemImportDriver) ValidateCreateData(ctx context.Context, userCred m
 		return httperrors.NewInputParameterError("ApiServer must provide")
 	}
 	if err := d.SExternalImportDriver.ValidateCreateData(ctx, userCred, ownerId, query, createData); err != nil {
-		return err
+		return errors.Wrap(err, "SExternalImportDriver.ValidateCreateData")
 	}
 	return nil
 }

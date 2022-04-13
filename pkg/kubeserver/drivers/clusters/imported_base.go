@@ -111,8 +111,9 @@ func (d *sImportBaseDriver) ValidateCreateData(ctx context.Context, userCred mcc
 	}
 
 	// check distribution
-	if !d.getRegisterDistros().Has(importData.Distribution) {
-		return httperrors.NewNotSupportedError("Not support import distribution %s", importData.Distribution)
+	dists := d.getRegisterDistros()
+	if !dists.Has(importData.Distribution) {
+		return httperrors.NewNotSupportedError("Not support import distribution %s in %v", importData.Distribution, dists)
 	}
 
 	apiServer := importData.ApiServer
