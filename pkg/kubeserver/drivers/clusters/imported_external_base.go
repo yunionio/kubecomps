@@ -37,7 +37,7 @@ func NewExternalImportDriver() *SExternalImportDriver {
 
 func (d *SExternalImportDriver) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, createData *api.ClusterCreateInput) error {
 	if err := d.sImportBaseDriver.ValidateCreateData(ctx, userCred, ownerId, query, createData); err != nil {
-		return err
+		return errors.Wrap(err, "sImportBaseDriver.ValidateCreateData")
 	}
 
 	importData := createData.ImportData
@@ -57,23 +57,22 @@ func (d *SExternalImportDriver) ValidateCreateData(ctx context.Context, userCred
 	if err != nil {
 		return httperrors.NewGeneralError(errors.Wrap(err, "Get system cluster %v"))
 	}
-	if sysCluster == nil {
-		return httperrors.NewNotFoundError("Not found system cluster %v", sysCluster)
-	}
-	k8sSvc, err := cli.CoreV1().Services(metav1.NamespaceDefault).Get(context.Background(), "kubernetes", metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	sysCli, err := sysCluster.GetK8sClient()
-	if err != nil {
-		return httperrors.NewGeneralError(errors.Wrap(err, "Get system cluster k8s client"))
-	}
-	sysK8SSvc, err := sysCli.CoreV1().Services(metav1.NamespaceDefault).Get(context.Background(), "kubernetes", metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	if k8sSvc.UID == sysK8SSvc.UID {
-		return httperrors.NewNotAcceptableError("cluster already imported as default system cluster")
+	if sysCluster != nil {
+		k8sSvc, err := cli.CoreV1().Services(metav1.NamespaceDefault).Get(context.Background(), "kubernetes", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		sysCli, err := sysCluster.GetK8sClient()
+		if err != nil {
+			return httperrors.NewGeneralError(errors.Wrap(err, "Get system cluster k8s client"))
+		}
+		sysK8SSvc, err := sysCli.CoreV1().Services(metav1.NamespaceDefault).Get(context.Background(), "kubernetes", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if k8sSvc.UID == sysK8SSvc.UID {
+			return httperrors.NewNotAcceptableError("cluster already imported as default system cluster")
+		}
 	}
 
 	createData.ImportData = importData
