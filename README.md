@@ -9,7 +9,7 @@ Kubecomps contains the components that use to manage Kubernetes of [Cloudpods](h
 
 ## Build
 
-Please follow the [https://www.cloudpods.org/zh/docs/contribute/dev-env/](https://www.cloudpods.org/zh/docs/contribute/dev-env/) to set up the development environment first.
+Please follow the [https://www.cloudpods.org/zh/docs/development/dev-env/](https://www.cloudpods.org/zh/docs/development/dev-env/) to set up the development environment first.
 
 - Build kubeserver binary:
 

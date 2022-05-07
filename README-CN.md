@@ -9,7 +9,7 @@ Kubecomps 主要包含 [Cloudpods](https://github.com/yunionio/cloudpods) 管理
 
 ## 编译
 
-请先参考文档 [https://www.cloudpods.org/zh/docs/contribute/dev-env/](https://www.cloudpods.org/zh/docs/contribute/dev-env/) 搭建编译环境。
+请先参考文档 [https://www.cloudpods.org/zh/docs/development/dev-env/](https://www.cloudpods.org/zh/docs/development/dev-env/) 搭建编译环境。
 
 - 编译 kubeserver 二进制:
 
