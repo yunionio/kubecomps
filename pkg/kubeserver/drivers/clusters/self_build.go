@@ -2,6 +2,7 @@ package clusters
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -127,6 +128,20 @@ func (c *selfBuildDriver) ValidateCreateData(ctx context.Context, userCred mccli
 	input.VpcId = vpc.Id
 	if input.CloudregionId == "" {
 		input.CloudregionId = vpc.CloudregionId
+	}
+
+	if input.ProjectDomainId != "" {
+		dObj, err := db.TenantCacheManager.FetchDomainByIdOrName(ctx, input.ProjectDomainId)
+		if err != nil {
+			return errors.Wrapf(err, "find domain %s", input.ProjectDomainId)
+		}
+		_, err = db.TenantCacheManager.FindFirstProjectOfDomain(ctx, input.ProjectDomainId)
+		if err != nil {
+			if errors.Cause(err) == sql.ErrNoRows {
+				return httperrors.NewNotFoundError("not found projects in domain %s(%s)", dObj.GetName(), input.ProjectDomainId)
+			}
+			return errors.Wrapf(err, "find projects of domain %s", input.ProjectDomainId)
+		}
 	}
 
 	cloudregion, err := helper.Cloudregions().GetDetails(input.CloudregionId)

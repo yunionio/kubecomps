@@ -158,7 +158,7 @@ func (d *sYunionVMDriver) ValidateCreateData(s *mcclient.ClientSession, input *a
 		config.VmemSize = skuDetail.MemorySizeMB
 	}
 
-	return d.validateConfig(s, config)
+	return d.validateConfig(s, input.Name, config)
 }
 
 func (d *sYunionVMDriver) findImage(s *mcclient.ClientSession, hypervisor string, zoneId string, imageId string) (string, error) {
@@ -189,7 +189,7 @@ func (d *sYunionVMDriver) validateRootDisk(s *mcclient.ClientSession, hypervisor
 	return nil
 }
 
-func (d *sYunionVMDriver) validateConfig(s *mcclient.ClientSession, config *api.MachineCreateVMConfig) error {
+func (d *sYunionVMDriver) validateConfig(s *mcclient.ClientSession, gName string, config *api.MachineCreateVMConfig) error {
 	if config.VcpuCount < 2 {
 		return httperrors.NewNotAcceptableError("CPU count must large than 4")
 	}
@@ -222,6 +222,7 @@ func (d *sYunionVMDriver) validateConfig(s *mcclient.ClientSession, config *api.
 		input.VmemSize = 0
 		input.VcpuCount = 0
 	}
+	input.GenerateName = gName
 	validateData := input.JSON(input)
 	ret, err := cloudmod.Servers.PerformClassAction(s, "check-create-data", validateData)
 	log.Infof("check server create data: %s, ret: %s err: %v", validateData, ret, err)
