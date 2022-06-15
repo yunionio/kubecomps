@@ -85,5 +85,10 @@ swagger-serve: gen-swagger
 
 .PHONY: build clean image mod generate embed-helm-pkgs
 
+KS_BINS_DIR = $(OUTPUT_DIR)/binaries
+
+sync-kubespray-bins:
+	rsync -avP $(KS_BINS_DIR)/* a3-iso:/data/binaries
+
 %:
 	@:
