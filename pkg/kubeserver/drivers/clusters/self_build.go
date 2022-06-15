@@ -389,10 +389,10 @@ func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray
 	k8sVersion := cluster.GetVersion()
 	k8sVersion = "v1.17.0"
 	cniVersion := "v0.8.6"
-	cniChecksum, err := kubespray.GetCNICheckSum(kubespray.AMD64, cniVersion)
-	if err != nil {
-		return nil, errors.Wrap(err, "get cni checksum")
-	}
+	// cniChecksum, err := kubespray.GetCNICheckSum(kubespray.AMD64, cniVersion)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "get cni checksum")
+	// }
 
 	vars := kubespray.KubesprayVars{
 		DownloadRunOnce: true,
@@ -412,8 +412,8 @@ func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray
 		KubectlDownloadUrl: "https://kubernetes-release.pek3b.qingstor.com/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
 		KubeadmDownloadUrl: "https://kubernetes-release.pek3b.qingstor.com/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
 		CNIVersion:         cniVersion,
-		CNIBinaryChecksum:  cniChecksum,
-		CNIDownloadUrl:     "https://containernetworking.pek3b.qingstor.com/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
+		// CNIBinaryChecksum:  cniChecksum,
+		CNIDownloadUrl: "https://containernetworking.pek3b.qingstor.com/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
 
 		// etcd related vars
 		EtcdVersion:   "v3.4.13",
@@ -421,7 +421,7 @@ func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray
 
 		// calico related vars
 		CalicoVersion:         "v3.16.5",
-		CalicoctlDownloadUrl:  "https://iso.yunion.cn/binaries/calicoctl/releases/download/v3.16.5/calicoctl-linux-amd64",
+		CalicoctlDownloadUrl:  "https://iso.yunion.cn/binaries/calicoctl/releases/download/v3.16.5/calicoctl-linux-{{ image_arch }}",
 		CrictlDownloadUrl:     "https://iso.yunion.cn/binaries/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
 		CalicoNodeImageRepo:   "registry.cn-beijing.aliyuncs.com/yunionio/calico-node",
 		CalicoCNIImageRepo:    "registry.cn-beijing.aliyuncs.com/yunionio/calico-cni",
