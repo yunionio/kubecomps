@@ -146,16 +146,15 @@ def docker_cluster_proportional_image(taget_repo):
     docker_pull_push('k8s.gcr.io/cpa/cluster-proportional-autoscaler-amd64:1.8.3', taget_repo)
 
 
-def sync_images():
-    repo = 'registry.cn-beijing.aliyuncs.com/yunionio'
+def sync_images(repo):
     imgs = [
         # Image("calico", "node", "v3.16.5", repo, "calico-node"),
         # Image("calico", "cni", "v3.16.5", repo, "calico-cni"),
         # Image("calico", "kube-controllers", "v3.16.5", repo, "calico-kube-controllers"),
         # Image("calico", "typha", "v3.16.5", repo, "calico-typha"),
         # Image('quay.io/coreos', 'etcd', 'v3.4.13', repo, 'etcd', arch=['arm64']),
-        # Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.17.0", repo, "k8s-dns-node-cache"),
-        Image("k8s.grc.io/cpa", "cluster-proportional-autoscaler", "1.8.3", repo, "cluster-proportional-autoscaler"),
+        Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.16.0", repo, "k8s-dns-node-cache"),
+        # Image("k8s.grc.io/cpa", "cluster-proportional-autoscaler", "1.8.3", repo, "cluster-proportional-autoscaler"),
     ]
     for i in imgs:
         i.sync_archs_image()
@@ -174,7 +173,7 @@ def download_files():
 
 
 if __name__ == '__main__':
-    # sync_images()
     repo = 'registry.cn-beijing.aliyuncs.com/yunionio'
-    docker_cluster_proportional_image(repo)
+    sync_images(repo)
+    # docker_cluster_proportional_image(repo)
     # download_files()
