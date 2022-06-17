@@ -395,7 +395,7 @@ func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray
 	// }
 
 	vars := kubespray.KubesprayVars{
-		DownloadRunOnce: true,
+		DownloadRunOnce: false,
 		// YumRepo:                "http://mirrors.aliyun.com",
 		// EtcdKubeadmEnabled:     false,
 		KubeVersion:            k8sVersion,
