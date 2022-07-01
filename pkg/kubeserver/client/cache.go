@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -236,9 +235,6 @@ func (h eventHandler) run(f func(ctx context.Context, userCred mcclient.TokenCre
 
 	adminCred := auth.AdminCredential()
 	ctx := context.Background()
-	now := time.Now()
-	ms := now.UnixMilli()
-	ctx = context.WithValue(ctx, "Time", ms)
 	lockman.LockClass(ctx, h.manager, db.GetLockClassKey(h.manager, adminCred))
 	defer lockman.ReleaseClass(ctx, h.manager, db.GetLockClassKey(h.manager, adminCred))
 
