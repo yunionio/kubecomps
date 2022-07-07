@@ -102,15 +102,15 @@ func (c componentDriverMonitor) validateGrafana(userCred mcclient.TokenCredentia
 	if conf.Disable {
 		return nil
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("1", "1024Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("1", "1024Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	if conf.Storage.Enabled {
 		if err := c.validateStorage(userCred, cluster, conf.Storage); err != nil {
 			return err
@@ -198,16 +198,16 @@ func (c componentDriverMonitor) validateLoki(ctx context.Context, userCred mccli
 			return err
 		}
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("2", "2048Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
-	//
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("2", "2048Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
+
 	if conf.ObjectStoreConfig != nil {
 		if err := validateObjectStore(ctx, conf.ObjectStoreConfig); err != nil {
 			return err
@@ -228,15 +228,15 @@ func (c componentDriverMonitor) validatePrometheus(ctx context.Context, userCred
 			return err
 		}
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("2", "2048Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("2", "2048Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	if conf.ThanosSidecar != nil {
 		if err := c.validatePrometheusThanos(ctx, cluster, conf.ThanosSidecar); err != nil {
 			return err
@@ -312,15 +312,15 @@ func (c componentDriverMonitor) validatePromtail(conf *api.ComponentSettingMonit
 	if conf.Disable {
 		return nil
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("1", "1024Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("1", "1024Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -444,8 +444,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Enabled: !input.Prometheus.Disable,
 			Spec: components.PrometheusSpec{
 				CommonConfig: components.CommonConfig{
-					Enabled: !input.Prometheus.Disable,
-					// Resources: input.Prometheus.Resources,
+					Enabled:   !input.Prometheus.Disable,
+					Resources: input.Prometheus.Resources,
 				},
 				Image: mi("prometheus", "v2.28.1"),
 			},
@@ -454,8 +454,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Enabled: !input.Prometheus.Disable,
 			Spec: components.AlertmanagerSpec{
 				CommonConfig: components.CommonConfig{
-					Enabled: !input.Prometheus.Disable,
-					// Resources: input.Prometheus.Resources,
+					Enabled:   !input.Prometheus.Disable,
+					Resources: input.Prometheus.Resources,
 				},
 				Image: mi("alertmanager", "v0.22.2"),
 			},
@@ -469,15 +469,15 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		},
 		KubeStateMetrics: components.KubeStateMetrics{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Prometheus.Disable,
-				// Resources: input.Prometheus.Resources,
+				Enabled:   !input.Prometheus.Disable,
+				Resources: input.Prometheus.Resources,
 			},
 			Image: mi("kube-state-metrics", "v1.9.8"),
 		},
 		Grafana: components.Grafana{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Grafana.Disable,
-				// Resources: input.Grafana.Resources,
+				Enabled:   !input.Grafana.Disable,
+				Resources: input.Grafana.Resources,
 			},
 			AdminUser:     input.Grafana.AdminUser,
 			AdminPassword: input.Grafana.AdminPassword,
@@ -504,21 +504,21 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		},
 		Loki: components.Loki{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Loki.Disable,
-				// Resources: input.Loki.Resources,
+				Enabled:   !input.Loki.Disable,
+				Resources: input.Loki.Resources,
 			},
 			Image: mi("loki", "2.2.1"),
 		},
 		Promtail: components.Promtail{
-			Enabled: !input.Loki.Disable,
-			// Resources: input.Promtail.Resources,
-			Image: mi("promtail", "2.2.1"),
+			Enabled:   !input.Loki.Disable,
+			Resources: input.Promtail.Resources,
+			Image:     mi("promtail", "2.2.1"),
 		},
 		PrometheusOperator: components.PrometheusOperator{
 			CommonConfig: components.CommonConfig{
 				// must enable to controll prometheus lifecycle
-				Enabled: true,
-				// Resources: input.Prometheus.Resources,
+				Enabled:   true,
+				Resources: input.Prometheus.Resources,
 			},
 			Image:                         mi("prometheus-operator", "v0.37.0"),
 			ConfigmapReloadImage:          mi("configmap-reload", "v0.5.0"),

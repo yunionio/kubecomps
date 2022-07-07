@@ -106,6 +106,7 @@ func (e *DefaultExecute) Execute(command string, args []string, prefix string) e
 
 		exitError, exists := err.(*exec.ExitError)
 		if exists {
+
 			ws := exitError.Sys().(syscall.WaitStatus)
 			switch ws.ExitStatus() {
 			case AnsiblePlaybookErrorCodeGeneralError:

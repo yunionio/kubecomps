@@ -112,7 +112,6 @@ class DownloadGithubFile(DownloadFile):
         output_dir = os.path.join(output_dir, basedir)
         return output_dir
 
-
 class DownloadCalicoctl(DownloadGithubFile):
 
     def __init__(self, dest_dir, version, arch):
@@ -129,6 +128,16 @@ class DownloadCrictl(DownloadGithubFile):
 
     def get_target_filepath(self):
         return f'cri-tools/releases/download/{self._version}/crictl-{self._version}-linux-{self._arch}.tar.gz'
+
+#https://github.com/containernetworking/plugins/releases/download/v0.8.6/cni-plugins-linux-amd64-v0.8.6.tgz
+
+class DownloadCni(DownloadGithubFile):
+
+    def __init__(self, dest_dir, version, arch):
+        super(DownloadCni, self).__init__(dest_dir, 'containernetworking', version, arch)
+
+    def get_target_filepath(self):
+        return f'plugins/releases/download/{self._version}/cni-plugins-linux-{self._arch}-{self._version}.tgz'
 
 
 def docker_pull_push(src, target_repo):
@@ -148,12 +157,14 @@ def docker_cluster_proportional_image(taget_repo):
 
 def sync_images(repo):
     imgs = [
-        # Image("calico", "node", "v3.16.5", repo, "calico-node"),
-        # Image("calico", "cni", "v3.16.5", repo, "calico-cni"),
-        # Image("calico", "kube-controllers", "v3.16.5", repo, "calico-kube-controllers"),
-        # Image("calico", "typha", "v3.16.5", repo, "calico-typha"),
-        # Image('quay.io/coreos', 'etcd', 'v3.4.13', repo, 'etcd', arch=['arm64']),
-        Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.16.0", repo, "k8s-dns-node-cache"),
+#         Image("calico", "node", "v3.19.2", repo, "calico-node"),
+#         Image("calico", "cni", "v3.19.2", repo, "calico-cni"),
+#         Image("calico", "kube-controllers", "v3.19.2", repo, "calico-kube-controllers"),
+#         Image("calico", "typha", "v3.19.2", repo, "calico-typha"),
+#         Image('quay.io/coreos', 'etcd', 'v3.4.13', repo, 'etcd', arch=['arm64']),
+        Image("quay.io/coreos", "etcd", "v3.4.13", repo, "etcd"),
+        Image("quay.io/coreos", "k8s-dns-node-cache", "v3.4.13", repo, "etcd"),
+        # Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.16.0", repo, "k8s-dns-node-cache"),
         # Image("k8s.grc.io/cpa", "cluster-proportional-autoscaler", "1.8.3", repo, "cluster-proportional-autoscaler"),
     ]
     for i in imgs:
@@ -163,17 +174,19 @@ def sync_images(repo):
 def download_files():
     output_dir = "./_output/binaries"
     fs = [
-        # DownloadCalicoctl(output_dir, "v3.16.5", "amd64"),
-        # DownloadCalicoctl(output_dir, "v3.16.5", "arm64"),
-        DownloadCrictl(output_dir, 'v1.17.0', "amd64"),
-        DownloadCrictl(output_dir, 'v1.17.0', "arm64"),
+        #DownloadCalicoctl(output_dir, "v3.19.2", "amd64"),
+        #DownloadCalicoctl(output_dir, "v3.19.2", "arm64"),
+         DownloadCrictl(output_dir, 'v1.17.0', "amd64"),
+         DownloadCrictl(output_dir, 'v1.17.0', "arm64"),
+#         DownloadCni(output_dir, 'v0.9.1', "amd64"),
+#         DownloadCni(output_dir, 'v0.9.1', "arm64"),
     ]
     for f in fs:
         f.save_archive()
 
 
 if __name__ == '__main__':
-    repo = 'registry.cn-beijing.aliyuncs.com/yunionio'
-    sync_images(repo)
+#     repo = 'hb.grgbanking.com/shikaiwen'
+#     sync_images(repo)
     # docker_cluster_proportional_image(repo)
-    # download_files()
+    download_files()

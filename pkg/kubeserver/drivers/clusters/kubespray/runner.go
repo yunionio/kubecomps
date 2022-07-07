@@ -188,8 +188,9 @@ func NewDefaultKubesprayRemoveNodeRunner(
 	return newDefaultKubesprayRunner(DefaultKubesprayRemoveNodeYML, vars, allHosts...)
 }
 
-func newDefaultKubesprayRunner(playbookPath string, vars *KubesprayRunVars, hosts ...*KubesprayInventoryHost) (KubesprayRunner, error) {
-	os.Setenv("ANSIBLE_CONFIG", DefaultPlaybookConfigPath)
+func newDefaultKubesprayRunner(clusterYMM string, vars *KubesprayRunVars, hosts ...*KubesprayInventoryHost) (KubesprayRunner, error) {
+	os.Setenv("ANSIBLE_CONFIG", newDefaultAnsiblePath(vars.KubesprayVersion, DefaultPlaybookConfigPath))
+	playbookPath := newDefaultAnsiblePath(vars.KubesprayVersion, clusterYMM)
 	return NewRunner(playbookPath, vars, hosts...)
 }
 
