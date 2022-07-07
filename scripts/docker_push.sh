@@ -64,7 +64,7 @@ build_bin() {
                 -v $SRC_DIR:/root/go/src/yunion.io/x/kubecomps \
                 -v $SRC_DIR/_output/alpine-build:/root/go/src/yunion.io/x/kubecomps/_output \
                 -v $SRC_DIR/_output/alpine-build/_cache:/root/.cache \
-                registry.cn-beijing.aliyuncs.com/yunionio/kube-build:3.16.0-go-1.18.2-0 \
+                registry.cn-beijing.aliyuncs.com/yunionio/kube-build:1.0-5 \
                 /bin/sh -c "set -ex; cd /root/go/src/yunion.io/x/kubecomps; $BUILD_ARCH $BUILD_CGO GOOS=linux make cmd/$1; chown -R $(id -u):$(id -g) _output"
             ;;
     esac
