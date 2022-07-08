@@ -733,33 +733,32 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		DNSAutoscalerImageRepo: "registry.cn-beijing.aliyuncs.com/yunionio/cluster-proportional-autoscaler-{{ image_arch  }}",
 		// temporary use kubesphere binary download url check:
 		// https://github.com/kubesphere/kubekey/blob/d2a78d20c4a47ab55501ac65f11d54ae51514b1f/pkg/cluster/preinstall/preinstall.go#L50
-		KubeletDownloadUrl: "http://{{ download_file_addr }}/kubenets/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
-		KubectlDownloadUrl: "http://{{ download_file_addr }}/kubenets/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
-		KubeadmDownloadUrl: "http://{{ download_file_addr }}/kubenets/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
+		KubeletDownloadUrl: "{{ download_file_url }}/kubernetes/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
+		KubectlDownloadUrl: "{{ download_file_url }}/kubernetes/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
+		KubeadmDownloadUrl: "{{ download_file_url }}/kubernetes/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
 		// CNIBinaryChecksum:  cniChecksum,
-		CNIDownloadUrl: "http://{{ download_file_addr }}/cni/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
+		CNIDownloadUrl: "{{ download_file_url }}/cni/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
 
 		// etcd related vars
 		EtcdVersion:              "v3.4.13",
 		EtcdImageRepo:            "registry.cn-beijing.aliyuncs.com/yunionio/etcd",
-		CalicoctlDownloadUrl:     "http://{{ down_load_addr }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
-		CrictlDownloadUrl:        "http://{{ down_load_addr }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
+		CalicoctlDownloadUrl:     "{{ download_file_url }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
+		CrictlDownloadUrl:        "{{ download_file_url }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
 		CalicoNodeImageRepo:      "hb.grgbanking.com/shikaiwen/calico-node",
 		CalicoCNIImageRepo:       "hb.grgbanking.com/shikaiwen/calico-cni",
 		CalicoPolicyImageRepo:    "hb.grgbanking.com/shikaiwen/calico-kube-controllers",
 		CalicoTyphaImageRepo:     "hb.grgbanking.com/shikaiwen/calico-typha",
 		CorednsImageIsNamespaced: false,
-		DownloadFileAddr:         "10.1.180.23:31455",
+		DownloadFileURL:          "http://10.1.180.23:31455",
 	}
-	switch k8sVersion {
-	case K8S_VERSION_1_17_0:
-		vars.CNIVersion = CNI_VERSION_1_17_0
-		vars.CalicoVersion = CALICO_VERSION_1_17_0
-		vars.KubesprayVersion = KUBESPRAY_VERSION_1_17_0
-	case K8S_VERSION_1_20_0:
+	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = CNI_VERSION_1_20_0
 		vars.CalicoVersion = CALICO_VERSION_1_20_0
 		vars.KubesprayVersion = KUBESPRAY_VERSION_1_20_0
+	} else {
+		vars.CNIVersion = CNI_VERSION_1_17_0
+		vars.CalicoVersion = CALICO_VERSION_1_17_0
+		vars.KubesprayVersion = KUBESPRAY_VERSION_1_17_0
 	}
 	return vars
 }
