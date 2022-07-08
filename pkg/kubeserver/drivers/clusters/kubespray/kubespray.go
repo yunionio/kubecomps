@@ -112,7 +112,7 @@ type KubesprayVars struct {
 	KubesprayVersion string `json:"kubespray_version"`
 	//CorednsImage path /coredns
 	CorednsImageIsNamespaced bool   `json:"coredns_image_is_namespaced"`
-	DownloadFileAddr         string `json:"download_file_addr"`
+	DownloadFileURL          string `json:"download_file_url"`
 }
 
 func (v KubesprayVars) Validate() error {
