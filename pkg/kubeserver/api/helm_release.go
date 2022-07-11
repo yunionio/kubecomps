@@ -70,6 +70,10 @@ type ReleaseDetail struct {
 	Files     []*chart.File            `json:"files"`
 }
 
+type ReleaseHistoryInput struct {
+	Max int `json:"max"`
+}
+
 type ReleaseHistoryInfo struct {
 	Revision    int       `json:"revision"`
 	Updated     time.Time `json:"updated"`
