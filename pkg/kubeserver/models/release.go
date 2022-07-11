@@ -595,3 +595,56 @@ func (obj *SRelease) DeleteRemoteObject() error {
 	}
 	return nil
 }
+
+func (obj *SRelease) GetDetailsHistory(ctx context.Context, userCred mcclient.TokenCredential, input *api.ReleaseHistoryInput) ([]api.ReleaseHistoryInfo, error) {
+	cli, err := obj.GetHelmClient()
+	if err != nil {
+		return nil, errors.Wrap(err, "get helm client")
+	}
+	h := cli.Release().History()
+	if input.Max == 0 {
+		input.Max = 256
+	}
+	h.Max = input.Max
+	rls, err := h.Run(obj.GetName())
+	if err != nil {
+		return nil, errors.Wrap(err, "get release history")
+	}
+	if len(rls) == 0 {
+		return nil, nil
+	}
+	return getReleaseHistory(rls), nil
+}
+
+func getReleaseHistory(rls []*release.Release) []api.ReleaseHistoryInfo {
+	ret := make([]api.ReleaseHistoryInfo, 0)
+
+	for i := len(rls) - 1; i >= 0; i-- {
+		r := rls[i]
+		c := formatChartname(r.Chart)
+		t := r.Info.LastDeployed
+		s := r.Info.Status
+		v := r.Version
+		d := r.Info.Description
+
+		rInfo := api.ReleaseHistoryInfo{
+			Revision:    v,
+			Updated:     t,
+			Status:      string(s),
+			Chart:       c,
+			Description: d,
+		}
+		ret = append(ret, rInfo)
+	}
+
+	return ret
+}
+
+func formatChartname(c *chart.Chart) string {
+	if c == nil || c.Metadata == nil {
+		// This is an edge case that has happened in prod, though we don't
+		// know how: https://github.com/kubernetes/helm/issues/1347
+		return "MISSING"
+	}
+	return fmt.Sprintf("%s-%s", c.Metadata.Name, c.Metadata.Version)
+}
