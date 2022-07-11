@@ -648,3 +648,32 @@ func formatChartname(c *chart.Chart) string {
 	}
 	return fmt.Sprintf("%s-%s", c.Metadata.Name, c.Metadata.Version)
 }
+
+func (obj *SRelease) PerformRollback(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input *api.ReleaseRollbackInput) (jsonutils.JSONObject, error) {
+	cli, err := obj.GetHelmClient()
+	if err != nil {
+		return nil, errors.Wrap(err, "get helm client")
+	}
+	rbk := cli.Release().Rollback()
+	rbk.Version = input.Revision
+	rbk.Recreate = input.Recreate
+	rbk.Force = input.Force
+
+	if err := rbk.Run(obj.GetName()); err != nil {
+		return nil, errors.Wrap(err, "Run rollback")
+	}
+	return nil, nil
+}
+
+func (obj *SRelease) PerformUpgrade(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input *api.ReleaseUpdateInput) (jsonutils.JSONObject, error) {
+	log.Infof("Upgrade repo=%q, chart=%q, release='%s/%s'", input.Repo, input.ChartName, input.Namespace, input.ReleaseName)
+	cli, err := obj.GetHelmClient()
+	if err != nil {
+		return nil, errors.Wrap(err, "get helm client")
+	}
+	rls, err := cli.Release().Update(input)
+	if err != nil {
+		return nil, errors.Wrap(err, "update release")
+	}
+	return jsonutils.Marshal(rls), nil
+}
