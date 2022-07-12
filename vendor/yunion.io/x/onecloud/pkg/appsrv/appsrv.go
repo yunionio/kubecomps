@@ -494,7 +494,7 @@ func (app *Application) ListenAndServeTLSWithCleanup2(addr string, certFile, key
 	httpSrv := app.initServer(addr)
 	if isMaster {
 		app.addDefaultHandlers()
-		AddPProfHandler(app)
+		AddPProfHandler("", app)
 		app.httpServer = httpSrv
 		app.registerCleanShutdown(app.httpServer, onStop)
 	} else {
