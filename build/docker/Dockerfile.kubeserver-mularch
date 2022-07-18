@@ -1,4 +1,4 @@
-FROM registry.cn-beijing.aliyuncs.com/yunionio/kube-build:1.0-5 as build
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kube-build:3.16.0-go-1.18.2-0 as build
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 ENV GOPROXY https://goproxy.cn,direct
@@ -8,7 +8,7 @@ COPY . /go/src/yunion.io/x/kubecomps
 WORKDIR /go/src/yunion.io/x/kubecomps
 RUN make cmd/kubeserver
 
-FROM hb.grgbanking.com/shikaiwen/kubeserver-base:v0.0.1
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kubeserver-base:v0.0.1
 RUN mkdir -p /opt/yunion/bin
 COPY --from=build /go/src/yunion.io/x/kubecomps/manifests/ansible /opt/yunion/ansible
 COPY --from=build /go/src/yunion.io/x/kubecomps/_output/bin/kubeserver /opt/yunion/bin/kubeserver

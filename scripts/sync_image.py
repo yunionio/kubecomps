@@ -157,12 +157,12 @@ def docker_cluster_proportional_image(taget_repo):
 
 def sync_images(repo):
     imgs = [
-        Image("calico", "node", "v3.16.5", repo, "calico-node"),
-        Image("calico", "cni", "v3.16.5", repo, "calico-cni"),
-        Image("calico", "kube-controllers", "v3.16.5", repo, "calico-kube-controllers"),
-        Image("calico", "typha", "v3.16.5", repo, "calico-typha"),
-#         Image('quay.io/coreos', 'etcd', 'v3.4.13', repo, 'etcd', arch=['arm64']),
-#         Image("quay.io/coreos", "etcd", "v3.4.13", repo, "etcd"),
+#         Image("calico", "node", "v3.16.5", repo, "calico-node"),
+#         Image("calico", "cni", "v3.16.5", repo, "calico-cni"),
+#         Image("calico", "kube-controllers", "v3.16.5", repo, "calico-kube-controllers"),
+#         Image("calico", "typha", "v3.16.5", repo, "calico-typha"),
+        Image('quay.io/coreos', 'etcd', 'v3.4.13', repo, 'etcd', arch=['arm64']),
+#        Image("quay.io/coreos", "etcd", "v3.4.13", repo, "etcd"),
 #         Image("quay.io/coreos", "k8s-dns-node-cache", "v3.4.13", repo, "etcd"),
         # Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.16.0", repo, "k8s-dns-node-cache"),
         # Image("k8s.grc.io/cpa", "cluster-proportional-autoscaler", "1.8.3", repo, "cluster-proportional-autoscaler"),
