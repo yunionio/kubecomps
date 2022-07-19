@@ -431,6 +431,32 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		}
 	}
 
+	if input.Grafana.DB != nil {
+		db := input.Grafana.DB
+		if db.Host == "" {
+			return nil, errors.Errorf("grafana db host is empty")
+		}
+		if db.Database == "" {
+			return nil, errors.Errorf("grafana db database is empty")
+		}
+		if db.Username == "" {
+			return nil, errors.Errorf("grafana db username is empty")
+		}
+		if db.Password == "" {
+			return nil, errors.Errorf("grafana db password is empty")
+		}
+		if db.Port == 0 {
+			db.Port = 3306
+		}
+		grafanaIni.Database = &components.GrafanaIniDatabase{
+			Type:     "mysql",
+			Host:     fmt.Sprintf("%s:%d", db.Host, db.Port),
+			Name:     db.Database,
+			User:     db.Username,
+			Password: db.Password,
+		}
+	}
+
 	if input.Grafana.TLSKeyPair == nil {
 		return nil, errors.Errorf("grafana tls key pair not provided")
 	}
@@ -444,8 +470,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Enabled: !input.Prometheus.Disable,
 			Spec: components.PrometheusSpec{
 				CommonConfig: components.CommonConfig{
-					Enabled: !input.Prometheus.Disable,
-					// Resources: input.Prometheus.Resources,
+					Enabled:   !input.Prometheus.Disable,
+					Resources: input.Prometheus.Resources,
 				},
 				Image: mi("prometheus", "v2.28.1"),
 			},
@@ -454,8 +480,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Enabled: !input.Prometheus.Disable,
 			Spec: components.AlertmanagerSpec{
 				CommonConfig: components.CommonConfig{
-					Enabled: !input.Prometheus.Disable,
-					// Resources: input.Prometheus.Resources,
+					Enabled:   !input.Prometheus.Disable,
+					Resources: input.Prometheus.Resources,
 				},
 				Image: mi("alertmanager", "v0.22.2"),
 			},
@@ -469,15 +495,15 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		},
 		KubeStateMetrics: components.KubeStateMetrics{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Prometheus.Disable,
-				// Resources: input.Prometheus.Resources,
+				Enabled:   !input.Prometheus.Disable,
+				Resources: input.Prometheus.Resources,
 			},
 			Image: mi("kube-state-metrics", "v1.9.8"),
 		},
 		Grafana: components.Grafana{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Grafana.Disable,
-				// Resources: input.Grafana.Resources,
+				Enabled:   !input.Grafana.Disable,
+				Resources: input.Grafana.Resources,
 			},
 			AdminUser:     input.Grafana.AdminUser,
 			AdminPassword: input.Grafana.AdminPassword,
@@ -504,21 +530,21 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		},
 		Loki: components.Loki{
 			CommonConfig: components.CommonConfig{
-				Enabled: !input.Loki.Disable,
-				// Resources: input.Loki.Resources,
+				Enabled:   !input.Loki.Disable,
+				Resources: input.Loki.Resources,
 			},
 			Image: mi("loki", "2.2.1"),
 		},
 		Promtail: components.Promtail{
-			Enabled: !input.Loki.Disable,
-			// Resources: input.Promtail.Resources,
-			Image: mi("promtail", "2.2.1"),
+			Enabled:   !input.Loki.Disable,
+			Resources: input.Promtail.Resources,
+			Image:     mi("promtail", "2.2.1"),
 		},
 		PrometheusOperator: components.PrometheusOperator{
 			CommonConfig: components.CommonConfig{
 				// must enable to controll prometheus lifecycle
-				Enabled: true,
-				// Resources: input.Prometheus.Resources,
+				Enabled:   true,
+				Resources: input.Prometheus.Resources,
 			},
 			Image:                         mi("prometheus-operator", "v0.37.0"),
 			ConfigmapReloadImage:          mi("configmap-reload", "v0.5.0"),
@@ -675,6 +701,17 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		conf.KubeStateMetrics.CommonConfig = getSystemComponentCommonConfig(
 			conf.KubeStateMetrics.CommonConfig,
 			false, input.Prometheus.Disable)
+	}
+
+	// disable resource management
+	if setting.DisableResourceManagement {
+		conf.Prometheus.Spec.Resources = components.Resources{}
+		conf.Alertmanager.Spec.Resources = nil
+		conf.KubeStateMetrics.Resources = nil
+		conf.Grafana.Resources = nil
+		conf.Loki.Resources = nil
+		conf.Promtail.Resources = nil
+		conf.PrometheusOperator.Resources = nil
 	}
 
 	return components.GenerateHelmValues(conf), nil
