@@ -42,7 +42,8 @@ type ComponentDeleteInput struct {
 }
 
 type ComponentSettings struct {
-	Namespace string `json:"namespace"`
+	Namespace                 string `json:"namespace"`
+	DisableResourceManagement bool   `json:"disableResourceManagement"`
 	// Ceph CSI 组件配置
 	CephCSI *ComponentSettingCephCSI `json:"cephCSI"`
 	// Monitor stack 组件配置
@@ -138,6 +139,15 @@ type ComponentSettingMonitorGrafana struct {
 	// Enable thanos query datasource
 	EnableThanosQueryDataSource bool                                 `json:"enableThanosQueryDataSource"`
 	OAuth                       *ComponentSettingMonitorGrafanaOAuth `json:"oauth"`
+	DB                          *DBConfig                            `json:"db"`
+}
+
+type DBConfig struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Database string `json:"database"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type ComponentSettingMonitorLoki struct {
