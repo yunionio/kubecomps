@@ -102,15 +102,15 @@ func (c componentDriverMonitor) validateGrafana(userCred mcclient.TokenCredentia
 	if conf.Disable {
 		return nil
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("1", "1024Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("1", "1024Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	if conf.Storage.Enabled {
 		if err := c.validateStorage(userCred, cluster, conf.Storage); err != nil {
 			return err
@@ -198,16 +198,16 @@ func (c componentDriverMonitor) validateLoki(ctx context.Context, userCred mccli
 			return err
 		}
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("2", "2048Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
-	//
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("2", "2048Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
+
 	if conf.ObjectStoreConfig != nil {
 		if err := validateObjectStore(ctx, conf.ObjectStoreConfig); err != nil {
 			return err
@@ -228,15 +228,15 @@ func (c componentDriverMonitor) validatePrometheus(ctx context.Context, userCred
 			return err
 		}
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("2", "2048Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("2", "2048Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	if conf.ThanosSidecar != nil {
 		if err := c.validatePrometheusThanos(ctx, cluster, conf.ThanosSidecar); err != nil {
 			return err
@@ -312,15 +312,15 @@ func (c componentDriverMonitor) validatePromtail(conf *api.ComponentSettingMonit
 	if conf.Disable {
 		return nil
 	}
-	// var err error
-	// conf.Resources, err = c.setDefaultHelmValueResources(
-	// 	conf.Resources,
-	// 	api.NewHelmValueResource("1", "1024Mi"),
-	// 	api.NewHelmValueResource("0.01", "10Mi"),
-	// )
-	// if err != nil {
-	// 	return err
-	// }
+	var err error
+	conf.Resources, err = c.setDefaultHelmValueResources(
+		conf.Resources,
+		api.NewHelmValueResource("1", "1024Mi"),
+		api.NewHelmValueResource("0.01", "10Mi"),
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
