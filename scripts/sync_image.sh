@@ -2,7 +2,7 @@
 
 set -ex
 
-DEST_REGISTRY=${DEST_REGISTRY:-registry.cn-beijing.aliyuncs.com/yunionio}
+DEST_REGISTRY=${DEST_REGISTRY:-hb.grgbanking.com/shikaiwen}
 
 sync_img() {
     local source_registry=$1
