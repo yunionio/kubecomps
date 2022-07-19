@@ -90,5 +90,28 @@ KS_BINS_DIR = $(OUTPUT_DIR)/binaries
 sync-kubespray-bins:
 	rsync -avP $(KS_BINS_DIR)/* a3-iso:/data/binaries
 
+
+ifeq ($(UNAME), Linux)
+XARGS_FLAGS = --no-run-if-empty
+endif
+
+fmt:
+	@git ls-files --exclude '*' '*.go' \
+		| grep -v '^vendor/' \
+		| while read f; do \
+			if ! grep -m1 -q '^// Code generated .* DO NOT EDIT\.$$' "$$f"; then \
+				echo "$$f"; \
+			fi ; \
+		done \
+		| xargs $(XARGS_FLAGS) gofmt -w
+
+fmt-check: fmt
+	@if git status --short | grep -E '^.M .*/[^.]+.go'; then \
+		git diff | cat; \
+		echo "$@: working tree modified (possibly by gofmt)" >&2 ; \
+		false ; \
+	fi
+.PHONY: fmt fmt-check
+
 %:
 	@:
