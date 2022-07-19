@@ -24,10 +24,10 @@ const (
 )
 
 var (
-	DefaultKubesprayClusterYML        = newDefaultAnsiblePath("cluster.yml")
-	DefaultKubesprayRemoveNodeYML     = newDefaultAnsiblePath("remove-node.yml")
-	DefaultKubesprayScaleYML          = newDefaultAnsiblePath("scale.yml")
-	DefaultKubesprayUpgradeClusterYML = newDefaultAnsiblePath("upgrade-cluster.yml")
+	DefaultKubesprayClusterYML        = "cluster.yml"
+	DefaultKubesprayRemoveNodeYML     = "remove-node.yml"
+	DefaultKubesprayScaleYML          = "scale.yml"
+	DefaultKubesprayUpgradeClusterYML = "upgrade-cluster.yml"
 
 	KubesprayNodeRoles = []KubesprayNodeRole{
 		KubesprayNodeRoleMaster,
@@ -108,6 +108,18 @@ type KubesprayVars struct {
 	Node string `json:"node"`
 	// DeleteNodesConfirmation must set to yes
 	DeleteNodesConfirmation string `json:"delete_nodes_confirmation"`
+	//kubespray verion
+	KubesprayVersion string `json:"kubespray_version"`
+	//CorednsImage path /coredns
+	CorednsImageIsNamespaced bool `json:"coredns_image_is_namespaced"`
+	//file download url
+	DownloadFileURL string `json:"download_file_url"`
+	//iamge repo
+	ImageRepo string `json:"image_repo"`
+	//docker info
+	DockerUser     string `json:"docker_user"`
+	DockerPassword string `json:"docker_password"`
+	DockerHost     string `json:"docker_host"`
 }
 
 func (v KubesprayVars) Validate() error {
