@@ -213,9 +213,18 @@ type GrafanaIniOAuth struct {
 	RoleAttributePath string `json:"role_attribute_path"`
 }
 
+type GrafanaIniDatabase struct {
+	Type     string `json:"type"`
+	Host     string `json:"host"`
+	Name     string `json:"name"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+}
+
 type GrafanaIni struct {
-	Server *GrafanaIniServer `json:"server"`
-	OAuth  *GrafanaIniOAuth  `json:"auth.generic_oauth"`
+	Server   *GrafanaIniServer   `json:"server"`
+	OAuth    *GrafanaIniOAuth    `json:"auth.generic_oauth"`
+	Database *GrafanaIniDatabase `json:"database"`
 }
 
 type GrafanaDataSourceJsonData struct {
