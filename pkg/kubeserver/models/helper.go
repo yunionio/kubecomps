@@ -735,10 +735,11 @@ func UpdatePodTemplate(temp *v1.PodTemplateSpec, input api.PodTemplateUpdateInpu
 		}
 		return httperrors.NewNotFoundError("Not found container %s in input", container.Name)
 	}
-	for _, c := range temp.Spec.InitContainers {
+	for i, c := range temp.Spec.InitContainers {
 		if err := cf(&c, input.InitContainers); err != nil {
 			return err
 		}
+		temp.Spec.InitContainers[i] = c
 	}
 	for i, c := range temp.Spec.Containers {
 		if err := cf(&c, input.Containers); err != nil {
