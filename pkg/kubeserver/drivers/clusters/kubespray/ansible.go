@@ -25,11 +25,11 @@ const (
 )
 
 var (
-	DefaultPlaybookConfigPath = newDefaultAnsiblePath("ansible.cfg")
+	DefaultPlaybookConfigPath = "ansible.cfg"
 )
 
-func newDefaultAnsiblePath(fp string) string {
-	return filepath.Join(DefaultAnsiblePath, fp)
+func newDefaultAnsiblePath(ksv, fp string) string {
+	return filepath.Join(DefaultAnsiblePath, ksv, fp)
 }
 
 type AnsibleRunner struct {
