@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/rest"
@@ -26,6 +25,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
+	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 	"yunion.io/x/kubecomps/pkg/utils/rand"
 	"yunion.io/x/kubecomps/pkg/utils/registry"
@@ -734,16 +734,17 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		DNSAutoscalerImageRepo: "{{ image_repo }}/cluster-proportional-autoscaler-{{ image_arch  }}",
 		// temporary use kubesphere binary download url check:
 		// https://github.com/kubesphere/kubekey/blob/d2a78d20c4a47ab55501ac65f11d54ae51514b1f/pkg/cluster/preinstall/preinstall.go#L50
-		KubeletDownloadUrl: "{{ download_file_url }}/kubernetes/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
-		KubectlDownloadUrl: "{{ download_file_url }}/kubernetes/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
-		KubeadmDownloadUrl: "{{ download_file_url }}/kubernetes/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
+		KubeletDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
+		KubectlDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
+		KubeadmDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
 		// CNIBinaryChecksum:  cniChecksum,
-		CNIDownloadUrl: "{{ download_file_url }}/cni/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
+		CNIDownloadUrl: "{{ download_file_url }}/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
 
 		// etcd related vars
 		EtcdVersion:              "v3.4.13",
 		EtcdImageRepo:            "{{ image_repo }}/etcd",
 		CalicoctlDownloadUrl:     "{{ download_file_url }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
+		CalicoCRDsDownloadUrl:    "{{ download_file_url }}/calico/archive/{{ calico_version }}.tar.gz",
 		CrictlDownloadUrl:        "{{ download_file_url }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
 		CalicoNodeImageRepo:      "{{ image_repo }}/calico-node",
 		CalicoCNIImageRepo:       "{{ image_repo }}/calico-cni",

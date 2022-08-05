@@ -1,12 +1,11 @@
-FROM alpine:latest
+FROM registry.cn-beijing.aliyuncs.com/yunionio/alpine-build:3.16.0-go-1.18.2-0
 
 RUN sed -i 's!https://dl-cdn.alpinelinux.org/!https://mirrors.ustc.edu.cn/!g' /etc/apk/repositories
 RUN apk update  \
         && apk upgrade \
         && apk add --no-cache bash bash-doc bash-completion curl
-RUN curl -L https://storage.googleapis.com/kubernetes-release/release/v1.20.15/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl \
-    && chmod +x /usr/local/bin/kubectl
+
+RUN apk add --no-cache kubectl --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing
 
 RUN rm -rf /var/cache/apk/* \
         && /bin/bash
-
