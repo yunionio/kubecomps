@@ -172,6 +172,17 @@ func (m *SReleaseManager) ValidateCreateData(ctx context.Context, userCred mccli
 	return data, nil
 }
 
+func (rls *SRelease) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
+	rls.SNamespaceResourceBase.PostCreate(ctx, userCred, ownerId, query, data)
+	input := new(api.ReleaseCreateInput)
+	if err := data.Unmarshal(input); err != nil {
+		return
+	}
+	if input.ProjectDomainId != "" && input.ProjectDomainId != rls.DomainId {
+		rls.DomainId = input.ProjectDomainId
+	}
+}
+
 func (m *SReleaseManager) FetchCustomizeColumns(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
