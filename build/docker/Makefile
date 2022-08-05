@@ -11,7 +11,10 @@ kube-build:
 	docker buildx build --platform linux/arm64,linux/amd64 -f ./Dockerfile.kube-build -t $(kube-build-img) . --push
 	docker pull $(kube-build-img)
 
-KUBESERVER_BASE_VERSION = v0.0.1
+KUBECTL_VERSION = 1.24.3
+kubectl:
+	$(DOCKER_BUILDX)/kubectl:$(KUBECTL_VERSION) -f ./Dockerfile.kubectl-1_20 .
 
+KUBESERVER_BASE_VERSION = v0.0.3
 kubeserver-base:
-	$(DOCKER_BUILDX)/kubeserver-base:$(KUBESERVER_BASE_VERSION) -f ./Dockerfile.kubeserver-base .
+	$(DOCKER_BUILDX)/kubeserver-base:$(KUBESERVER_BASE_VERSION) -f ./Dockerfile.kubeserver-base-1_20 .

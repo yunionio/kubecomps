@@ -1,7 +1,7 @@
-FROM hb.grgbanking.com/shikaiwen/kubectl:1.20
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kubectl:1.24.3
 RUN mkdir -p /opt/yunion/bin
 RUN apk add --no-cache librados librbd \
     openssh-client py-netaddr tzdata rsync \
-    git ca-certificates py3-pip \
+    git ca-certificates py3-pip python3-dev build-base libffi-dev openssl-dev \
     && rm -rf /var/cache/apk/*
 RUN pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple ansible==2.9.27
