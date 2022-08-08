@@ -615,6 +615,7 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 			return nil, err
 		}
 	}
+	log.Errorf("=====input: %s", jsonutils.Marshal(input).PrettyString())
 	return input, nil
 }
 

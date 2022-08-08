@@ -26,6 +26,15 @@ type KubeServerOptions struct {
 
 	// hack: repo charts ignore regexp
 	ChartIgnores []string `help:"Repo chart ignore regexp config, e.g. '^vm-repo:onecloud-.*:0.2.0$'"`
+
+	//k8s
+	DownloadFileURL string `help:"k8s depends on the binary file download url" default:"https://iso.yunion.cn/binaries"`
+	//iamge repo
+	ImageRepo string `help:"k8s depends on the image repo" default:"registry.cn-beijing.aliyuncs.com/yunionio"`
+	//docker info
+	DockerUser     string `help:"docker login user name"`
+	DockerPassword string `help:"docker login password"`
+	DockerHost     string `help:"docker login host"`
 }
 
 func OnOptionsChange(oldO, newO interface{}) bool {

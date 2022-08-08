@@ -25,6 +25,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
+	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 	"yunion.io/x/kubecomps/pkg/utils/rand"
 	"yunion.io/x/kubecomps/pkg/utils/registry"
@@ -74,7 +75,8 @@ func (d *selfBuildClusterDriver) GetResourceType() api.ClusterResourceType {
 
 func (d *selfBuildClusterDriver) GetK8sVersions() []string {
 	return []string{
-		"v1.17.0",
+		K8S_VERSION_1_17_0,
+		K8S_VERSION_1_20_0,
 	}
 }
 
@@ -386,50 +388,8 @@ func (d *selfBuildDriver) requestDeployMachines(ctx context.Context, userCred mc
 }
 
 func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray.KubesprayRunVars, error) {
-	k8sVersion := cluster.GetVersion()
-	k8sVersion = "v1.17.0"
-	cniVersion := "v0.8.6"
-	// cniChecksum, err := kubespray.GetCNICheckSum(kubespray.AMD64, cniVersion)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "get cni checksum")
-	// }
-
-	vars := kubespray.KubesprayVars{
-		DownloadRunOnce: false,
-		// YumRepo:                "http://mirrors.aliyun.com",
-		// EtcdKubeadmEnabled:     false,
-		KubeVersion:            k8sVersion,
-		KubeImageRepo:          "registry.aliyuncs.com/google_containers",
-		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/stable",
-		DockerRHRepoGPGKey:     "https://mirrors.aliyun.com/docker-ce/linux/centos/gpg",
-		EnableNodelocalDNS:     true,
-		NodelocalDNSVersion:    "1.16.0",
-		NodelocalDNSImageRepo:  "registry.cn-beijing.aliyuncs.com/yunionio/k8s-dns-node-cache",
-		DNSAutoscalerImageRepo: "registry.cn-beijing.aliyuncs.com/yunionio/cluster-proportional-autoscaler-{{ image_arch  }}",
-		// temporary use kubesphere binary download url check:
-		// https://github.com/kubesphere/kubekey/blob/d2a78d20c4a47ab55501ac65f11d54ae51514b1f/pkg/cluster/preinstall/preinstall.go#L50
-		KubeletDownloadUrl: "https://kubernetes-release.pek3b.qingstor.com/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
-		KubectlDownloadUrl: "https://kubernetes-release.pek3b.qingstor.com/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
-		KubeadmDownloadUrl: "https://kubernetes-release.pek3b.qingstor.com/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
-		CNIVersion:         cniVersion,
-		// CNIBinaryChecksum:  cniChecksum,
-		CNIDownloadUrl: "https://containernetworking.pek3b.qingstor.com/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
-
-		// etcd related vars
-		EtcdVersion:   "v3.4.13",
-		EtcdImageRepo: "registry.cn-beijing.aliyuncs.com/yunionio/etcd",
-
-		// calico related vars
-		CalicoVersion:         "v3.16.5",
-		CalicoctlDownloadUrl:  "https://iso.yunion.cn/binaries/calicoctl/releases/download/v3.16.5/calicoctl-linux-{{ image_arch }}",
-		CrictlDownloadUrl:     "https://iso.yunion.cn/binaries/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
-		CalicoNodeImageRepo:   "registry.cn-beijing.aliyuncs.com/yunionio/calico-node",
-		CalicoCNIImageRepo:    "registry.cn-beijing.aliyuncs.com/yunionio/calico-cni",
-		CalicoPolicyImageRepo: "registry.cn-beijing.aliyuncs.com/yunionio/calico-kube-controllers",
-		CalicoTyphaImageRepo:  "registry.cn-beijing.aliyuncs.com/yunionio/calico-typha",
-	}
 	return &kubespray.KubesprayRunVars{
-		KubesprayVars: vars,
+		KubesprayVars: d.withKubespray(cluster.GetVersion()),
 	}, nil
 }
 
@@ -757,4 +717,54 @@ func (d *selfBuildDriver) GetClusterUserGroups(cluster *models.SCluster, config 
 
 func (d *selfBuildDriver) ValidateDeleteCondition() error {
 	return nil
+}
+
+func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVars {
+	vars := kubespray.KubesprayVars{
+		DownloadRunOnce: false,
+		// YumRepo:                "http://mirrors.aliyun.com",
+		// EtcdKubeadmEnabled:     false,
+		KubeVersion:            k8sVersion,
+		KubeImageRepo:          "registry.aliyuncs.com/google_containers",
+		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/stable",
+		DockerRHRepoGPGKey:     "https://mirrors.aliyun.com/docker-ce/linux/centos/gpg",
+		EnableNodelocalDNS:     true,
+		NodelocalDNSVersion:    "1.16.0",
+		NodelocalDNSImageRepo:  "{{ image_repo }}/k8s-dns-node-cache",
+		DNSAutoscalerImageRepo: "{{ image_repo }}/cluster-proportional-autoscaler-{{ image_arch  }}",
+		// temporary use kubesphere binary download url check:
+		// https://github.com/kubesphere/kubekey/blob/d2a78d20c4a47ab55501ac65f11d54ae51514b1f/pkg/cluster/preinstall/preinstall.go#L50
+		KubeletDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
+		KubectlDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
+		KubeadmDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
+		// CNIBinaryChecksum:  cniChecksum,
+		CNIDownloadUrl: "{{ download_file_url }}/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
+
+		// etcd related vars
+		EtcdVersion:              "v3.4.13",
+		EtcdImageRepo:            "{{ image_repo }}/etcd",
+		CalicoctlDownloadUrl:     "{{ download_file_url }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
+		CalicoCRDsDownloadUrl:    "{{ download_file_url }}/calico/archive/{{ calico_version }}.tar.gz",
+		CrictlDownloadUrl:        "{{ download_file_url }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
+		CalicoNodeImageRepo:      "{{ image_repo }}/calico-node",
+		CalicoCNIImageRepo:       "{{ image_repo }}/calico-cni",
+		CalicoPolicyImageRepo:    "{{ image_repo }}/calico-kube-controllers",
+		CalicoTyphaImageRepo:     "{{ image_repo }}/calico-typha",
+		CorednsImageIsNamespaced: false,
+		DownloadFileURL:          options.Options.DownloadFileURL,
+		ImageRepo:                options.Options.ImageRepo,
+		DockerUser:               options.Options.DockerUser,
+		DockerPassword:           options.Options.DockerPassword,
+		DockerHost:               options.Options.DockerHost,
+	}
+	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
+		vars.CNIVersion = CNI_VERSION_1_20_0
+		vars.CalicoVersion = CALICO_VERSION_1_20_0
+		vars.KubesprayVersion = KUBESPRAY_VERSION_1_20_0
+	} else {
+		vars.CNIVersion = CNI_VERSION_1_17_0
+		vars.CalicoVersion = CALICO_VERSION_1_17_0
+		vars.KubesprayVersion = KUBESPRAY_VERSION_1_17_0
+	}
+	return vars
 }
