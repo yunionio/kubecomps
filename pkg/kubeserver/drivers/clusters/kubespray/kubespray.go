@@ -83,8 +83,10 @@ type KubesprayVars struct {
 
 	// Calico related vars
 	// CalicoctlDownloadUrl: https://iso.yunion.cn/binaries/calicoctl/releases/download/v3.16.5/calicoctl-linux-amd64
-	CalicoVersion         string `json:"calico_version"`
-	CalicoctlDownloadUrl  string `json:"calicoctl_download_url"`
+	CalicoVersion        string `json:"calico_version"`
+	CalicoctlDownloadUrl string `json:"calicoctl_download_url"`
+	// https://github.com/projectcalico/calico/archive/{{ calico_version }}.tar.gz
+	CalicoCRDsDownloadUrl string `json:"calico_crds_download_url"`
 	CalicoNodeImageRepo   string `json:"calico_node_image_repo"`
 	CalicoNodeImageTag    string `json:"calico_node_image_tag"`
 	CalicoCNIImageRepo    string `json:"calico_cni_image_repo"`

@@ -28,7 +28,7 @@ type KubeServerOptions struct {
 	ChartIgnores []string `help:"Repo chart ignore regexp config, e.g. '^vm-repo:onecloud-.*:0.2.0$'"`
 
 	//k8s
-	DownloadFileURL string `help:"k8s depends on the binary file download url" default:"https://iso.yunion.cn"`
+	DownloadFileURL string `help:"k8s depends on the binary file download url" default:"https://iso.yunion.cn/binaries"`
 	//iamge repo
 	ImageRepo string `help:"k8s depends on the image repo" default:"registry.cn-beijing.aliyuncs.com/yunionio"`
 	//docker info
