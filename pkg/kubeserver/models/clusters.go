@@ -443,6 +443,12 @@ func (m *SClusterManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery
 	if input.CloudregionId != "" {
 		q = q.Equals("cloudregion_id", input.CloudregionId)
 	}
+	if input.ExternalClusterId != "" {
+		q = q.Equals("external_cluster_id", input.ExternalClusterId)
+	}
+	if input.ExternalCloudClusterId != "" {
+		q = q.Equals("external_cloud_cluster_id", input.ExternalCloudClusterId)
+	}
 
 	if len(input.Provider) != 0 {
 		providers := make([]string, len(input.Provider))
