@@ -220,11 +220,13 @@ type ClusterListInput struct {
 	apis.StatusDomainLevelResourceListInput
 	FederatedResourceUsedInput
 
-	ManagerId     string   `json:"manager_id"`
-	Manager       string   `json:"manager" yunion-deprecated-by:"manager_id"`
-	CloudregionId string   `json:"cloudregion_id"`
-	Provider      []string `json:"provider"`
-	Mode          ModeType `json:"mode"`
+	ManagerId              string   `json:"manager_id"`
+	Manager                string   `json:"manager" yunion-deprecated-by:"manager_id"`
+	ExternalClusterId      string   `json:"external_cluster_id"`
+	ExternalCloudClusterId string   `json:"external_cloud_cluster_id"`
+	CloudregionId          string   `json:"cloudregion_id"`
+	Provider               []string `json:"provider"`
+	Mode                   ModeType `json:"mode"`
 }
 
 type ClusterSyncInput struct {
