@@ -2,6 +2,7 @@ package models
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/version"
 
 	"yunion.io/x/jsonutils"
 
@@ -37,7 +38,7 @@ func GetVirtualMachineManager() *SVirtualMachineManager {
 	return virtualMachineManager
 }
 
-func (m *SVirtualMachineManager) GetK8sResourceInfo() model.K8sResourceInfo {
+func (m *SVirtualMachineManager) GetK8sResourceInfo(version *version.Info) model.K8sResourceInfo {
 	return model.K8sResourceInfo{
 		ResourceName: api.ResourceNameVirtualMachine,
 		KindName:     api.KindNameVirtualMachine,

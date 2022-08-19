@@ -202,7 +202,15 @@ func GetReleaseResources(
 				return errors.Wrapf(err, "get %s object", modelObj.Keyword())
 			}
 		} else if dbMan, ok := man.(IClusterModelManager); ok {
-			newObj := dbMan.GetK8sResourceInfo().Object.DeepCopyObject()
+			clientSet, err := cfg.KubernetesClientSet()
+			if err != nil {
+				return err
+			}
+			version, err := clientSet.Discovery().ServerVersion()
+			if err != nil {
+				return err
+			}
+			newObj := dbMan.GetK8sResourceInfo(version).Object.DeepCopyObject()
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(getObj.Object, newObj); err != nil {
 				return errors.Wrapf(err, "convert from unstructured %v", getObj)
 			}

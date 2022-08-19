@@ -1,6 +1,7 @@
 package models
 
 import (
+	"k8s.io/apimachinery/pkg/version"
 	"sort"
 	"strings"
 
@@ -59,7 +60,7 @@ func GetEventManager() IEventManager {
 	return eventManager
 }
 
-func (m SEventManager) GetK8sResourceInfo() model.K8sResourceInfo {
+func (m SEventManager) GetK8sResourceInfo(version *version.Info) model.K8sResourceInfo {
 	return model.K8sResourceInfo{
 		ResourceName: api.ResourceNameEvent,
 		Object:       &v1.Event{},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"math"
 	"strconv"
 	"strings"
@@ -390,9 +391,22 @@ func (m *SPodManager) GetRawPods(cluster *client.ClusterManager, ns string) ([]*
 	return m.GetRawPodsBySelector(cluster, ns, labels.Everything())
 }
 
-func (m *SPodManager) GetRawPodsBySelector(cluster *client.ClusterManager, ns string, selecotr labels.Selector) ([]*v1.Pod, error) {
+func (m *SPodManager) GetRawPodsBySelector(cluster *client.ClusterManager, ns string, selector labels.Selector) ([]*v1.Pod, error) {
 	indexer := cluster.GetHandler().GetIndexer()
-	return indexer.PodLister().Pods(ns).List(selecotr)
+
+	list, err := indexer.PodLister().ByNamespace(ns).List(selector)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*v1.Pod, len(list))
+	for idx, l := range list {
+		newObj := &v1.Pod{}
+		if err = runtime.DefaultUnstructuredConverter.FromUnstructured(l.(*unstructured.Unstructured).Object, newObj); err != nil {
+			return nil, err
+		}
+		res[idx] = newObj
+	}
+	return res, nil
 }
 
 func (m *SPodManager) NewFromRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, obj interface{}) (IClusterModel, error) {

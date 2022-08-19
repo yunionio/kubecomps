@@ -2,6 +2,7 @@ package models
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/version"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
@@ -36,7 +37,7 @@ func GetAnsiblePlaybookManager() *SAnsiblePlaybookManager {
 	return ansiblePlaybookManager
 }
 
-func (m *SAnsiblePlaybookManager) GetK8sResourceInfo() model.K8sResourceInfo {
+func (m *SAnsiblePlaybookManager) GetK8sResourceInfo(versionInfo *version.Info) model.K8sResourceInfo {
 	return model.K8sResourceInfo{
 		ResourceName: api.ResourceNameAnsiblePlaybook,
 		KindName:     api.KindNameAnsiblePlaybook,

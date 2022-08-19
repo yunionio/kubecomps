@@ -927,8 +927,9 @@ func (c *SCluster) GetNodesCount() (int, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "get cluster client")
 	}
-	lister := cli.GetHandler().GetIndexer().NodeLister()
-	nodes, err := lister.List(labels.Everything())
+	genericLister := cli.GetIndexer().NodeLister()
+	nodes, err := genericLister.List(labels.Everything())
+
 	if err != nil {
 		return 0, errors.Wrap(err, "list k8s nodes")
 	}

@@ -98,7 +98,11 @@ func (q *sK8SQuery) PagingMarker(pm string) IQuery {
 func (q *sK8SQuery) FetchObjects() ([]IK8sModel, error) {
 	cluster := q.cluster
 	cli := cluster.GetHandler()
-	resInfo := q.manager.GetK8sResourceInfo()
+	version, err := cluster.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := q.manager.GetK8sResourceInfo(version)
 	objs, err := cli.List(resInfo.ResourceName, q.namespace, labels.Everything().String())
 	if err != nil {
 		return nil, err

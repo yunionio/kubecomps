@@ -5,13 +5,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/version"
 	"strconv"
 	"strings"
 
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
 
@@ -92,7 +94,7 @@ type IClusterModelManager interface {
 	db.IDomainLevelModelManager
 
 	IsNamespaceScope() bool
-	GetK8sResourceInfo() model.K8sResourceInfo
+	GetK8sResourceInfo(version *version.Info) model.K8sResourceInfo
 	IsRemoteObjectLocalExist(userCred mcclient.TokenCredential, cluster *SCluster, obj interface{}) (IClusterModel, bool, error)
 	NewFromRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, obj interface{}) (IClusterModel, error)
 	ListRemoteObjects(cli *client.ClusterManager) ([]interface{}, error)
@@ -167,7 +169,19 @@ func (m SClusterResourceBaseManager) IsNamespaceScope() bool {
 	return false
 }
 
-func (m SClusterResourceBaseManager) GetK8sResourceInfo() model.K8sResourceInfo {
+func (m SClusterResourceBaseManager) GetK8sResourceInfo(version *version.Info) model.K8sResourceInfo {
+	// FIXME: set Resource Base Manager info correctly
+	if version != nil {
+		if m.kindName == api.KindNameIngress {
+			s := SIngressManager{SNamespaceResourceBaseManager{m}}
+			return s.GetK8sResourceInfo(version)
+		}
+		if m.kindName == api.KindNameReplicaSet {
+			s := SReplicaSetManager{SNamespaceResourceBaseManager{m}}
+			return s.GetK8sResourceInfo(version)
+		}
+	}
+
 	return model.K8sResourceInfo{
 		ResourceName: m.resourceName,
 		Group:        m.groupName,
@@ -651,17 +665,30 @@ func SyncUpdatedClusterResource(
 }
 
 func (m *SClusterResourceBaseManager) ListRemoteObjects(clsCli *client.ClusterManager) ([]interface{}, error) {
-	resInfo := m.GetK8sResourceInfo()
-	k8sCli := clsCli.GetHandler()
-	objs, err := k8sCli.List(resInfo.ResourceName, "", labels.Everything().String())
+	version, err := clsCli.GetClientset().Discovery().ServerVersion()
 	if err != nil {
-		return nil, errors.Wrapf(err, "list k8s %s remote objects", resInfo.KindName)
+		return nil, err
 	}
-	ret := make([]interface{}, len(objs))
-	for i := range objs {
-		ret[i] = objs[i]
+
+	resInfo := m.GetK8sResourceInfo(version)
+	log.Infof("List remote object %v, server version %v.%v, resource gvr: %v, %v, %v",
+		resInfo.KindName, version.Major, version.Minor, resInfo.Group, resInfo.Version, resInfo.ResourceName)
+
+	// TODO: Use generic lister to replace it:)
+	if resInfo.KindName == api.KindNameClusterRoleBinding || resInfo.KindName == api.KindNameRoleBinding {
+		k8sCli := clsCli.GetHandler()
+		objs, err := k8sCli.List(resInfo.ResourceName, "", labels.Everything().String())
+		if err != nil {
+			return nil, errors.Wrapf(err, "list k8s %s remote objects", resInfo.KindName)
+		}
+		ret := make([]interface{}, len(objs))
+		for i := range objs {
+			ret[i] = objs[i]
+		}
+		return ret, nil
 	}
-	/*cli := clsCli.GetClient()
+
+	cli := clsCli.GetClient()
 	objs, err := cli.K8S().List(resInfo.Group, resInfo.Version, resInfo.KindName, "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "list k8s %s remote objects", resInfo.ResourceName)
@@ -674,7 +701,7 @@ func (m *SClusterResourceBaseManager) ListRemoteObjects(clsCli *client.ClusterMa
 			return nil, errors.Wrap(err, "convert from unstructured")
 		}
 		ret[i] = newObj
-	}*/
+	}
 	return ret, nil
 }
 
@@ -775,10 +802,22 @@ func FetchClusterResourceCustomizeColumns(
 	ret := make([]interface{}, len(objs))
 	for idx := range objs {
 		obj := objs[idx].(IClusterModel)
-		k8sResInfo := obj.GetClusterModelManager().GetK8sResourceInfo()
+
 		baseDetail := baseGet(obj)
+		cli, err := obj.GetClusterClient()
+		if err != nil {
+			log.Errorf("get object %s cluster client error: %v", obj.Keyword(), err)
+			ret[idx] = baseDetail
+			continue
+		}
+
+		serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+		if err != nil {
+			return nil
+		}
+
+		k8sResInfo := obj.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 		var k8sObj runtime.Object
-		var err error
 		if k8sResInfo.Object != nil {
 			k8sObj, err = GetK8sObject(obj)
 			if err != nil {
@@ -786,12 +825,6 @@ func FetchClusterResourceCustomizeColumns(
 				ret[idx] = baseDetail
 				continue
 			}
-		}
-		cli, err := obj.GetClusterClient()
-		if err != nil {
-			log.Errorf("get object %s cluster client error: %v", obj.Keyword(), err)
-			ret[idx] = baseDetail
-			continue
 		}
 		out := obj.GetDetails(cli, baseDetail, k8sObj, isList)
 		ret[idx] = out
@@ -859,7 +892,11 @@ func (m *SClusterResourceBaseManager) FetchCustomizeColumns(
 func GetK8sObject(res IClusterModel) (runtime.Object, error) {
 	cli, err := res.GetClusterClient()
 	man := res.GetClusterModelManager()
-	info := man.GetK8sResourceInfo()
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	info := man.GetK8sResourceInfo(serverVersion)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get object %s/%s kubernetes client", info.ResourceName, res.GetName())
 	}
@@ -871,20 +908,20 @@ func GetK8sObject(res IClusterModel) (runtime.Object, error) {
 		}
 		namespaceName = nsObj.GetName()
 	}
-	k8sObj, err := cli.GetHandler().Get(info.ResourceName, namespaceName, res.GetName())
-	// k8sObj, err := cli.GetClient().K8S().Get(info.ResourceName, namespaceName, res.GetName())
+	// k8sObj, err := cli.GetHandler().Get(info.ResourceName, namespaceName, res.GetName())
+	k8sObj, err := cli.GetClient().K8S().Get(info.ResourceName, namespaceName, res.GetName())
 	if err != nil {
 		return nil, errors.Wrapf(err, "get object from k8s %s/%s/%s", info.ResourceName, namespaceName, res.GetName())
 	}
-	/*
-	 * if unstruct, ok := k8sObj.(*unstructured.Unstructured); ok {
-	 *     newObj := info.Object.DeepCopyObject()
-	 *     if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, newObj); err != nil {
-	 *         return nil, errors.Wrap(err, "convert from unstructured")
-	 *     }
-	 *     k8sObj = newObj
-	 * }
-	 */
+
+	if unstruct, ok := k8sObj.(*unstructured.Unstructured); ok {
+		newObj := info.Object.DeepCopyObject()
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstruct.Object, newObj); err != nil {
+			return nil, errors.Wrap(err, "convert from unstructured")
+		}
+		k8sObj = newObj
+	}
+
 	return k8sObj, nil
 }
 
@@ -894,7 +931,11 @@ func UpdateK8sObject(res IClusterModel, data jsonutils.JSONObject) (runtime.Obje
 		return nil, errors.Wrap(err, "get cluster client")
 	}
 	handler := cli.GetHandler()
-	resInfo := res.GetClusterModelManager().GetK8sResourceInfo()
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := res.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 	rawStr, err := data.GetString()
 	if err != nil {
 		return nil, httperrors.NewInputParameterError("Get body raw data: %v", err)
@@ -1059,7 +1100,11 @@ func (obj *SClusterResourceBase) GetRemoteObject() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "get %s/%s cluster client", obj.Keyword(), obj.GetName())
 	}
-	resInfo := obj.GetClusterModelManager().GetK8sResourceInfo()
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := obj.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 	k8sCli := cli.GetHandler()
 	return k8sCli.Get(resInfo.ResourceName, "", obj.GetName())
 }
@@ -1077,7 +1122,11 @@ func (obj *SClusterResourceBase) UpdateRemoteObject(remoteObj interface{}) (inte
 	if err != nil {
 		return nil, errors.Wrapf(err, "get %s/%s cluster client", obj.Keyword(), obj.GetName())
 	}
-	resInfo := obj.GetClusterModelManager().GetK8sResourceInfo()
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := obj.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 	k8sCli := cli.GetHandler()
 	return k8sCli.UpdateV2(resInfo.ResourceName, remoteObj.(runtime.Object))
 }
@@ -1100,7 +1149,11 @@ func (obj *SClusterResourceBase) DeleteRemoteObject() error {
 	if err != nil {
 		return errors.Wrapf(err, "get %s/%s cluster client", obj.Keyword(), obj.GetName())
 	}
-	resInfo := obj.GetClusterModelManager().GetK8sResourceInfo()
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return err
+	}
+	resInfo := obj.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 	if err := cli.GetHandler().Delete(resInfo.ResourceName, "", obj.GetName(), &metav1.DeleteOptions{}); err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil

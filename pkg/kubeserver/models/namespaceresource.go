@@ -292,17 +292,25 @@ func (res *SNamespaceResourceBase) GetRemoteObject() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "get namespace")
 	}
-	resInfo := res.GetClusterModelManager().GetK8sResourceInfo()
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := res.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 	k8sCli := cli.GetHandler()
 	return k8sCli.Get(resInfo.ResourceName, ns.GetName(), res.GetName())
 }
 
 func (res *SNamespaceResourceBase) DeleteRemoteObject() error {
-	resInfo := res.GetClusterModelManager().GetK8sResourceInfo()
 	cli, err := res.GetClusterClient()
 	if err != nil {
 		return err
 	}
+	serverVersion, err := cli.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return err
+	}
+	resInfo := res.GetClusterModelManager().GetK8sResourceInfo(serverVersion)
 	ns, err := res.GetNamespace()
 	if err != nil {
 		return errors.Wrap(err, "get namespace")

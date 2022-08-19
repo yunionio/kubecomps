@@ -197,12 +197,13 @@ func (h *resourceHandler) Get(kind string, namespace string, name string) (runti
 	if !ok {
 		return nil, fmt.Errorf("Resource kind (%s) not support yet.", kind)
 	}
-	genericInformer, err := h.cacheFactory.sharedInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
-	if err != nil {
-		return nil, err
-	}
+	genericInformer := h.cacheFactory.dynamicInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
+	//if err != nil {
+	//	return nil, err
+	//}
 	lister := genericInformer.Lister()
 	var result runtime.Object
+	var err error
 	if resource.Namespaced {
 		result, err = lister.ByNamespace(namespace).Get(name)
 		if err != nil {
@@ -262,10 +263,10 @@ func (h *resourceHandler) List(kind string, namespace string, labelSelector stri
 	if !ok {
 		return nil, fmt.Errorf("Resource kind (%s) not support yet.", kind)
 	}
-	genericInformer, err := h.cacheFactory.sharedInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
-	if err != nil {
-		return nil, err
-	}
+	genericInformer := h.cacheFactory.dynamicInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
+	//if err != nil {
+	//	return nil, err
+	//}
 	selectors, err := labels.Parse(labelSelector)
 	if err != nil {
 		log.Errorf("Build label selector error: %v.", err)

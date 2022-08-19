@@ -251,8 +251,12 @@ func fetchK8SModel(
 	query *jsonutils.JSONDict,
 ) (IK8sModel, error) {
 	cluster := ctx.Cluster()
+	version, err := cluster.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
 	cli := cluster.GetHandler()
-	resInfo := man.GetK8sResourceInfo()
+	resInfo := man.GetK8sResourceInfo(version)
 	obj, err := cli.Get(resInfo.ResourceName, namespace, id)
 	if err != nil {
 		return nil, err
@@ -265,7 +269,11 @@ func fetchK8SModel(
 }
 
 func NewK8SModelObjectByName(man IK8sModelManager, cluster ICluster, namespace, name string) (IK8sModel, error) {
-	kind := man.GetK8sResourceInfo().ResourceName
+	version, err := cluster.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	kind := man.GetK8sResourceInfo(version).ResourceName
 	obj, err := cluster.GetHandler().Get(kind, namespace, name)
 	if err != nil {
 		return nil, err
@@ -278,7 +286,11 @@ func NewK8SModelObject(man IK8sModelManager, cluster ICluster, obj runtime.Objec
 	if !ok {
 		return nil, db.ErrInconsistentDataType
 	}
-	newObj := man.GetK8sResourceInfo().Object.DeepCopyObject()
+	version, err := cluster.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	newObj := man.GetK8sResourceInfo(version).Object.DeepCopyObject()
 	switch obj.(type) {
 	case *unstructured.Unstructured:
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.(*unstructured.Unstructured).Object, newObj); err != nil {
@@ -428,7 +440,11 @@ func doCreateItem(
 	if err != nil {
 		return nil, k8serrors.NewGeneralError(err)
 	}
-	resInfo := man.GetK8sResourceInfo()
+	version, err := cluster.GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := man.GetK8sResourceInfo(version)
 	obj, err := NewK8SRawObjectForCreate(man, ctx, dataDict)
 	if err != nil {
 		return nil, k8serrors.NewGeneralError(err)
@@ -474,7 +490,11 @@ func doUpdateItem(
 		return nil, err
 	}
 	cli := ctx.Cluster().GetHandler()
-	resInfo := manager.GetK8sResourceInfo()
+	version, err := model.GetCluster().GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := manager.GetK8sResourceInfo(version)
 	_, err = cli.UpdateV2(resInfo.ResourceName, rawObj)
 	if err != nil {
 		return nil, err
@@ -515,7 +535,11 @@ func DoDelete(
 		return err
 	}
 	cli := ctx.Cluster().GetHandler()
-	resInfo := man.GetK8sResourceInfo()
+	version, err := model.GetCluster().GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return err
+	}
+	resInfo := man.GetK8sResourceInfo(version)
 
 	if err := cli.Delete(resInfo.ResourceName, meta.GetNamespace(), meta.GetName(), &metav1.DeleteOptions{}); err != nil {
 		return err
@@ -539,7 +563,11 @@ func (h *K8SModelHandler) UpdateRawData(ctx *RequestContext, id string, query, d
 		return nil, err
 	}
 	cli := ctx.Cluster().GetHandler()
-	resInfo := h.modelManager.GetK8sResourceInfo()
+	version, err := model.GetCluster().GetClientset().Discovery().ServerVersion()
+	if err != nil {
+		return nil, err
+	}
+	resInfo := h.modelManager.GetK8sResourceInfo(version)
 	rawStr, err := data.GetString()
 	if err != nil {
 		return nil, httperrors.NewInputParameterError("Get body raw data: %v", err)
