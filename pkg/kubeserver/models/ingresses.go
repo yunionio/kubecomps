@@ -3,6 +3,10 @@ package models
 import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/kubernetes/pkg/apis/networking"
+	"strconv"
+	"yunion.io/x/kubecomps/pkg/kubeserver/k8s/common/model"
 
 	"yunion.io/x/jsonutils"
 
@@ -45,6 +49,28 @@ type SIngressManager struct {
 
 type SIngress struct {
 	SNamespaceResourceBase
+}
+
+func (m *SIngressManager) GetK8sResourceInfo(serverVersion *version.Info) model.K8sResourceInfo {
+	// Temporary fix
+	if serverVersion != nil {
+		if minor, err := strconv.Atoi(serverVersion.Minor); err == nil && minor >= 21 {
+			return model.K8sResourceInfo{
+				ResourceName: api.ResourceNameIngress,
+				Group:        networking.GroupName,
+				Version:      "v1",
+				KindName:     api.KindNameIngress,
+				Object:       new(networking.Ingress),
+			}
+		}
+	}
+	return model.K8sResourceInfo{
+		ResourceName: api.ResourceNameIngress,
+		Group:        extensions.GroupName,
+		Version:      extensions.SchemeGroupVersion.Version,
+		KindName:     api.KindNameIngress,
+		Object:       new(extensions.Ingress),
+	}
 }
 
 func (m *SIngressManager) NewRemoteObjectForCreate(model IClusterModel, cli *client.ClusterManager, data jsonutils.JSONObject) (interface{}, error) {

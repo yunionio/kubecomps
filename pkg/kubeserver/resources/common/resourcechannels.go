@@ -6,12 +6,13 @@ import (
 	batch "k8s.io/api/batch/v1"
 	batch2 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	v12 "k8s.io/api/networking/v1"
 	rbac "k8s.io/api/rbac/v1"
 	storage "k8s.io/api/storage/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
-
+	"k8s.io/apimachinery/pkg/runtime"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
 	api "yunion.io/x/kubecomps/pkg/kubeserver/types/apis"
 )
@@ -100,7 +101,7 @@ type ResourceChannels struct {
 
 // IngressListChannel is a list and error channels to Ingresss.
 type IngressListChannel struct {
-	List  chan []*extensions.Ingress
+	List  chan []*v12.Ingress
 	Error chan error
 }
 
@@ -110,7 +111,7 @@ func GetIngressListChannel(indexer *client.CacheFactory, nsQuery *NamespaceQuery
 
 func GetIngressListChannelWithOptions(indexer *client.CacheFactory, nsQuery *NamespaceQuery, options metaV1.ListOptions) IngressListChannel {
 	channel := IngressListChannel{
-		List:  make(chan []*extensions.Ingress),
+		List:  make(chan []*v12.Ingress),
 		Error: make(chan error),
 	}
 	go func() {
@@ -177,7 +178,15 @@ func GetNodeListChannel(indexer *client.CacheFactory) NodeListChannel {
 
 	go func() {
 		list, err := indexer.NodeLister().List(labels.Everything())
-		channel.List <- list
+		res := make([]*v1.Node, len(list))
+		for idx, l := range list {
+			newObj := &v1.Node{}
+			if err = runtime.DefaultUnstructuredConverter.FromUnstructured(l.(*unstructured.Unstructured).Object, newObj); err != nil {
+				return
+			}
+			res[idx] = newObj
+		}
+		channel.List <- res
 		channel.Error <- err
 	}()
 
@@ -272,8 +281,16 @@ func GetPodListChannelWithOptions(indexer *client.CacheFactory, nsQuery *Namespa
 	}
 
 	go func() {
-		list, err := indexer.PodLister().Pods(nsQuery.ToRequestParam()).List(options)
-		channel.List <- list
+		list, err := indexer.PodLister().ByNamespace(nsQuery.ToRequestParam()).List(options)
+		res := make([]*v1.Pod, len(list))
+		for idx, l := range list {
+			newObj := &v1.Pod{}
+			if err = runtime.DefaultUnstructuredConverter.FromUnstructured(l.(*unstructured.Unstructured).Object, newObj); err != nil {
+				return
+			}
+			res[idx] = newObj
+		}
+		channel.List <- res
 		channel.Error <- err
 	}()
 
@@ -341,8 +358,16 @@ func GetReplicaSetListChannelWithOptions(indexer *client.CacheFactory, nsQuery *
 	}
 
 	go func() {
-		list, err := indexer.ReplicaSetLister().ReplicaSets(nsQuery.ToRequestParam()).List(options)
-		channel.List <- list
+		list, err := indexer.ReplicaSetLister().ByNamespace(nsQuery.ToRequestParam()).List(options)
+		res := make([]*apps.ReplicaSet, len(list))
+		for idx, l := range list {
+			newObj := &apps.ReplicaSet{}
+			if err = runtime.DefaultUnstructuredConverter.FromUnstructured(l.(*unstructured.Unstructured).Object, newObj); err != nil {
+				return
+			}
+			res[idx] = newObj
+		}
+		channel.List <- res
 		channel.Error <- err
 	}()
 
