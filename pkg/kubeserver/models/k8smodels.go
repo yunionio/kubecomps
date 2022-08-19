@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/version"
 	"reflect"
 
 	"k8s.io/api/core/v1"
@@ -37,14 +38,15 @@ type IK8sModelManager interface {
 	lockman.ILockedClass
 	object.IObject
 
-	GetK8sResourceInfo() model.K8sResourceInfo
+	GetK8sResourceInfo(version *version.Info) model.K8sResourceInfo
 }
 
 func RegisterK8sModelManager(man IK8sModelManager) {
 	if globalK8sModelManagers == nil {
 		globalK8sModelManagers = make(map[model.K8sResourceInfo]IK8sModelManager)
 	}
-	globalK8sModelManagers[man.GetK8sResourceInfo()] = man
+	resInfo := man.GetK8sResourceInfo(nil)
+	globalK8sModelManagers[resInfo] = man
 }
 
 func GetOriginK8sModelManager(kindName string) IK8sModelManager {

@@ -37,7 +37,11 @@ func GetReleaseResources(
 		}
 		keyword := man.Keyword()
 		unstructObj := info.Object.(*unstructured.Unstructured)
-		newObj := man.GetK8sResourceInfo().Object.DeepCopyObject()
+		version, err := clusterMan.GetClientset().Discovery().ServerVersion()
+		if err != nil {
+			return err
+		}
+		newObj := man.GetK8sResourceInfo(version).Object.DeepCopyObject()
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructObj.Object, newObj); err != nil {
 			return err
 		}
