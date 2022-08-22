@@ -177,7 +177,7 @@ func (res *SNamespaceResourceBaseManager) NewFromRemoteObject(
 	ns := remoteObj.(metav1.Object).GetNamespace()
 	localNs, err := GetNamespaceManager().GetByName(userCred, cluster.GetId(), ns)
 	if err != nil {
-		return nil, errors.Wrapf(err, "get local namespace by name %s", ns)
+		return nil, errors.Wrapf(err, "get local namespace by name %s when NewFromRemoteObject", ns)
 	}
 	localObj.SetNamespace(userCred, localNs.(*SNamespace))
 	return localObj, nil
@@ -198,7 +198,7 @@ func (res *SNamespaceResourceBase) UpdateFromRemoteObject(
 	ns := extObj.(metav1.Object).GetNamespace()
 	localNs, err := GetNamespaceManager().GetByName(userCred, cluster.GetId(), ns)
 	if err != nil {
-		return errors.Wrapf(err, "get local namespace by name %s", ns)
+		return errors.Wrapf(err, "get local namespace by name %s when UpdateFromRemoteObject", ns)
 	}
 	res.SetNamespace(userCred, localNs.(*SNamespace))
 	return nil
