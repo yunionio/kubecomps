@@ -210,7 +210,7 @@ func (r *SRepo) GetReleaseCount() (int, error) {
 	return rlsCnt, nil
 }
 
-func (r *SRepo) ValidateDeleteCondition(ctx context.Context) error {
+func (r *SRepo) ValidateDeleteCondition(ctx context.Context, _ jsonutils.JSONObject) error {
 	rlsCnt, err := r.GetReleaseCount()
 	if err != nil {
 		return errors.Wrap(err, "check release count")
