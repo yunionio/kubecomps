@@ -2,6 +2,7 @@ package models
 
 import (
 	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/jsonutils"
@@ -28,10 +29,10 @@ func GetIngressManager() *SIngressManager {
 					"ingress",
 					"ingresses",
 					api.ResourceNameIngress,
-					extensions.GroupName,
-					extensions.SchemeGroupVersion.Version,
+					"",
+					"",
 					api.KindNameIngress,
-					new(extensions.Ingress),
+					new(unstructured.Unstructured),
 				),
 			}
 		}).(*SIngressManager)
@@ -61,11 +62,13 @@ func (m *SIngressManager) NewRemoteObjectForCreate(model IClusterModel, cli *cli
 	return ing, nil
 }
 
-func (obj *SIngress) getEndpoints(ingress *extensions.Ingress) []api.Endpoint {
+func (obj *SIngress) getEndpoints(rObj *unstructured.Unstructured) []api.Endpoint {
 	endpoints := make([]api.Endpoint, 0)
-	if len(ingress.Status.LoadBalancer.Ingress) > 0 {
-		for _, status := range ingress.Status.LoadBalancer.Ingress {
-			endpoint := api.Endpoint{Host: status.IP}
+	ingress, _, _ := unstructured.NestedSlice(rObj.Object, "status", "loadBalancer", "ingress")
+	if len(ingress) > 0 {
+		for _, status := range ingress {
+			ip, _, _ := unstructured.NestedString(status.(map[string]interface{}), "ip")
+			endpoint := api.Endpoint{Host: ip}
 			endpoints = append(endpoints, endpoint)
 		}
 	}
@@ -78,7 +81,7 @@ func (obj *SIngress) GetDetails(
 	k8sObj runtime.Object,
 	isList bool,
 ) interface{} {
-	ing := k8sObj.(*extensions.Ingress)
+	ing := k8sObj.(*unstructured.Unstructured)
 	detail := api.IngressDetailV2{
 		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Endpoints:               obj.getEndpoints(ing),
@@ -86,7 +89,7 @@ func (obj *SIngress) GetDetails(
 	if isList {
 		return detail
 	}
-	detail.Spec = ing.Spec
-	detail.Status = ing.Status
+	detail.Spec, _, _ = unstructured.NestedMap(ing.Object, "spec")
+	detail.Status, _, _ = unstructured.NestedMap(ing.Object, "status")
 	return detail
 }
