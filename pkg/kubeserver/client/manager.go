@@ -3,7 +3,10 @@ package client
 import (
 	"sync"
 
-	"k8s.io/apimachinery/pkg/api/meta"
+	// "k8s.io/apimachinery/pkg/api/meta"
+	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/restmapper"
 
@@ -11,6 +14,7 @@ import (
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
+	capi "yunion.io/x/kubecomps/pkg/kubeserver/client/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/clientv2"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
 )
@@ -128,6 +132,42 @@ func (m *ClustersManager) RemoveClient(clusterId string) error {
 	return nil
 }
 
+func (m *ClustersManager) parseAPIResources(dc discovery.DiscoveryInterface) ([]capi.ResourceMap, error) {
+	lists, err := dc.ServerPreferredResources()
+	if err != nil {
+		return nil, errors.Wrapf(err, "ServerPreferredResources for discovery client")
+	}
+	resources := []capi.ResourceMap{}
+	for _, list := range lists {
+		if len(list.APIResources) == 0 {
+			continue
+		}
+		gv, err := schema.ParseGroupVersion(list.GroupVersion)
+		if err != nil {
+			log.Errorf("ParseGroupVersion %q", list.GroupVersion)
+			continue
+		}
+		for _, resource := range list.APIResources {
+			if len(resource.Verbs) == 0 {
+				continue
+			}
+			res := capi.ResourceMap{
+				Namespaced: resource.Namespaced,
+				GroupVersionResourceKind: capi.GroupVersionResourceKind{
+					GroupVersionResource: schema.GroupVersionResource{
+						Group:    gv.Group,
+						Version:  gv.Version,
+						Resource: resource.Name,
+					},
+					Kind: resource.Kind,
+				},
+			}
+			resources = append(resources, res)
+		}
+	}
+	return resources, nil
+}
+
 func (m *ClustersManager) buildManager(dbCluster manager.ICluster) (*ClusterManager, error) {
 	clusterName := dbCluster.GetName()
 	apiServer, err := dbCluster.GetAPIServer()
@@ -147,6 +187,10 @@ func (m *ClustersManager) buildManager(dbCluster manager.ICluster) (*ClusterMana
 		return nil, errors.Wrapf(err, "build cluster %s kubeconfig path", clusterName)
 	}
 	dc := clientSet.Discovery()
+	resources, err := m.parseAPIResources(dc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parseAPIResources for cluster %s", clusterName)
+	}
 	restMapperRes, err := restmapper.GetAPIGroupResources(dc)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get cluster %s api group resources", clusterName)
@@ -156,7 +200,7 @@ func (m *ClustersManager) buildManager(dbCluster manager.ICluster) (*ClusterMana
 	if err != nil {
 		return nil, errors.Wrapf(err, "build cluster %s dynamic client", clusterName)
 	}
-	cacheFactory, err := buildCacheController(dbCluster, clientSet, dclient, restMapper.(meta.PriorityRESTMapper))
+	cacheFactory, err := buildCacheController(dbCluster, clientSet, dclient, resources)
 	if err != nil {
 		return nil, errors.Wrapf(err, "build cluster %s cache controller", clusterName)
 	}

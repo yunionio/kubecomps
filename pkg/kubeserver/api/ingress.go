@@ -32,10 +32,10 @@ type IngressDetailV2 struct {
 
 	// TODO: replace this with UI specific fields.
 	// Spec is the desired state of the Ingress.
-	Spec extensions.IngressSpec `json:"spec"`
+	Spec interface{} `json:"spec"`
 
 	// Status is the current state of the Ingress.
-	Status extensions.IngressStatus `json:"status"`
+	Status interface{} `json:"status"`
 }
 
 type IngressCreateInput struct {

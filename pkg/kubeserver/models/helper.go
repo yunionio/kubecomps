@@ -255,11 +255,18 @@ func GetChartRawFiles(chObj *chart.Chart) []*chart.File {
 
 func GetK8SObjectTypeMeta(kObj runtime.Object) metav1.TypeMeta {
 	v := reflect.ValueOf(kObj)
-	f := reflect.Indirect(v).FieldByName("TypeMeta")
-	if !f.IsValid() {
-		panic(fmt.Sprintf("get invalid object meta %#v", kObj))
+	if uObj, ok := kObj.(*unstructured.Unstructured); ok {
+		return metav1.TypeMeta{
+			APIVersion: uObj.GetAPIVersion(),
+			Kind:       uObj.GetKind(),
+		}
+	} else {
+		f := reflect.Indirect(v).FieldByName("TypeMeta")
+		if !f.IsValid() {
+			panic(fmt.Sprintf("get invalid object meta %#v", kObj))
+		}
+		return f.Interface().(metav1.TypeMeta)
 	}
-	return f.Interface().(metav1.TypeMeta)
 }
 
 func K8SObjectToJSONObject(obj runtime.Object) jsonutils.JSONObject {
