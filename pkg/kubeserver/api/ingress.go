@@ -39,7 +39,7 @@ type IngressDetailV2 struct {
 	Status extensions.IngressStatus `json:"status"`
 }
 
-type IngressDetailNew struct {
+type IngressDetailV3 struct {
 	NamespaceResourceDetail
 	// External endpoints of this ingress.
 	Endpoints []Endpoint `json:"endpoints,allowempty"`
@@ -62,7 +62,7 @@ type IngressCreateInputV2 struct {
 	extensions.IngressSpec
 }
 
-type IngressCreateInputNew struct {
+type IngressCreateInputV3 struct {
 	NamespaceResourceCreateInput
 	networking.IngressSpec
 }
