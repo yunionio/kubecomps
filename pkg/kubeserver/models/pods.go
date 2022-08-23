@@ -414,7 +414,12 @@ func (m *SPodManager) NewFromRemoteObject(ctx context.Context, userCred mcclient
 	if err != nil {
 		return nil, err
 	}
-	kPod := obj.(*v1.Pod)
+	var kPod v1.Pod
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(obj.(*unstructured.Unstructured).Object, &kPod)
+	if err != nil {
+		return nil, err
+	}
 	podObj := model.(*SPod)
 	nodeName := kPod.Spec.NodeName
 	if nodeName != "" {
@@ -479,8 +484,14 @@ func (p *SPod) UpdateFromRemoteObject(ctx context.Context, userCred mcclient.Tok
 	if err := p.SNamespaceResourceBase.UpdateFromRemoteObject(ctx, userCred, extObj); err != nil {
 		return err
 	}
-	k8sPod := extObj.(*v1.Pod)
-	reqs, limits, err := PodRequestsAndLimits(k8sPod)
+	var k8sPod v1.Pod
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &k8sPod)
+	if err != nil {
+		return err
+	}
+
+	reqs, limits, err := PodRequestsAndLimits(&k8sPod)
 	if err != nil {
 		return errors.Wrap(err, "get pod resource requests and limits")
 	}
@@ -494,8 +505,13 @@ func (p *SPod) UpdateFromRemoteObject(ctx context.Context, userCred mcclient.Tok
 }
 
 func (p *SPod) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
-	k8sPod := extObj.(*v1.Pod)
-	status := getters.GetPodStatus(k8sPod)
+	var k8sPod v1.Pod
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &k8sPod)
+	if err != nil {
+		return err
+	}
+	status := getters.GetPodStatus(&k8sPod)
 	if status.Status != p.Status {
 		p.Status = status.Status
 	}

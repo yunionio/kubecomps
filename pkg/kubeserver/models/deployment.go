@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -142,12 +143,17 @@ func (obj *SDeployment) SetStatusByRemoteObject(ctx context.Context, userCred mc
 	if err != nil {
 		return errors.Wrap(err, "get deployment cluster client")
 	}
-	deploy := extObj.(*apps.Deployment)
-	podInfo, err := obj.GetPodInfo(cli, deploy)
+	var deploy apps.Deployment
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &deploy)
+	if err != nil {
+		return err
+	}
+	podInfo, err := obj.GetPodInfo(cli, &deploy)
 	if err != nil {
 		return errors.Wrap(err, "get pod info")
 	}
-	deployStatus := getters.GetDeploymentStatus(podInfo, *deploy)
+	deployStatus := getters.GetDeploymentStatus(podInfo, deploy)
 	return obj.SetStatus(userCred, deployStatus.Status, "update from remote")
 }
 

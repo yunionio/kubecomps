@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -163,12 +164,17 @@ func (obj *SDaemonSet) SetStatusByRemoteObject(ctx context.Context, userCred mcc
 	if err != nil {
 		return errors.Wrap(err, "get daemonset cluster client")
 	}
-	ds := extObj.(*apps.DaemonSet)
-	podInfo, err := obj.GetPodInfo(cli, ds)
+	var ds apps.DaemonSet
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &ds)
+	if err != nil {
+		return err
+	}
+	podInfo, err := obj.GetPodInfo(cli, &ds)
 	if err != nil {
 		return errors.Wrap(err, "get pod info")
 	}
-	status := getters.GetDaemonsetStatus(podInfo, *ds)
+	status := getters.GetDaemonsetStatus(podInfo, ds)
 	return obj.SetStatus(userCred, status.Status, "update from remote")
 }
 

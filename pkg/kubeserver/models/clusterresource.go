@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/version"
 	"strconv"
 	"strings"
@@ -673,20 +672,20 @@ func (m *SClusterResourceBaseManager) ListRemoteObjects(clsCli *client.ClusterMa
 	resInfo := m.GetK8sResourceInfo(version)
 	log.Infof("List remote object %v, server version %v.%v, resource gvr: %v, %v, %v",
 		resInfo.KindName, version.Major, version.Minor, resInfo.Group, resInfo.Version, resInfo.ResourceName)
-
-	// TODO: Use generic lister to replace it:)
-	if resInfo.KindName == api.KindNameClusterRoleBinding || resInfo.KindName == api.KindNameRoleBinding {
-		k8sCli := clsCli.GetHandler()
-		objs, err := k8sCli.List(resInfo.ResourceName, "", labels.Everything().String())
-		if err != nil {
-			return nil, errors.Wrapf(err, "list k8s %s remote objects", resInfo.KindName)
-		}
-		ret := make([]interface{}, len(objs))
-		for i := range objs {
-			ret[i] = objs[i]
-		}
-		return ret, nil
-	}
+	//
+	//// TODO: Use generic lister to replace it:)
+	//if resInfo.KindName == api.KindNameClusterRoleBinding || resInfo.KindName == api.KindNameRoleBinding {
+	//	k8sCli := clsCli.GetHandler()
+	//	objs, err := k8sCli.List(resInfo.ResourceName, "", labels.Everything().String())
+	//	if err != nil {
+	//		return nil, errors.Wrapf(err, "list k8s %s remote objects", resInfo.KindName)
+	//	}
+	//	ret := make([]interface{}, len(objs))
+	//	for i := range objs {
+	//		ret[i] = objs[i]
+	//	}
+	//	return ret, nil
+	//}
 
 	cli := clsCli.GetClient()
 	objs, err := cli.K8S().List(resInfo.Group, resInfo.Version, resInfo.KindName, "")
@@ -695,12 +694,8 @@ func (m *SClusterResourceBaseManager) ListRemoteObjects(clsCli *client.ClusterMa
 	}
 
 	ret := make([]interface{}, len(objs))
-	for i := range objs {
-		newObj := resInfo.Object.DeepCopyObject()
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(objs[i].(*unstructured.Unstructured).Object, newObj); err != nil {
-			return nil, errors.Wrap(err, "convert from unstructured")
-		}
-		ret[i] = newObj
+	for i, obj := range objs {
+		ret[i] = obj
 	}
 	return ret, nil
 }

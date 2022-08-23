@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -241,16 +242,26 @@ func (node *SNode) UpdateFromRemoteObject(ctx context.Context, userCred mcclient
 	if err := node.SClusterResourceBase.UpdateFromRemoteObject(ctx, userCred, extObj); err != nil {
 		return err
 	}
-	k8sNode := extObj.(*v1.Node)
+	var k8sNode v1.Node
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &k8sNode)
+	if err != nil {
+		return err
+	}
 	node.Address = jsonutils.Marshal(k8sNode.Status.Addresses)
 	node.NodeInfo = jsonutils.Marshal(k8sNode.Status.NodeInfo)
-	node.updateCapacity(k8sNode)
+	node.updateCapacity(&k8sNode)
 	return nil
 }
 
 func (node *SNode) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
-	k8sNode := extObj.(*v1.Node)
-	node.Status = node.getStatusFromRemote(k8sNode)
+	var k8sNode v1.Node
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &k8sNode)
+	if err != nil {
+		return err
+	}
+	node.Status = node.getStatusFromRemote(&k8sNode)
 	return nil
 }
 

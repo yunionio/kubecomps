@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -183,7 +184,13 @@ func (obj *SPVC) GetRawPods(cli *client.ClusterManager, rawObj runtime.Object) (
 }
 
 func (obj *SPVC) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
-	status := string(extObj.(*v1.PersistentVolumeClaim).Status.Phase)
+	var pvc v1.PersistentVolumeClaim
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &pvc)
+	if err != nil {
+		return err
+	}
+	status := string(pvc.Status.Phase)
 	obj.Status = status
 	return nil
 }

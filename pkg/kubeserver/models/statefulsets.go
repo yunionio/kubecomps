@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -188,11 +189,16 @@ func (obj *SStatefulSet) SetStatusByRemoteObject(ctx context.Context, userCred m
 	if err != nil {
 		return errors.Wrap(err, "get statefulset cluster client")
 	}
-	ss := extObj.(*apps.StatefulSet)
-	podInfo, err := obj.GetPodInfo(cli, ss)
+	var ss apps.StatefulSet
+	err = runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &ss)
+	if err != nil {
+		return err
+	}
+	podInfo, err := obj.GetPodInfo(cli, &ss)
 	if err != nil {
 		return errors.Wrap(err, "get pod info")
 	}
-	statefulSetStatus := *getters.GetStatefulSetStatus(podInfo, *ss)
+	statefulSetStatus := *getters.GetStatefulSetStatus(podInfo, ss)
 	return obj.SetStatus(userCred, statefulSetStatus.Status, "update from remote")
 }

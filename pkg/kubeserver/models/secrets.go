@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -202,7 +203,12 @@ func (s *SSecret) UpdateFromRemoteObject(ctx context.Context, userCred mcclient.
 	if err := s.SNamespaceResourceBase.UpdateFromRemoteObject(ctx, userCred, extObj); err != nil {
 		return err
 	}
-	rawSec := extObj.(*v1.Secret)
+	var rawSec v1.Secret
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &rawSec)
+	if err != nil {
+		return err
+	}
 	s.Type = string(rawSec.Type)
 	return nil
 }

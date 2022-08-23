@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -144,7 +145,13 @@ func (ns *SNamespace) UpdateFromRemoteObject(ctx context.Context, userCred mccli
 }
 
 func (ns *SNamespace) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
-	k8sNsStatus := string(extObj.(*v1.Namespace).Status.Phase)
+	var k8sNs v1.Namespace
+	err := runtime.DefaultUnstructuredConverter.
+		FromUnstructured(extObj.(*unstructured.Unstructured).Object, &k8sNs)
+	if err != nil {
+		return err
+	}
+	k8sNsStatus := string(k8sNs.Status.Phase)
 	ns.Status = k8sNsStatus
 	return nil
 }

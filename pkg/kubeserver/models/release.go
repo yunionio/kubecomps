@@ -377,6 +377,7 @@ func (r *SRelease) UpdateFromRemoteObject(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	extObj interface{}) error {
+	// from NewHelmClient, convert directly
 	rls := extObj.(*release.Release)
 	if r.GetName() != rls.Name {
 		r.SetName(rls.Name)

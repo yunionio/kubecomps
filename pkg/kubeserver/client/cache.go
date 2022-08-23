@@ -7,7 +7,6 @@ import (
 	version2 "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	apps "k8s.io/client-go/listers/apps/v1"
 	autoscalingv1 "k8s.io/client-go/listers/autoscaling/v1"
@@ -36,9 +35,9 @@ var (
 )
 
 type CacheFactory struct {
-	versionInfo            *version2.Info
-	stopChan               chan struct{}
-	sharedInformerFactory  informers.SharedInformerFactory
+	versionInfo *version2.Info
+	stopChan    chan struct{}
+	// sharedInformerFactory  informers.SharedInformerFactory
 	dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory
 	bidirectionalSync      bool
 }
