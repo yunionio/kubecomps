@@ -255,6 +255,7 @@ func fetchK8SModel(
 	if err != nil {
 		return nil, err
 	}
+
 	cli := cluster.GetHandler()
 	resInfo := man.GetK8sResourceInfo(version)
 	obj, err := cli.Get(resInfo.ResourceName, namespace, id)

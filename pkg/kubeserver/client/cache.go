@@ -117,8 +117,8 @@ func (c *CacheFactory) PodLister() cache.GenericLister {
 	return c.dynamicInformerFactory.ForResource(api.GetResourceMapByVersion(api1.ResourceNamePod, c.versionInfo).GroupVersionResourceKind.GroupVersionResource).Lister()
 }
 
-func (c *CacheFactory) EventLister() v1.EventLister {
-	return v1.NewEventLister(c.dynamicInformerFactory.ForResource(api.GetResourceMapByVersion(api1.ResourceNameEvent, c.versionInfo).GroupVersionResourceKind.GroupVersionResource).Informer().GetIndexer())
+func (c *CacheFactory) EventLister() cache.GenericLister {
+	return c.dynamicInformerFactory.ForResource(api.GetResourceMapByVersion(api1.ResourceNameEvent, c.versionInfo).GroupVersionResourceKind.GroupVersionResource).Lister()
 }
 
 func (c *CacheFactory) ConfigMapLister() v1.ConfigMapLister {

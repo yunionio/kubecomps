@@ -230,8 +230,16 @@ func GetEventListChannelWithOptions(indexer *client.CacheFactory,
 	}
 
 	go func() {
-		list, err := indexer.EventLister().Events(nsQuery.ToRequestParam()).List(options)
-		channel.List <- list
+		list, err := indexer.EventLister().ByNamespace(nsQuery.ToRequestParam()).List(options)
+		res := make([]*v1.Event, len(list))
+		for idx, l := range list {
+			newObj := &v1.Event{}
+			if err = runtime.DefaultUnstructuredConverter.FromUnstructured(l.(*unstructured.Unstructured).Object, newObj); err != nil {
+				return
+			}
+			res[idx] = newObj
+		}
+		channel.List <- res
 		channel.Error <- err
 	}()
 

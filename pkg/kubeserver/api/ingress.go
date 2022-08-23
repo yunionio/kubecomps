@@ -2,6 +2,7 @@ package api
 
 import (
 	extensions "k8s.io/api/extensions/v1beta1"
+	"k8s.io/kubernetes/pkg/apis/networking"
 )
 
 type Ingress struct {
@@ -38,6 +39,19 @@ type IngressDetailV2 struct {
 	Status extensions.IngressStatus `json:"status"`
 }
 
+type IngressDetailNew struct {
+	NamespaceResourceDetail
+	// External endpoints of this ingress.
+	Endpoints []Endpoint `json:"endpoints,allowempty"`
+
+	// TODO: replace this with UI specific fields.
+	// Spec is the desired state of the Ingress.
+	Spec networking.IngressSpec `json:"spec"`
+
+	// Status is the current state of the Ingress.
+	Status networking.IngressStatus `json:"status"`
+}
+
 type IngressCreateInput struct {
 	K8sNamespaceResourceCreateInput
 	extensions.IngressSpec
@@ -46,4 +60,9 @@ type IngressCreateInput struct {
 type IngressCreateInputV2 struct {
 	NamespaceResourceCreateInput
 	extensions.IngressSpec
+}
+
+type IngressCreateInputNew struct {
+	NamespaceResourceCreateInput
+	networking.IngressSpec
 }

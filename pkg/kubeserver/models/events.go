@@ -1,6 +1,7 @@
 package models
 
 import (
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/version"
 	"sort"
 	"strings"
@@ -269,7 +270,19 @@ func (m SEventManager) GetAllRawEvents(cluster model.ICluster) ([]*v1.Event, err
 
 func (m SEventManager) GetRawEvents(cluster model.ICluster, ns string) ([]*v1.Event, error) {
 	indexer := cluster.GetHandler().GetIndexer()
-	return indexer.EventLister().Events(ns).List(labels.Everything())
+	list, err := indexer.EventLister().ByNamespace(ns).List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*v1.Event, len(list))
+	for idx, l := range list {
+		newObj := &v1.Event{}
+		if err = runtime.DefaultUnstructuredConverter.FromUnstructured(l.(*unstructured.Unstructured).Object, newObj); err != nil {
+			return nil, err
+		}
+		res[idx] = newObj
+	}
+	return res, nil
 }
 
 func (m SEventManager) GetEventsByUID(cluster model.ICluster, uId types.UID) ([]*api.Event, error) {
