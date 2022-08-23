@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
+	// "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	// "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
@@ -15,11 +16,12 @@ import (
 	batch "k8s.io/client-go/listers/batch/v1"
 	batch2 "k8s.io/client-go/listers/batch/v1beta1"
 	"k8s.io/client-go/listers/core/v1"
-	extensions "k8s.io/client-go/listers/extensions/v1beta1"
+	// extensions "k8s.io/client-go/listers/extensions/v1beta1"
 	rbac "k8s.io/client-go/listers/rbac/v1"
 	storage "k8s.io/client-go/listers/storage/v1"
-	"k8s.io/client-go/tools/cache"
+	cache "k8s.io/client-go/tools/cache"
 
+	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
@@ -27,7 +29,7 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	"yunion.io/x/pkg/errors"
 
-	// kapi "yunion.io/x/kubecomps/pkg/kubeserver/api"
+	kapi "yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
 )
@@ -41,13 +43,14 @@ type CacheFactory struct {
 	sharedInformerFactory  informers.SharedInformerFactory
 	dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory
 	bidirectionalSync      bool
+	gvkrs                  []api.ResourceMap
 }
 
 func buildCacheController(
 	cluster manager.ICluster,
 	client *kubernetes.Clientset,
 	dynamicClient dynamic.Interface,
-	restMapper meta.PriorityRESTMapper,
+	resources []api.ResourceMap,
 ) (*CacheFactory, error) {
 	stop := make(chan struct{})
 	cacheF := &CacheFactory{
@@ -57,7 +60,7 @@ func buildCacheController(
 	// sharedInformerFactory := informers.NewSharedInformerFactory(client, defaultResyncPeriod)
 	sharedInformerFactory := informers.NewSharedInformerFactory(client, 0)
 	// dynamicInformerFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, defaultResyncPeriod)
-	// dynamicInformerFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 0)
+	dynamicInformerFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 0)
 
 	// Start all Resources defined in KindToResourceMap
 	informerSyncs := make([]cache.InformerSynced, 0)
@@ -72,29 +75,37 @@ func buildCacheController(
 			genericInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
 			informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
 		}
-		// go genericInformer.Informer().Run(stop)
+		go genericInformer.Informer().Run(stop)
 	}
 
 	// Start all dynamic rest mapper resource
-	/*for _, res := range restMapper.ResourcePriority {
+	for _, resource := range resources {
+		res := resource.GroupVersionResourceKind.GroupVersionResource
+		kind := resource.GroupVersionResourceKind.Kind
+		if kind != kapi.KindNameIngress {
+			log.Errorf("==skip res: %#v", res)
+			continue
+		}
+		resMan := cluster.GetK8sResourceManager(kind)
+		log.Errorf("======res for ingress: %#v, cluster: %q", res, cluster.GetName())
 		genericInformer := dynamicInformerFactory.ForResource(res)
-		informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
-		genericInformer.Informer().AddEventHandler(
-			cache.ResourceEventHandlerFuncs{
-				AddFunc:    nil,
-				UpdateFunc: nil,
-				DeleteFunc: nil,
-			})
-		// go genericInformer.Informer().Run(stop)
-	}*/
+		if resMan != nil {
+			// register informer event handler
+			genericInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
+			informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
+		}
+		go genericInformer.Informer().Run(stop)
+	}
 
 	sharedInformerFactory.Start(stop)
-	//dynamicInformerFactory.Start(stop)
+	dynamicInformerFactory.Start(stop)
 
 	if !cache.WaitForCacheSync(stop, informerSyncs...) {
 		return nil, errors.Errorf("informers not synced")
 	}
 	cacheF.sharedInformerFactory = sharedInformerFactory
+	cacheF.dynamicInformerFactory = dynamicInformerFactory
+	cacheF.gvkrs = resources
 	return cacheF, nil
 }
 
@@ -138,8 +149,20 @@ func (c *CacheFactory) HPALister() autoscalingv1.HorizontalPodAutoscalerLister {
 	return c.sharedInformerFactory.Autoscaling().V1().HorizontalPodAutoscalers().Lister()
 }
 
-func (c *CacheFactory) IngressLister() extensions.IngressLister {
-	return c.sharedInformerFactory.Extensions().V1beta1().Ingresses().Lister()
+func (c *CacheFactory) GetGVKR(kindName string) *api.ResourceMap {
+	for _, r := range c.gvkrs {
+		if r.GroupVersionResourceKind.Kind == kindName || r.GroupVersionResourceKind.Resource == kindName {
+			return &r
+		}
+	}
+	log.Errorf("Not find by kind: %q", kindName)
+	return nil
+}
+
+func (c *CacheFactory) IngressLister() cache.GenericLister {
+	// return c.sharedInformerFactory.Extensions().V1beta1().Ingresses().Lister()
+	gvkr := c.GetGVKR(kapi.KindNameIngress)
+	return c.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource).Lister()
 }
 
 func (c *CacheFactory) ServiceLister() v1.ServiceLister {

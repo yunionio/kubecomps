@@ -6,14 +6,14 @@ import (
 	batch "k8s.io/api/batch/v1"
 	batch2 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	// extensions "k8s.io/api/extensions/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
 	storage "k8s.io/api/storage/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	// metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
-	api "yunion.io/x/kubecomps/pkg/kubeserver/types/apis"
+	// api "yunion.io/x/kubecomps/pkg/kubeserver/types/apis"
 )
 
 // ResourceChannels struct holds channels to resource lists. Each list channel is paired with
@@ -43,8 +43,8 @@ type ResourceChannels struct {
 	// List and error channels to Endpoints.
 	EndpointList EndpointListChannel
 
-	// List and error channels to Ingresses.
-	IngressList IngressListChannel
+	// // List and error channels to Ingresses.
+	// IngressList IngressListChannel
 
 	// List and error channels to Pods
 	PodList PodListChannel
@@ -98,30 +98,30 @@ type ResourceChannels struct {
 	ClusterRoleBindingList ClusterRoleBindingListChannel
 }
 
-// IngressListChannel is a list and error channels to Ingresss.
-type IngressListChannel struct {
-	List  chan []*extensions.Ingress
-	Error chan error
-}
-
-func GetIngressListChannel(indexer *client.CacheFactory, nsQuery *NamespaceQuery) IngressListChannel {
-	return GetIngressListChannelWithOptions(indexer, nsQuery, api.ListEverything)
-}
-
-func GetIngressListChannelWithOptions(indexer *client.CacheFactory, nsQuery *NamespaceQuery, options metaV1.ListOptions) IngressListChannel {
-	channel := IngressListChannel{
-		List:  make(chan []*extensions.Ingress),
-		Error: make(chan error),
-	}
-	go func() {
-		list, err := indexer.IngressLister().Ingresses(nsQuery.ToRequestParam()).List(labels.Everything())
-		channel.List <- list
-		channel.Error <- err
-	}()
-
-	return channel
-}
-
+// // IngressListChannel is a list and error channels to Ingresss.
+//
+//	type IngressListChannel struct {
+//		List  chan []*extensions.Ingress
+//		Error chan error
+//	}
+//
+//	func GetIngressListChannel(indexer *client.CacheFactory, nsQuery *NamespaceQuery) IngressListChannel {
+//		return GetIngressListChannelWithOptions(indexer, nsQuery, api.ListEverything)
+//	}
+//
+//	func GetIngressListChannelWithOptions(indexer *client.CacheFactory, nsQuery *NamespaceQuery, options metaV1.ListOptions) IngressListChannel {
+//		channel := IngressListChannel{
+//			List:  make(chan []*extensions.Ingress),
+//			Error: make(chan error),
+//		}
+//		go func() {
+//			list, err := indexer.IngressLister().Ingresses(nsQuery.ToRequestParam()).List(labels.Everything())
+//			channel.List <- list
+//			channel.Error <- err
+//		}()
+//
+//		return channel
+//	}
 type ServiceListChannel struct {
 	List  chan []*v1.Service
 	Error chan error

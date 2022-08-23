@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 
 	"yunion.io/x/log"
@@ -193,14 +194,11 @@ func (h *resourceHandler) Delete(kind string, namespace string, name string, opt
 
 // Get object from cache
 func (h *resourceHandler) Get(kind string, namespace string, name string) (runtime.Object, error) {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet.", kind)
-	}
-	genericInformer, err := h.cacheFactory.sharedInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
+	genericInformer, resource, err := h.getGenericInformer(kind)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getGenericInformer when get")
 	}
+
 	lister := genericInformer.Lister()
 	var result runtime.Object
 	if resource.Namespaced {
@@ -256,16 +254,39 @@ func (h *resourceHandler) DynamicGet(gvk schema.GroupVersionKind, namespace stri
 	return result, nil
 }
 
+func (h *resourceHandler) getGenericInformer(kind string) (informers.GenericInformer, api.ResourceMap, error) {
+	var (
+		genericInformer informers.GenericInformer
+		resource        api.ResourceMap
+		err             error
+		ok              bool
+	)
+
+	resource, ok = api.KindToResourceMap[kind]
+	if !ok {
+		gvkr := h.cacheFactory.GetGVKR(kind)
+		if gvkr == nil {
+			return nil, resource, fmt.Errorf("Resource kind (%s) not support yet.", kind)
+		}
+		resource = *gvkr
+		genericInformer = h.cacheFactory.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource)
+	} else {
+		gvr := resource.GroupVersionResourceKind.GroupVersionResource
+		genericInformer, err = h.cacheFactory.sharedInformerFactory.ForResource(gvr)
+		if err != nil {
+			return nil, resource, errors.Wrapf(err, "sharedInformerFactory for resource: %#v", gvr)
+		}
+	}
+	return genericInformer, resource, err
+}
+
 // Get object from cache
 func (h *resourceHandler) List(kind string, namespace string, labelSelector string) ([]runtime.Object, error) {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet.", kind)
-	}
-	genericInformer, err := h.cacheFactory.sharedInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
+	genericInformer, resource, err := h.getGenericInformer(kind)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getGenericInformer when list")
 	}
+
 	selectors, err := labels.Parse(labelSelector)
 	if err != nil {
 		log.Errorf("Build label selector error: %v.", err)
