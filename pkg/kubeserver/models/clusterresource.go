@@ -259,14 +259,14 @@ func FetchClusterResourceByName(manager IClusterModelManager, userCred mcclient.
 	if err != nil {
 		return nil, errors.Wrap(err, "first count with error")
 	}
-	if count > 0 && userCred != nil {
-		q = manager.FilterByOwner(q, userCred, manager.NamespaceScope())
-		//q = manager.FilterBySystemAttributes(q, nil, nil, manager.ResourceScope())
-		count, err = q.CountWithError()
-		if err != nil {
-			return nil, errors.Wrap(err, "filter by owner")
-		}
-	}
+	// if count > 0 && userCred != nil {
+	// 	q = manager.FilterByOwner(q, userCred, manager.NamespaceScope())
+	// 	//q = manager.FilterBySystemAttributes(q, nil, nil, manager.ResourceScope())
+	// 	count, err = q.CountWithError()
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "filter by owner")
+	// 	}
+	// }
 	if count == 1 {
 		obj, err := db.NewModelObject(manager)
 		if err != nil {
