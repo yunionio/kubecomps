@@ -155,6 +155,9 @@ func NewDefaultKubesprayScaleRunner(
 			return nil, err
 		}
 
+		// if err := runner.AddLimitHosts(false, KubesprayNodeRoleMaster); err != nil {
+		// 	return nil, errors.Wrap(err, "add master role group for scale worker node")
+		// }
 		for _, aH := range addedHosts {
 			if err := runner.AddLimitHosts(true, aH.Hostname); err != nil {
 				return nil, errors.Wrap(err, "add limit host")
@@ -184,6 +187,7 @@ func NewDefaultKubesprayRemoveNodeRunner(
 	nodesVal := strings.Join(names, ",")
 	vars.Node = nodesVal
 	vars.DeleteNodesConfirmation = "yes"
+	vars.SkipConfirmation = true
 
 	return newDefaultKubesprayRunner(DefaultKubesprayRemoveNodeYML, vars, allHosts...)
 }
@@ -199,7 +203,7 @@ func NewRunner(playbookPath string, vars *KubesprayRunVars, hosts ...*KubesprayI
 		return nil, errors.Wrap(err, "validate variables")
 	}
 
-	runner, err := NewAnsibleRunner(playbookPath, hosts...)
+	runner, err := NewAnsibleRunner(playbookPath, vars.KubeVersion, hosts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "new ansible runner")
 	}
