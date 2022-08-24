@@ -6,21 +6,25 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/sets"
+
+	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
 )
 
 type KubesprayNodeRole string
 
 const (
-	KubesprayNodeRoleMaster   = "kube-master"
-	KubesprayNodeRoleEtcd     = "etcd"
-	KubesprayNodeRoleNode     = "kube-node"
-	KubesprayNodeRoleCalicoRR = "calico-rr"
+	KubesprayNodeRoleMaster       = "kube-master"
+	KubesprayNodeRoleControlPlane = "kube-control-plane"
+	KubesprayNodeRoleEtcd         = "etcd"
+	KubesprayNodeRoleNode         = "kube-node"
+	KubesprayNodeRoleCalicoRR     = "calico-rr"
 )
 
 var (
@@ -31,6 +35,7 @@ var (
 
 	KubesprayNodeRoles = []KubesprayNodeRole{
 		KubesprayNodeRoleMaster,
+		KubesprayNodeRoleControlPlane,
 		KubesprayNodeRoleEtcd,
 		KubesprayNodeRoleNode,
 		KubesprayNodeRoleCalicoRR,
@@ -110,6 +115,8 @@ type KubesprayVars struct {
 	Node string `json:"node"`
 	// DeleteNodesConfirmation must set to yes
 	DeleteNodesConfirmation string `json:"delete_nodes_confirmation"`
+	// DeleteNodesConfirmation must set to true
+	SkipConfirmation bool `json:"skip_confirmation"`
 	//kubespray verion
 	KubesprayVersion string `json:"kubespray_version"`
 	//CorednsImage path /coredns
@@ -274,12 +281,14 @@ func (h KubesprayInventoryHost) ToString() (string, error) {
 }
 
 type KubesprayInventory struct {
-	Hosts []*KubesprayInventoryHost
+	kubeVersion string
+	Hosts       []*KubesprayInventoryHost
 }
 
-func NewKubesprayInventory(host ...*KubesprayInventoryHost) *KubesprayInventory {
+func NewKubesprayInventory(kubeVersion string, host ...*KubesprayInventoryHost) *KubesprayInventory {
 	return &KubesprayInventory{
-		Hosts: host,
+		kubeVersion: kubeVersion,
+		Hosts:       host,
 	}
 }
 
@@ -293,6 +302,10 @@ func (i KubesprayInventory) IsIncludeHost(host string) bool {
 }
 
 func (i KubesprayInventory) ToString() (string, error) {
+	useLegacyGroup := false
+	if i.kubeVersion == "" || i.kubeVersion == constants.K8S_VERSION_1_17_0 {
+		useLegacyGroup = true
+	}
 	if len(i.Hosts) == 0 {
 		return "", errors.Error("hosts is empty")
 	}
@@ -333,18 +346,26 @@ func (i KubesprayInventory) ToString() (string, error) {
 		return "", errors.Error("etcd nodes is empty")
 	}
 
+	ts := func(in KubesprayNodeRole) string {
+		if useLegacyGroup {
+			return string(in)
+		}
+		return strings.ReplaceAll(string(in), "-", "_")
+	}
+
 	for _, checkRole := range KubesprayNodeRoles {
-		io.WriteString(out, fmt.Sprintf("[%s]\n", checkRole))
+		io.WriteString(out, fmt.Sprintf("[%s]\n", ts(checkRole)))
 		for _, name := range roleGroups[checkRole] {
 			io.WriteString(out, name+"\n")
 		}
 		io.WriteString(out, "\n")
 	}
 
-	io.WriteString(out, "[k8s-cluster:children]\n")
-	io.WriteString(out, KubesprayNodeRoleMaster+"\n")
-	io.WriteString(out, KubesprayNodeRoleNode+"\n")
-	io.WriteString(out, KubesprayNodeRoleCalicoRR)
+	io.WriteString(out, ts("[k8s-cluster:children]\n"))
+	io.WriteString(out, ts(KubesprayNodeRoleMaster)+"\n")
+	io.WriteString(out, ts(KubesprayNodeRoleControlPlane)+"\n")
+	io.WriteString(out, ts(KubesprayNodeRoleNode)+"\n")
+	io.WriteString(out, ts(KubesprayNodeRoleCalicoRR))
 
 	return out.String(), nil
 }

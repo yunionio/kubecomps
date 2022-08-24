@@ -20,6 +20,7 @@ import (
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
+	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/addons"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/kubespray"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
@@ -75,8 +76,8 @@ func (d *selfBuildClusterDriver) GetResourceType() api.ClusterResourceType {
 
 func (d *selfBuildClusterDriver) GetK8sVersions() []string {
 	return []string{
-		K8S_VERSION_1_17_0,
-		K8S_VERSION_1_20_0,
+		constants.K8S_VERSION_1_17_0,
+		constants.K8S_VERSION_1_20_0,
 	}
 }
 
@@ -416,6 +417,7 @@ func (d *selfBuildDriver) GetKubesprayInventory(
 			if m.IsControlplane() {
 				roles = append(roles,
 					kubespray.KubesprayNodeRoleMaster,
+					kubespray.KubesprayNodeRoleControlPlane,
 					// controlplane should always set as etcd member
 					kubespray.KubesprayNodeRoleEtcd)
 				vars.SupplementaryAddresses = append(vars.SupplementaryAddresses, accessIP)
@@ -473,7 +475,7 @@ func (d *selfBuildDriver) GetKubesprayConfig(ctx context.Context, cluster *model
 		for _, host := range tmpHosts {
 			host.Clear()
 		}
-		return kubespray.NewKubesprayInventory(tmpHosts...).ToString()
+		return kubespray.NewKubesprayInventory(cluster.GetVersion(), tmpHosts...).ToString()
 	}
 
 	content, err := consInventoryContent(hosts)
@@ -758,13 +760,13 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		DockerHost:               options.Options.DockerHost,
 	}
 	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
-		vars.CNIVersion = CNI_VERSION_1_20_0
-		vars.CalicoVersion = CALICO_VERSION_1_20_0
-		vars.KubesprayVersion = KUBESPRAY_VERSION_1_20_0
+		vars.CNIVersion = constants.CNI_VERSION_1_20_0
+		vars.CalicoVersion = constants.CALICO_VERSION_1_20_0
+		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_20_0
 	} else {
-		vars.CNIVersion = CNI_VERSION_1_17_0
-		vars.CalicoVersion = CALICO_VERSION_1_17_0
-		vars.KubesprayVersion = KUBESPRAY_VERSION_1_17_0
+		vars.CNIVersion = constants.CNI_VERSION_1_17_0
+		vars.CalicoVersion = constants.CALICO_VERSION_1_17_0
+		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_17_0
 	}
 	return vars
 }
