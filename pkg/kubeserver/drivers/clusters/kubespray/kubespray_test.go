@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
 )
 
 func TestKubesprayInventoryHost(t *testing.T) {
@@ -36,10 +37,11 @@ func TestKubesprayInventory(t *testing.T) {
 		}
 
 		Convey("Test multi role", func() {
-			h1 := newH("node1", "192.168.2.1", KubesprayNodeRoleMaster, KubesprayNodeRoleEtcd, KubesprayNodeRoleNode)
+			h1 := newH("node1", "192.168.2.1", KubesprayNodeRoleMaster, KubesprayNodeRoleEtcd, KubesprayNodeRoleNode, KubesprayNodeRoleControlPlane)
 			h2 := newH("node2", "192.168.2.2", KubesprayNodeRoleNode)
 			iv := KubesprayInventory{
-				Hosts: []*KubesprayInventoryHost{h1, h2},
+				kubeVersion: constants.K8S_VERSION_1_17_0,
+				Hosts:       []*KubesprayInventoryHost{h1, h2},
 			}
 
 			ivExpStr := "[all]\n"
@@ -47,12 +49,14 @@ func TestKubesprayInventory(t *testing.T) {
 			ivExpStr += "node2\tansible_host=192.168.2.2\tansible_ssh_user=root\tansible_ssh_pass=passwd\n"
 			ivExpStr += "\n[kube-master]\n"
 			ivExpStr += "node1\n"
+			ivExpStr += "\n[kube-control-plane]\n"
+			ivExpStr += "node1\n"
 			ivExpStr += "\n[etcd]\n"
 			ivExpStr += "node1\n"
 			ivExpStr += "\n[kube-node]\n"
 			ivExpStr += "node1\nnode2\n"
 			ivExpStr += "\n[calico-rr]\n"
-			ivExpStr += "\n[k8s-cluster:children]\nkube-master\nkube-node\ncalico-rr"
+			ivExpStr += "\n[k8s-cluster:children]\nkube-master\nkube-control-plane\nkube-node\ncalico-rr"
 
 			str, err := iv.ToString()
 			So(err, ShouldBeNil)
