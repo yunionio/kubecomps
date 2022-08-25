@@ -43,14 +43,14 @@ type AnsibleRunner struct {
 	resultCollector *bytes.Buffer
 }
 
-func NewAnsibleRunner(playbookPath string, hosts ...*KubesprayInventoryHost) (*AnsibleRunner, error) {
+func NewAnsibleRunner(playbookPath string, kubeVersion string, hosts ...*KubesprayInventoryHost) (*AnsibleRunner, error) {
 	if _, err := os.Stat(playbookPath); err != nil {
 		return nil, errors.Wrapf(err, "check playbook path %q", playbookPath)
 	}
 
 	runner := &AnsibleRunner{
 		playbookPath:    playbookPath,
-		inventory:       NewKubesprayInventory(hosts...),
+		inventory:       NewKubesprayInventory(kubeVersion, hosts...),
 		resultCollector: new(bytes.Buffer),
 	}
 
