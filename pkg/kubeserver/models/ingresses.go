@@ -2,13 +2,16 @@ package models
 
 import (
 	extensions "k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/networking/v1"
+	"k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-
+	"k8s.io/kubernetes/pkg/apis/networking"
 	"yunion.io/x/jsonutils"
-
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
+	"yunion.io/x/log"
+	"yunion.io/x/pkg/errors"
 )
 
 var (
@@ -49,17 +52,55 @@ type SIngress struct {
 }
 
 func (m *SIngressManager) NewRemoteObjectForCreate(model IClusterModel, cli *client.ClusterManager, data jsonutils.JSONObject) (interface{}, error) {
-	input := new(api.IngressCreateInputV2)
-	data.Unmarshal(input)
-	objMeta, err := input.ToObjectMeta(model.(api.INamespaceGetter))
-	if err != nil {
-		return nil, err
+	kind, _ := cli.GetHandler().GetResourceByKind(api.KindNameIngress)
+	if kind.GroupVersionResourceKind.Group == extensions.GroupName {
+		input := new(api.IngressCreateInputV2)
+		err := data.Unmarshal(input)
+		if err != nil {
+			return nil, errors.Wrap(err, "ingress input unmarshal error")
+		}
+		objMeta, err := input.ToObjectMeta(model.(api.INamespaceGetter))
+		if err != nil {
+			return nil, errors.Wrap(err, "ingress input get meta error")
+		}
+		return &extensions.Ingress{
+			ObjectMeta: objMeta,
+			Spec:       input.IngressSpec,
+		}, nil
+	} else if kind.GroupVersionResourceKind.Group == networking.GroupName {
+		if kind.GroupVersionResourceKind.Version == "v1beta1" {
+			input := new(api.IngressCreateInputNetworkingV1beta1)
+			err := data.Unmarshal(input)
+			if err != nil {
+				return nil, errors.Wrap(err, "ingress input unmarshal error")
+			}
+			objMeta, err := input.ToObjectMeta(model.(api.INamespaceGetter))
+			if err != nil {
+				return nil, errors.Wrap(err, "ingress input get meta error")
+			}
+			return &v1beta1.Ingress{
+				ObjectMeta: objMeta,
+				Spec:       input.IngressSpec,
+			}, nil
+		} else if kind.GroupVersionResourceKind.Version == "v1" {
+			input := new(api.IngressCreateInputNetworkingV1)
+			err := data.Unmarshal(input)
+			if err != nil {
+				return nil, errors.Wrap(err, "ingress input unmarshal error")
+			}
+			objMeta, err := input.ToObjectMeta(model.(api.INamespaceGetter))
+			if err != nil {
+				return nil, errors.Wrap(err, "ingress input get meta error")
+			}
+			return &v1.Ingress{
+				ObjectMeta: objMeta,
+				Spec:       input.IngressSpec,
+			}, nil
+		}
 	}
-	ing := &extensions.Ingress{
-		ObjectMeta: objMeta,
-		Spec:       input.IngressSpec,
-	}
-	return ing, nil
+
+	log.Errorf("unexpected ingress GVR info")
+	return nil, nil
 }
 
 func (obj *SIngress) getEndpoints(rObj *unstructured.Unstructured) []api.Endpoint {
