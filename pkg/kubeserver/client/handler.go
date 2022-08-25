@@ -36,6 +36,7 @@ type ResourceHandler interface {
 
 	Dynamic(groupKind schema.GroupKind, versions ...string) (dynamic.NamespaceableResourceInterface, error)
 	DynamicGet(gvr schema.GroupVersionKind, namespace string, name string) (runtime.Object, error)
+	GetResourceByKind(kind string) (api.ResourceMap, error)
 
 	EnableBidirectionalSync()
 	DisableBidirectionalSync()
@@ -89,32 +90,30 @@ func (h *resourceHandler) Close() {
 }
 
 func (h *resourceHandler) Create(kind string, namespace string, object *runtime.Unknown) (*runtime.Unknown, error) {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet . ", kind)
+	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	if err != nil {
+		return nil, errors.Wrap(err, "handle resource create")
 	}
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
 	req := kubeClient.Post().
 		Resource(kind).
 		SetHeader("Content-Type", "application/json").
 		Body([]byte(object.Raw))
-	if resource.Namespaced {
+	if resourceMap.Namespaced {
 		req.Namespace(namespace)
 	}
 	var result runtime.Unknown
-	err := req.Do(context.Background()).Into(&result)
+	err = req.Do(context.Background()).Into(&result)
 
 	return &result, err
 }
 
 func (h *resourceHandler) CreateV2(kind string, namespace string, object runtime.Object) (runtime.Object, error) {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet . ", kind)
+	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	if err != nil {
+		return nil, errors.Wrap(err, "resourceHandler create(v2)")
 	}
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
 	req := kubeClient.Post().Resource(kind)
-	if resource.Namespaced {
+	if resourceMap.Namespaced {
 		req.Namespace(namespace)
 	}
 	return req.VersionedParams(&metav1.CreateOptions{}, metav1.ParameterCodec).
@@ -124,23 +123,21 @@ func (h *resourceHandler) CreateV2(kind string, namespace string, object runtime
 }
 
 func (h *resourceHandler) Update(kind string, namespace string, name string, object *runtime.Unknown) (*runtime.Unknown, error) {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet.", kind)
+	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	if err != nil {
+		return nil, errors.Wrap(err, "handle resource update")
 	}
-
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
 	req := kubeClient.Put().
 		Resource(kind).
 		Name(name).
 		SetHeader("Content-Type", "application/json").
 		Body([]byte(object.Raw))
-	if resource.Namespaced {
+	if resourceMap.Namespaced {
 		req.Namespace(namespace)
 	}
 
 	var result runtime.Unknown
-	err := req.Do(context.Background()).Into(&result)
+	err = req.Do(context.Background()).Into(&result)
 
 	return &result, err
 }
@@ -176,16 +173,15 @@ func (h *resourceHandler) UpdateV2(kind string, object runtime.Object) (runtime.
 }
 
 func (h *resourceHandler) Delete(kind string, namespace string, name string, options *metav1.DeleteOptions) error {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return fmt.Errorf("Resource kind (%s) not support yet.", kind)
+	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	if err != nil {
+		return errors.Wrap(err, " resourceHandlet delete")
 	}
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
 	req := kubeClient.Delete().
 		Resource(kind).
 		Name(name).
 		Body(options)
-	if resource.Namespaced {
+	if resourceMap.Namespaced {
 		req.Namespace(namespace)
 	}
 

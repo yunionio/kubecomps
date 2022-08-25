@@ -2,6 +2,8 @@ package api
 
 import (
 	extensions "k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/networking/v1"
+	"k8s.io/api/networking/v1beta1"
 )
 
 type Ingress struct {
@@ -46,4 +48,14 @@ type IngressCreateInput struct {
 type IngressCreateInputV2 struct {
 	NamespaceResourceCreateInput
 	extensions.IngressSpec
+}
+
+type IngressCreateInputNetworkingV1 struct {
+	NamespaceResourceCreateInput
+	v1.IngressSpec
+}
+
+type IngressCreateInputNetworkingV1beta1 struct {
+	NamespaceResourceCreateInput
+	v1beta1.IngressSpec
 }
