@@ -206,7 +206,7 @@ func (m *ClustersManager) buildManager(dbCluster manager.ICluster) (*ClusterMana
 	}
 	resHandler, err := NewResourceHandler(clientSet, dclient, restMapper, cacheFactory)
 	if err != nil {
-		return nil, errors.Wrapf(err, "build cluster %s resource handler error: %v", clusterName)
+		return nil, errors.Wrapf(err, "build cluster %s resource handler error: %v", clusterName, err)
 	}
 	cliv2, err := clientv2.NewClient(kubeconfig)
 	if err != nil {
