@@ -424,7 +424,7 @@ func (m *SMachine) AllowPerformRecreate(ctx context.Context, userCred mcclient.T
 
 func (m *SMachine) PerformRecreate(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
 	if m.Status != api.MachineStatusCreateFail {
-		return nil, httperrors.NewForbiddenError("Status is %s", m.SetStatus)
+		return nil, httperrors.NewForbiddenError("Status")
 	}
 	if err := m.StartMachineCreateTask(ctx, userCred, data.(*jsonutils.JSONDict), ""); err != nil {
 		return nil, err
