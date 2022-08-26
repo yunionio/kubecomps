@@ -29,38 +29,38 @@ func (h *resourceHandler) getResourceByKind(kind string) (api.ResourceMap, error
 	return resource, nil
 }
 
-func (h *resourceHandler) getClientByGroupVersion(resource api.ResourceMap) (rest.Interface, error) {
+func (h *resourceHandler) getClientByGroupVersion(resource api.ResourceMap) rest.Interface {
 	switch resource.GroupVersionResourceKind.Group {
 	case corev1.GroupName:
-		return h.client.CoreV1().RESTClient(), nil
+		return h.client.CoreV1().RESTClient()
 	case apps.GroupName:
 		if resource.GroupVersionResourceKind.Version == "v1beta2" {
-			return h.client.AppsV1beta2().RESTClient(), nil
+			return h.client.AppsV1beta2().RESTClient()
 		}
 		if resource.GroupVersionResourceKind.Version == "v1" {
-			return h.client.AppsV1().RESTClient(), nil
+			return h.client.AppsV1().RESTClient()
 		}
-		return h.client.AppsV1beta1().RESTClient(), nil
+		return h.client.AppsV1beta1().RESTClient()
 	case autoscalingv1.GroupName:
-		return h.client.AutoscalingV1().RESTClient(), nil
+		return h.client.AutoscalingV1().RESTClient()
 	case batchv1.GroupName:
 		if resource.GroupVersionResourceKind.Version == "v1beta1" {
-			return h.client.BatchV1beta1().RESTClient(), nil
+			return h.client.BatchV1beta1().RESTClient()
 		}
-		return h.client.BatchV1().RESTClient(), nil
+		return h.client.BatchV1().RESTClient()
 	case extensionsv1beta1.GroupName:
-		return h.client.ExtensionsV1beta1().RESTClient(), nil
+		return h.client.ExtensionsV1beta1().RESTClient()
 	case storagev1.GroupName:
-		return h.client.StorageV1().RESTClient(), nil
+		return h.client.StorageV1().RESTClient()
 	case rbacv1.GroupName:
-		return h.client.RbacV1().RESTClient(), nil
+		return h.client.RbacV1().RESTClient()
 	case networking.GroupName:
 		if resource.GroupVersionResourceKind.Version == "v1beta1" {
-			return h.client.NetworkingV1beta1().RESTClient(), nil
+			return h.client.NetworkingV1beta1().RESTClient()
 		}
-		return h.client.NetworkingV1().RESTClient(), nil
+		return h.client.NetworkingV1().RESTClient()
 	default:
 		log.Warningf("could not match any exist group, return a default client")
-		return h.client.CoreV1().RESTClient(), nil
+		return h.client.CoreV1().RESTClient()
 	}
 }
