@@ -83,11 +83,11 @@ func buildCacheController(
 		res := resource.GroupVersionResourceKind.GroupVersionResource
 		kind := resource.GroupVersionResourceKind.Kind
 		if kind != kapi.KindNameIngress {
-			log.Errorf("==skip res: %#v", res)
+			log.Debugf("==skip res: %#v", res)
 			continue
 		}
 		resMan := cluster.GetK8sResourceManager(kind)
-		log.Errorf("======res for ingress: %#v, cluster: %q", res, cluster.GetName())
+		log.Debugf("======res for ingress: %#v, cluster: %q", res, cluster.GetName())
 		genericInformer := dynamicInformerFactory.ForResource(res)
 		if resMan != nil {
 			// register informer event handler

@@ -337,7 +337,7 @@ func (m *SComponent) GetCluster() (*SCluster, error) {
 		return nil, fmt.Errorf("Not found cluster by component %s", m.GetId())
 	}
 	if len(result) != 1 {
-		return nil, httperrors.NewDuplicateResourceError("Found %s cluster by component %s", len(result), m.GetId())
+		return nil, httperrors.NewDuplicateResourceError("Found %v cluster by component %v", len(result), m.GetId())
 	}
 	return &result[0], nil
 }
