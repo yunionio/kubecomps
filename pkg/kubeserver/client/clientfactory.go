@@ -14,10 +14,9 @@ import (
 	"k8s.io/kubernetes/pkg/apis/networking"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client/api"
 	"yunion.io/x/log"
-	"yunion.io/x/pkg/errors"
 )
 
-func (h *resourceHandler) GetResourceByKind(kind string) (api.ResourceMap, error) {
+func (h *resourceHandler) getResourceByKind(kind string) (api.ResourceMap, error) {
 	resource, ok := api.KindToResourceMap[kind]
 	if !ok {
 		gvkr := h.cacheFactory.GetGVKR(kind)
@@ -30,53 +29,38 @@ func (h *resourceHandler) GetResourceByKind(kind string) (api.ResourceMap, error
 	return resource, nil
 }
 
-func (h *resourceHandler) getClientByGroupVersion(kind string) (rest.Interface, api.ResourceMap, error) {
-	var (
-		resource api.ResourceMap
-		group    string
-		version  string
-		err      error
-	)
-
-	resource, err = h.GetResourceByKind(kind)
-	if err != nil {
-		return nil, resource, errors.Wrap(err, "GetResourceByKind")
-	}
-
-	version = resource.GroupVersionResourceKind.Version
-	group = resource.GroupVersionResourceKind.Group
-
-	switch group {
+func (h *resourceHandler) getClientByGroupVersion(resource api.ResourceMap) (rest.Interface, error) {
+	switch resource.GroupVersionResourceKind.Group {
 	case corev1.GroupName:
-		return h.client.CoreV1().RESTClient(), resource, nil
+		return h.client.CoreV1().RESTClient(), nil
 	case apps.GroupName:
-		if version == "v1beta2" {
-			return h.client.AppsV1beta2().RESTClient(), resource, nil
+		if resource.GroupVersionResourceKind.Version == "v1beta2" {
+			return h.client.AppsV1beta2().RESTClient(), nil
 		}
-		if version == "v1" {
-			return h.client.AppsV1().RESTClient(), resource, nil
+		if resource.GroupVersionResourceKind.Version == "v1" {
+			return h.client.AppsV1().RESTClient(), nil
 		}
-		return h.client.AppsV1beta1().RESTClient(), resource, nil
+		return h.client.AppsV1beta1().RESTClient(), nil
 	case autoscalingv1.GroupName:
-		return h.client.AutoscalingV1().RESTClient(), resource, nil
+		return h.client.AutoscalingV1().RESTClient(), nil
 	case batchv1.GroupName:
-		if version == "v1beta1" {
-			return h.client.BatchV1beta1().RESTClient(), resource, nil
+		if resource.GroupVersionResourceKind.Version == "v1beta1" {
+			return h.client.BatchV1beta1().RESTClient(), nil
 		}
-		return h.client.BatchV1().RESTClient(), resource, nil
+		return h.client.BatchV1().RESTClient(), nil
 	case extensionsv1beta1.GroupName:
-		return h.client.ExtensionsV1beta1().RESTClient(), resource, nil
+		return h.client.ExtensionsV1beta1().RESTClient(), nil
 	case storagev1.GroupName:
-		return h.client.StorageV1().RESTClient(), resource, nil
+		return h.client.StorageV1().RESTClient(), nil
 	case rbacv1.GroupName:
-		return h.client.RbacV1().RESTClient(), resource, nil
+		return h.client.RbacV1().RESTClient(), nil
 	case networking.GroupName:
-		if version == "v1beta1" {
-			return h.client.NetworkingV1beta1().RESTClient(), resource, nil
+		if resource.GroupVersionResourceKind.Version == "v1beta1" {
+			return h.client.NetworkingV1beta1().RESTClient(), nil
 		}
-		return h.client.NetworkingV1().RESTClient(), resource, nil
+		return h.client.NetworkingV1().RESTClient(), nil
 	default:
 		log.Warningf("could not match any exist group, return a default client")
-		return h.client.CoreV1().RESTClient(), resource, nil
+		return h.client.CoreV1().RESTClient(), nil
 	}
 }

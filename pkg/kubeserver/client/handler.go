@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,6 @@ type ResourceHandler interface {
 
 	Dynamic(groupKind schema.GroupKind, versions ...string) (dynamic.NamespaceableResourceInterface, error)
 	DynamicGet(gvr schema.GroupVersionKind, namespace string, name string) (runtime.Object, error)
-	GetResourceByKind(kind string) (api.ResourceMap, error)
 
 	EnableBidirectionalSync()
 	DisableBidirectionalSync()
@@ -90,56 +91,106 @@ func (h *resourceHandler) Close() {
 }
 
 func (h *resourceHandler) Create(kind string, namespace string, object *runtime.Unknown) (*runtime.Unknown, error) {
-	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	resourceMap, err := h.getResourceByKind(kind)
 	if err != nil {
-		return nil, errors.Wrap(err, "handle resource create")
+		return nil, errors.Wrap(err, "getResourceByKind")
 	}
-	req := kubeClient.Post().
-		Resource(kind).
-		SetHeader("Content-Type", "application/json").
-		Body([]byte(object.Raw))
-	if resourceMap.Namespaced {
-		req.Namespace(namespace)
-	}
-	var result runtime.Unknown
-	err = req.Do(context.Background()).Into(&result)
 
-	return &result, err
+	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
+	if !ok {
+		kubeClient, err := h.getClientByGroupVersion(resourceMap)
+		if err != nil {
+			return nil, errors.Wrap(err, "resource handler create get rest client")
+		}
+
+		req := kubeClient.Post().
+			Resource(kind).
+			SetHeader("Content-Type", "application/json").
+			Body(object.Raw)
+		if resourceMap.Namespaced {
+			req.Namespace(namespace)
+		}
+		var result runtime.Unknown
+		err = req.Do(context.Background()).Into(&result)
+
+		return &result, err
+	}
+
+	if resourceMap.Namespaced {
+		obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+			Namespace(uObj.GetNamespace()).Create(context.Background(), uObj, metav1.CreateOptions{})
+		return obj.DeepCopyObject().(*runtime.Unknown), err
+	}
+	obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+		Create(context.Background(), uObj, metav1.CreateOptions{})
+	return obj.DeepCopyObject().(*runtime.Unknown), err
 }
 
 func (h *resourceHandler) CreateV2(kind string, namespace string, object runtime.Object) (runtime.Object, error) {
-	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	resourceMap, err := h.getResourceByKind(kind)
 	if err != nil {
-		return nil, errors.Wrap(err, "resourceHandler create(v2)")
+		return nil, errors.Wrap(err, "getResourceByKind")
 	}
-	req := kubeClient.Post().Resource(kind)
+
+	uObj, ok := object.(*unstructured.Unstructured)
+	if !ok {
+		kubeClient, err := h.getClientByGroupVersion(resourceMap)
+		if err != nil {
+			return nil, errors.Wrap(err, "resource handler create")
+		}
+
+		req := kubeClient.Post().Resource(kind)
+		if resourceMap.Namespaced {
+			req.Namespace(namespace)
+		}
+		return req.VersionedParams(&metav1.CreateOptions{}, metav1.ParameterCodec).
+			Body(object).
+			Do(context.Background()).
+			Get()
+	}
+
 	if resourceMap.Namespaced {
-		req.Namespace(namespace)
+		return h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+			Namespace(uObj.GetNamespace()).Create(context.Background(), uObj, metav1.CreateOptions{})
 	}
-	return req.VersionedParams(&metav1.CreateOptions{}, metav1.ParameterCodec).
-		Body(object).
-		Do(context.Background()).
-		Get()
+	return h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+		Create(context.Background(), uObj, metav1.CreateOptions{})
 }
 
 func (h *resourceHandler) Update(kind string, namespace string, name string, object *runtime.Unknown) (*runtime.Unknown, error) {
-	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	resourceMap, err := h.getResourceByKind(kind)
 	if err != nil {
-		return nil, errors.Wrap(err, "handle resource update")
+		return nil, errors.Wrap(err, "getResourceByKind")
 	}
-	req := kubeClient.Put().
-		Resource(kind).
-		Name(name).
-		SetHeader("Content-Type", "application/json").
-		Body([]byte(object.Raw))
+
+	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
+	if !ok {
+		kubeClient, err := h.getClientByGroupVersion(resourceMap)
+		if err != nil {
+			return nil, errors.Wrap(err, "resource handler update")
+		}
+
+		req := kubeClient.Put().
+			Resource(kind).
+			Name(name).
+			SetHeader("Content-Type", "application/json").
+			Body(object.Raw)
+		if resourceMap.Namespaced {
+			req.Namespace(namespace)
+		}
+		var result runtime.Unknown
+		err = req.Do(context.Background()).Into(&result)
+		return &result, err
+	}
+
 	if resourceMap.Namespaced {
-		req.Namespace(namespace)
+		obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+			Namespace(uObj.GetNamespace()).Update(context.Background(), uObj, metav1.UpdateOptions{})
+		return obj.DeepCopyObject().(*runtime.Unknown), err
 	}
-
-	var result runtime.Unknown
-	err = req.Do(context.Background()).Into(&result)
-
-	return &result, err
+	obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+		Update(context.Background(), uObj, metav1.UpdateOptions{})
+	return obj.DeepCopyObject().(*runtime.Unknown), err
 }
 
 func (h *resourceHandler) UpdateV2(kind string, object runtime.Object) (runtime.Object, error) {
@@ -173,9 +224,14 @@ func (h *resourceHandler) UpdateV2(kind string, object runtime.Object) (runtime.
 }
 
 func (h *resourceHandler) Delete(kind string, namespace string, name string, options *metav1.DeleteOptions) error {
-	kubeClient, resourceMap, err := h.getClientByGroupVersion(kind)
+	resourceMap, err := h.getResourceByKind(kind)
 	if err != nil {
-		return errors.Wrap(err, " resourceHandlet delete")
+		return errors.Wrap(err, "getResourceByKind")
+	}
+
+	kubeClient, err := h.getClientByGroupVersion(resourceMap)
+	if err != nil {
+		return errors.Wrap(err, "resource handler delete")
 	}
 	req := kubeClient.Delete().
 		Resource(kind).
