@@ -6,7 +6,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	// extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -85,17 +85,17 @@ var KindToResourceMap = map[string]ResourceMap{
 		},
 		Namespaced: true,
 	},
-	api.ResourceNameIngress: {
-		GroupVersionResourceKind: GroupVersionResourceKind{
-			GroupVersionResource: schema.GroupVersionResource{
-				Group:    extensionsv1beta1.GroupName,
-				Version:  extensionsv1beta1.SchemeGroupVersion.Version,
-				Resource: api.ResourceNameIngress,
-			},
-			Kind: api.KindNameIngress,
-		},
-		Namespaced: true,
-	},
+	// api.ResourceNameIngress: {
+	// 	GroupVersionResourceKind: GroupVersionResourceKind{
+	// 		GroupVersionResource: schema.GroupVersionResource{
+	// 			Group:    extensionsv1beta1.GroupName,
+	// 			Version:  extensionsv1beta1.SchemeGroupVersion.Version,
+	// 			Resource: api.ResourceNameIngress,
+	// 		},
+	// 		Kind: api.KindNameIngress,
+	// 	},
+	// 	Namespaced: true,
+	// },
 	api.ResourceNameJob: {
 		GroupVersionResourceKind: GroupVersionResourceKind{
 			GroupVersionResource: schema.GroupVersionResource{
