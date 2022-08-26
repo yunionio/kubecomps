@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -89,60 +91,94 @@ func (h *resourceHandler) Close() {
 }
 
 func (h *resourceHandler) Create(kind string, namespace string, object *runtime.Unknown) (*runtime.Unknown, error) {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet . ", kind)
+	resourceMap, err := h.getResourceByKind(kind)
+	if err != nil {
+		return nil, errors.Wrap(err, "getResourceByKind")
 	}
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
-	req := kubeClient.Post().
-		Resource(kind).
-		SetHeader("Content-Type", "application/json").
-		Body([]byte(object.Raw))
-	if resource.Namespaced {
-		req.Namespace(namespace)
-	}
-	var result runtime.Unknown
-	err := req.Do(context.Background()).Into(&result)
 
-	return &result, err
+	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
+	if !ok {
+		kubeClient := h.getClientByGroupVersion(resourceMap)
+		req := kubeClient.Post().
+			Resource(kind).
+			SetHeader("Content-Type", "application/json").
+			Body(object.Raw)
+		if resourceMap.Namespaced {
+			req.Namespace(namespace)
+		}
+		var result runtime.Unknown
+		err = req.Do(context.Background()).Into(&result)
+
+		return &result, err
+	}
+
+	if resourceMap.Namespaced {
+		obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+			Namespace(uObj.GetNamespace()).Create(context.Background(), uObj, metav1.CreateOptions{})
+		return obj.DeepCopyObject().(*runtime.Unknown), err
+	}
+	obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+		Create(context.Background(), uObj, metav1.CreateOptions{})
+	return obj.DeepCopyObject().(*runtime.Unknown), err
 }
 
 func (h *resourceHandler) CreateV2(kind string, namespace string, object runtime.Object) (runtime.Object, error) {
-	resource, ok := api.KindToResourceMap[kind]
+	resourceMap, err := h.getResourceByKind(kind)
+	if err != nil {
+		return nil, errors.Wrap(err, "getResourceByKind")
+	}
+
+	uObj, ok := object.(*unstructured.Unstructured)
 	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet . ", kind)
+		kubeClient := h.getClientByGroupVersion(resourceMap)
+		req := kubeClient.Post().Resource(kind)
+		if resourceMap.Namespaced {
+			req.Namespace(namespace)
+		}
+		return req.VersionedParams(&metav1.CreateOptions{}, metav1.ParameterCodec).
+			Body(object).
+			Do(context.Background()).
+			Get()
 	}
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
-	req := kubeClient.Post().Resource(kind)
-	if resource.Namespaced {
-		req.Namespace(namespace)
+
+	if resourceMap.Namespaced {
+		return h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+			Namespace(uObj.GetNamespace()).Create(context.Background(), uObj, metav1.CreateOptions{})
 	}
-	return req.VersionedParams(&metav1.CreateOptions{}, metav1.ParameterCodec).
-		Body(object).
-		Do(context.Background()).
-		Get()
+	return h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+		Create(context.Background(), uObj, metav1.CreateOptions{})
 }
 
 func (h *resourceHandler) Update(kind string, namespace string, name string, object *runtime.Unknown) (*runtime.Unknown, error) {
-	resource, ok := api.KindToResourceMap[kind]
+	resourceMap, err := h.getResourceByKind(kind)
+	if err != nil {
+		return nil, errors.Wrap(err, "getResourceByKind")
+	}
+
+	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
 	if !ok {
-		return nil, fmt.Errorf("Resource kind (%s) not support yet.", kind)
+		kubeClient := h.getClientByGroupVersion(resourceMap)
+		req := kubeClient.Put().
+			Resource(kind).
+			Name(name).
+			SetHeader("Content-Type", "application/json").
+			Body(object.Raw)
+		if resourceMap.Namespaced {
+			req.Namespace(namespace)
+		}
+		var result runtime.Unknown
+		err = req.Do(context.Background()).Into(&result)
+		return &result, err
 	}
 
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
-	req := kubeClient.Put().
-		Resource(kind).
-		Name(name).
-		SetHeader("Content-Type", "application/json").
-		Body([]byte(object.Raw))
-	if resource.Namespaced {
-		req.Namespace(namespace)
+	if resourceMap.Namespaced {
+		obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+			Namespace(uObj.GetNamespace()).Update(context.Background(), uObj, metav1.UpdateOptions{})
+		return obj.DeepCopyObject().(*runtime.Unknown), err
 	}
-
-	var result runtime.Unknown
-	err := req.Do(context.Background()).Into(&result)
-
-	return &result, err
+	obj, err := h.dynamicClient.Resource(resourceMap.GroupVersionResourceKind.GroupVersionResource).
+		Update(context.Background(), uObj, metav1.UpdateOptions{})
+	return obj.DeepCopyObject().(*runtime.Unknown), err
 }
 
 func (h *resourceHandler) UpdateV2(kind string, object runtime.Object) (runtime.Object, error) {
@@ -176,16 +212,16 @@ func (h *resourceHandler) UpdateV2(kind string, object runtime.Object) (runtime.
 }
 
 func (h *resourceHandler) Delete(kind string, namespace string, name string, options *metav1.DeleteOptions) error {
-	resource, ok := api.KindToResourceMap[kind]
-	if !ok {
-		return fmt.Errorf("Resource kind (%s) not support yet.", kind)
+	resourceMap, err := h.getResourceByKind(kind)
+	if err != nil {
+		return errors.Wrap(err, "getResourceByKind")
 	}
-	kubeClient := h.getClientByGroupVersion(resource.GroupVersionResourceKind.GroupVersionResource)
+	kubeClient := h.getClientByGroupVersion(resourceMap)
 	req := kubeClient.Delete().
 		Resource(kind).
 		Name(name).
 		Body(options)
-	if resource.Namespaced {
+	if resourceMap.Namespaced {
 		req.Namespace(namespace)
 	}
 

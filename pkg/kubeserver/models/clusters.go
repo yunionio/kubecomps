@@ -1128,7 +1128,7 @@ func (c *SCluster) purgeSubClusterResource(ctx context.Context, userCred mcclien
 
 func (c *SCluster) PurgeAllFedResource(ctx context.Context, userCred mcclient.TokenCredential) error {
 	for _, m := range GetFedManagers() {
-		log.Infof("start purge federated %s joint resource for cluster", m.KeywordPlural(), c.GetName())
+		log.Infof("start purge federated %s joint resource for cluster %s", m.KeywordPlural(), c.GetName())
 		if err := m.PurgeAllByCluster(ctx, userCred, c); err != nil {
 			return errors.Wrapf(err, "purge federated resource %s for cluster %s", m.Keyword(), c.GetName())
 		}
