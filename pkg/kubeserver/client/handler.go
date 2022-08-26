@@ -98,11 +98,7 @@ func (h *resourceHandler) Create(kind string, namespace string, object *runtime.
 
 	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
 	if !ok {
-		kubeClient, err := h.getClientByGroupVersion(resourceMap)
-		if err != nil {
-			return nil, errors.Wrap(err, "resource handler create get rest client")
-		}
-
+		kubeClient := h.getClientByGroupVersion(resourceMap)
 		req := kubeClient.Post().
 			Resource(kind).
 			SetHeader("Content-Type", "application/json").
@@ -134,11 +130,7 @@ func (h *resourceHandler) CreateV2(kind string, namespace string, object runtime
 
 	uObj, ok := object.(*unstructured.Unstructured)
 	if !ok {
-		kubeClient, err := h.getClientByGroupVersion(resourceMap)
-		if err != nil {
-			return nil, errors.Wrap(err, "resource handler create")
-		}
-
+		kubeClient := h.getClientByGroupVersion(resourceMap)
 		req := kubeClient.Post().Resource(kind)
 		if resourceMap.Namespaced {
 			req.Namespace(namespace)
@@ -165,11 +157,7 @@ func (h *resourceHandler) Update(kind string, namespace string, name string, obj
 
 	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
 	if !ok {
-		kubeClient, err := h.getClientByGroupVersion(resourceMap)
-		if err != nil {
-			return nil, errors.Wrap(err, "resource handler update")
-		}
-
+		kubeClient := h.getClientByGroupVersion(resourceMap)
 		req := kubeClient.Put().
 			Resource(kind).
 			Name(name).
@@ -228,11 +216,7 @@ func (h *resourceHandler) Delete(kind string, namespace string, name string, opt
 	if err != nil {
 		return errors.Wrap(err, "getResourceByKind")
 	}
-
-	kubeClient, err := h.getClientByGroupVersion(resourceMap)
-	if err != nil {
-		return errors.Wrap(err, "resource handler delete")
-	}
+	kubeClient := h.getClientByGroupVersion(resourceMap)
 	req := kubeClient.Delete().
 		Resource(kind).
 		Name(name).
