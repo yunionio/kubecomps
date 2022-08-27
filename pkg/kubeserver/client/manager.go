@@ -162,12 +162,6 @@ func (m *ClustersManager) parseAPIResources(dc discovery.DiscoveryInterface) ([]
 					Kind: resource.Kind,
 				},
 			}
-			ver, _ := dc.ServerVersion()
-			if res.GroupVersionResourceKind.Kind == api.KindNameCronJob {
-				log.Errorf("-=========CRONJOB %v, %v， version %v",
-					res.GroupVersionResourceKind.Group,
-					res.GroupVersionResourceKind.Version, ver.String())
-			}
 			resources = append(resources, res)
 		}
 	}
