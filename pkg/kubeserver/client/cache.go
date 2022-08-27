@@ -14,7 +14,6 @@ import (
 	apps "k8s.io/client-go/listers/apps/v1"
 	autoscalingv1 "k8s.io/client-go/listers/autoscaling/v1"
 	batch "k8s.io/client-go/listers/batch/v1"
-	batch2 "k8s.io/client-go/listers/batch/v1beta1"
 	"k8s.io/client-go/listers/core/v1"
 	// extensions "k8s.io/client-go/listers/extensions/v1beta1"
 	rbac "k8s.io/client-go/listers/rbac/v1"
@@ -82,12 +81,12 @@ func buildCacheController(
 	for _, resource := range resources {
 		res := resource.GroupVersionResourceKind.GroupVersionResource
 		kind := resource.GroupVersionResourceKind.Kind
-		if kind != kapi.KindNameIngress {
+		if kind != kapi.KindNameIngress && kind != kapi.ResourceNameCronJob {
 			log.Debugf("==skip res: %#v", res)
 			continue
 		}
 		resMan := cluster.GetK8sResourceManager(kind)
-		log.Debugf("======res for ingress: %#v, cluster: %q", res, cluster.GetName())
+		log.Debugf("======res for ingress/cronjob: %#v, cluster: %q", res, cluster.GetName())
 		genericInformer := dynamicInformerFactory.ForResource(res)
 		if resMan != nil {
 			// register informer event handler
@@ -165,6 +164,11 @@ func (c *CacheFactory) IngressLister() cache.GenericLister {
 	return c.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource).Lister()
 }
 
+func (c *CacheFactory) CronJobLister() cache.GenericLister {
+	gvkr := c.GetGVKR(kapi.KindNameCronJob)
+	return c.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource).Lister()
+}
+
 func (c *CacheFactory) ServiceLister() v1.ServiceLister {
 	return c.sharedInformerFactory.Core().V1().Services().Lister()
 }
@@ -187,10 +191,6 @@ func (c *CacheFactory) ReplicaSetLister() apps.ReplicaSetLister {
 
 func (c *CacheFactory) JobLister() batch.JobLister {
 	return c.sharedInformerFactory.Batch().V1().Jobs().Lister()
-}
-
-func (c *CacheFactory) CronJobLister() batch2.CronJobLister {
-	return c.sharedInformerFactory.Batch().V1beta1().CronJobs().Lister()
 }
 
 func (c *CacheFactory) PVLister() v1.PersistentVolumeLister {

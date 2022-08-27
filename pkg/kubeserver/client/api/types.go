@@ -4,7 +4,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	// extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -107,17 +106,17 @@ var KindToResourceMap = map[string]ResourceMap{
 		},
 		Namespaced: true,
 	},
-	api.ResourceNameCronJob: {
-		GroupVersionResourceKind: GroupVersionResourceKind{
-			GroupVersionResource: schema.GroupVersionResource{
-				Group:    batchv1beta1.GroupName,
-				Version:  batchv1beta1.SchemeGroupVersion.Version,
-				Resource: api.ResourceNameCronJob,
-			},
-			Kind: api.KindNameCronJob,
-		},
-		Namespaced: true,
-	},
+	//api.ResourceNameCronJob: {
+	//	GroupVersionResourceKind: GroupVersionResourceKind{
+	//		GroupVersionResource: schema.GroupVersionResource{
+	//			Group:    batchv1beta1.GroupName,
+	//			Version:  batchv1beta1.SchemeGroupVersion.Version,
+	//			Resource: api.ResourceNameCronJob,
+	//		},
+	//		Kind: api.KindNameCronJob,
+	//	},
+	//	Namespaced: true,
+	//},
 	api.ResourceNameNamespace: {
 		GroupVersionResourceKind: GroupVersionResourceKind{
 			GroupVersionResource: schema.GroupVersionResource{
