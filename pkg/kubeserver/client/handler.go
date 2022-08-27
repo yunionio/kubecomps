@@ -240,12 +240,12 @@ func (h *resourceHandler) Get(kind string, namespace string, name string) (runti
 	if resource.Namespaced {
 		result, err = lister.ByNamespace(namespace).Get(name)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "get result by lister")
 		}
 	} else {
 		result, err = lister.Get(name)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "get result by lister")
 		}
 	}
 	result.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{

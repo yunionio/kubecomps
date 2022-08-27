@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/jsonutils"
@@ -59,14 +58,13 @@ type SCronJob struct {
 func (m *SCronJobManager) NewRemoteObjectForCreate(model IClusterModel, cli *client.ClusterManager, data jsonutils.JSONObject) (interface{}, error) {
 	input := new(api.CronJobCreateInputV2)
 	res := new(unstructured.Unstructured)
-	spec := make(map[string]interface{})
 	var (
 		err      error
 		timeZone string
 		objMeta  metav1.ObjectMeta
-		//jobSpec  map[string]interface{}
+		cronSpec map[string]interface{}
 	)
-	log.Errorf("data: %v", data.String())
+
 	err = data.Unmarshal(input)
 	if err != nil {
 		return nil, errors.Wrap(err, "cronjob input unmarshal error")
@@ -87,52 +85,14 @@ func (m *SCronJobManager) NewRemoteObjectForCreate(model IClusterModel, cli *cli
 	res.SetNamespace(objMeta.Namespace)
 	res.SetLabels(objMeta.Labels)
 	res.SetAnnotations(objMeta.Annotations)
-	// optional schedule
-	if input.Schedule != "" {
-		spec["schedule"] = input.Schedule
-	}
+	// only difference is timeZone
+	cronSpec, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&(input.CronJobSpec))
 	// timeZone, for 1.25, optional
 	timeZone, _ = data.GetString("timeZone")
 	if timeZone != "" {
-		spec["timeZone"] = timeZone
+		cronSpec["timeZone"] = timeZone
 	}
-	// optional StartingDeadlineSeconds
-	if input.StartingDeadlineSeconds != nil {
-		spec["startingDeadlineSeconds"] = input.StartingDeadlineSeconds
-	}
-	if input.ConcurrencyPolicy != "" {
-		spec["concurrencyPolicy"] = input.ConcurrencyPolicy
-	}
-	if input.Suspend != nil {
-		spec["suspend"] = *(input.Suspend)
-	}
-	if input.SuccessfulJobsHistoryLimit != nil {
-		spec["successfulJobsHistoryLimit"] = *(input.SuccessfulJobsHistoryLimit)
-	}
-	if input.FailedJobsHistoryLimit != nil {
-		spec["failedJobsHistoryLimit"] = *(input.FailedJobsHistoryLimit)
-	}
-	// in 1.25/1.17, job template both v1/JobSpec and v1.ObjectMeta
-	//jobSpec, err = m.generateJobSpec(&input.CronJobSpec.JobTemplate.Spec)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "generate job spec")
-	//}
-	jobTemplate, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&(input.JobTemplate))
-	if err != nil {
-		log.Errorf("error when convert to unstruc, %v", err)
-	}
-	spec["jobTemplate"] = jobTemplate
-	//map[string]interface{}{
-	//	"metadata": map[string]interface{}{
-	//		"name":        objMeta.Name,
-	//		"namespace":   objMeta.Namespace,
-	//		"labels":      m.generateStrInterface(objMeta.Labels),
-	//		"annotations": m.generateStrInterface(objMeta.Annotations),
-	//	},
-	//	"spec": input.CronJobSpec.JobTemplate.Spec.String(),
-	//}
-	log.Errorf("%v", jobTemplate)
-	err = unstructured.SetNestedMap(res.Object, spec, "spec")
+	err = unstructured.SetNestedMap(res.Object, cronSpec, "spec")
 	if err != nil {
 		return nil, errors.Wrap(err, "set nested map of unstructured")
 	}
