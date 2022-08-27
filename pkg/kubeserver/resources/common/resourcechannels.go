@@ -4,7 +4,6 @@ import (
 	apps "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	batch "k8s.io/api/batch/v1"
-	batch2 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
 	// extensions "k8s.io/api/extensions/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
@@ -35,7 +34,7 @@ type ResourceChannels struct {
 	JobList JobListChannel
 
 	// List and error channels to Cron Jobs.
-	CronJobList CronJobListChannel
+	// CronJobList CronJobListChannel
 
 	// List and error channels to Services
 	ServiceList ServiceListChannel
@@ -391,25 +390,25 @@ func GetJobListChannel(indexer *client.CacheFactory,
 	return channel
 }
 
-type CronJobListChannel struct {
-	List  chan []*batch2.CronJob
-	Error chan error
-}
+//type CronJobListChannel struct {
+//	List  chan []*batch2.CronJob
+//	Error chan error
+//}
 
-func GetCronJobListChannel(indexer *client.CacheFactory, nsQuery *NamespaceQuery) CronJobListChannel {
-	channel := CronJobListChannel{
-		List:  make(chan []*batch2.CronJob),
-		Error: make(chan error),
-	}
-
-	go func() {
-		list, err := indexer.CronJobLister().CronJobs(nsQuery.ToRequestParam()).List(labels.Everything())
-		channel.List <- list
-		channel.Error <- err
-	}()
-
-	return channel
-}
+//func GetCronJobListChannel(indexer *client.CacheFactory, nsQuery *NamespaceQuery) CronJobListChannel {
+//	channel := CronJobListChannel{
+//		List:  make(chan []*batch2.CronJob),
+//		Error: make(chan error),
+//	}
+//
+//	go func() {
+//		list, err := indexer.CronJobLister().CronJobs(nsQuery.ToRequestParam()).List(labels.Everything())
+//		channel.List <- list
+//		channel.Error <- err
+//	}()
+//
+//	return channel
+//}
 
 // StatefulSetListChannel is a list and error channels to Nodes.
 type StatefulSetListChannel struct {
