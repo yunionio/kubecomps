@@ -81,7 +81,7 @@ func buildCacheController(
 	for _, resource := range resources {
 		res := resource.GroupVersionResourceKind.GroupVersionResource
 		kind := resource.GroupVersionResourceKind.Kind
-		if kind != kapi.KindNameIngress && kind != kapi.ResourceNameCronJob {
+		if kind != kapi.KindNameIngress && kind != kapi.KindNameCronJob {
 			log.Debugf("==skip res: %#v", res)
 			continue
 		}
