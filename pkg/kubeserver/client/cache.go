@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"time"
+	"yunion.io/x/pkg/utils"
 
 	// "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,7 +82,7 @@ func buildCacheController(
 	for _, resource := range resources {
 		res := resource.GroupVersionResourceKind.GroupVersionResource
 		kind := resource.GroupVersionResourceKind.Kind
-		if kind != kapi.KindNameIngress && kind != kapi.KindNameCronJob {
+		if !utils.IsInStringArray(kind, api.KindHandledByDynamic) {
 			log.Debugf("==skip res: %#v", res)
 			continue
 		}

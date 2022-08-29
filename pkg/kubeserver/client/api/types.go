@@ -318,6 +318,10 @@ var KindToResourceMap = map[string]ResourceMap{
 	},
 }
 
+var KindHandledByDynamic = []string{
+	api.KindNameIngress, api.KindNameCronJob,
+}
+
 func GetResourceKinds() sets.String {
 	kinds := sets.NewString()
 	for keyPlural := range KindToResourceMap {
