@@ -114,13 +114,12 @@ type CronJobDetail struct {
 
 type CronJobDetailV2 struct {
 	NamespaceResourceDetail
-	Schedule     string       `json:"schedule"`
-	Suspend      *bool        `json:"suspend"`
-	Active       int          `json:"active"`
-	LastSchedule *metav1.Time `json:"lastSchedule"`
-
-	ConcurrencyPolicy       string `json:"concurrencyPolicy"`
-	StartingDeadLineSeconds *int64 `json:"startingDeadlineSeconds"`
+	Schedule                interface{} `json:"schedule"`
+	Suspend                 interface{} `json:"suspend"`
+	Active                  interface{} `json:"active"`
+	LastSchedule            interface{} `json:"lastSchedule"`
+	ConcurrencyPolicy       interface{} `json:"concurrencyPolicy"`
+	StartingDeadLineSeconds interface{} `json:"startingDeadlineSeconds"`
 
 	/*
 	 * ActiveJobs              []*Job   `json:"activeJobs"`
