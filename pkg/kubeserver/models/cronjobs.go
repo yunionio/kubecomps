@@ -5,9 +5,11 @@ import (
 	batch2 "k8s.io/api/batch/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/jsonutils"
 
@@ -34,10 +36,10 @@ func GetCronJobManager() *SCronJobManager {
 					"cronjob",
 					"cronjobs",
 					api.ResourceNameCronJob,
-					batch2.GroupName,
-					batch2.SchemeGroupVersion.Version,
+					"",
+					"",
 					api.KindNameCronJob,
-					new(batch2.CronJob),
+					new(unstructured.Unstructured),
 				),
 			}
 		}).(*SCronJobManager)
@@ -55,33 +57,68 @@ type SCronJob struct {
 
 func (m *SCronJobManager) NewRemoteObjectForCreate(model IClusterModel, cli *client.ClusterManager, data jsonutils.JSONObject) (interface{}, error) {
 	input := new(api.CronJobCreateInputV2)
-	data.Unmarshal(input)
+	res := new(unstructured.Unstructured)
+	var (
+		err      error
+		timeZone string
+		objMeta  metav1.ObjectMeta
+		cronSpec map[string]interface{}
+	)
+
+	err = data.Unmarshal(input)
+	if err != nil {
+		return nil, errors.Wrap(err, "cronjob input unmarshal error")
+	}
+	objMeta, err = input.ToObjectMeta(model.(api.INamespaceGetter))
+	if err != nil {
+		return nil, errors.Wrap(err, "cronjob input get meta error")
+	}
+	objMeta = *api.AddObjectMetaDefaultLabel(&objMeta)
+
 	if len(input.JobTemplate.Spec.Template.Spec.RestartPolicy) == 0 {
 		input.JobTemplate.Spec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 	}
-	objMeta, err := input.ToObjectMeta(model.(api.INamespaceGetter))
-	if err != nil {
-		return nil, err
-	}
-	objMeta = *api.AddObjectMetaDefaultLabel(&objMeta)
 	input.JobTemplate.Spec.Template.ObjectMeta = objMeta
-	job := &batch2.CronJob{
-		ObjectMeta: objMeta,
-		Spec:       input.CronJobSpec,
+
+	// meta object
+	res.SetName(objMeta.Name)
+	res.SetNamespace(objMeta.Namespace)
+	res.SetLabels(objMeta.Labels)
+	res.SetAnnotations(objMeta.Annotations)
+	// only difference is timeZone
+	cronSpec, err = runtime.DefaultUnstructuredConverter.ToUnstructured(&(input.CronJobSpec))
+	// timeZone, for 1.25, optional
+	timeZone, _ = data.GetString("timeZone")
+	if timeZone != "" {
+		cronSpec["timeZone"] = timeZone
 	}
-	return job, nil
+	err = unstructured.SetNestedMap(res.Object, cronSpec, "spec")
+	if err != nil {
+		return nil, errors.Wrap(err, "set nested map of unstructured")
+	}
+
+	return res, nil
 }
 
 func (obj *SCronJob) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	cj := k8sObj.(*batch2.CronJob)
+	cj := k8sObj.(*unstructured.Unstructured)
+	spec, _, _ := unstructured.NestedMap(cj.Object, "spec")
+	status, _, _ := unstructured.NestedMap(cj.Object, "status")
+	actives, _, _ := unstructured.NestedSlice(status, "active")
+	schedule, _, _ := unstructured.NestedString(spec, "schedule")
+	suspend, _, _ := unstructured.NestedBool(spec, "suspend")
+	lastScheduleTime, _, _ := unstructured.NestedMap(status, "lastScheduleTime")
+	concurrencyPolicy, _, _ := unstructured.NestedString(spec, "concurrencyPolicy")
+	startingDeadlineSeconds, _, _ := unstructured.NestedInt64(spec, "concurrencyPolicy")
+
 	detail := api.CronJobDetailV2{
 		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
-		Schedule:                cj.Spec.Schedule,
-		Suspend:                 cj.Spec.Suspend,
-		Active:                  len(cj.Status.Active),
-		LastSchedule:            cj.Status.LastScheduleTime,
-		ConcurrencyPolicy:       string(cj.Spec.ConcurrencyPolicy),
-		StartingDeadLineSeconds: cj.Spec.StartingDeadlineSeconds,
+		Schedule:                schedule,
+		Suspend:                 suspend,
+		Active:                  len(actives),
+		LastSchedule:            lastScheduleTime,
+		ConcurrencyPolicy:       concurrencyPolicy,
+		StartingDeadLineSeconds: startingDeadlineSeconds,
 	}
 	return detail
 }
