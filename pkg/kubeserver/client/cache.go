@@ -2,10 +2,13 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
+
 	"yunion.io/x/pkg/utils"
 
-	// "k8s.io/apimachinery/pkg/api/meta"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	// "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -16,6 +19,7 @@ import (
 	autoscalingv1 "k8s.io/client-go/listers/autoscaling/v1"
 	batch "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/listers/core/v1"
+
 	// extensions "k8s.io/client-go/listers/extensions/v1beta1"
 	rbac "k8s.io/client-go/listers/rbac/v1"
 	storage "k8s.io/client-go/listers/storage/v1"
@@ -46,6 +50,29 @@ type CacheFactory struct {
 	gvkrs                  []api.ResourceMap
 }
 
+func accessCheck(cli kubernetes.Interface, namespace string, verb string, group string, resource string) (bool, error) {
+	authCli := cli.AuthorizationV1()
+	sar := &authorizationv1.SelfSubjectAccessReview{
+		Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Namespace: namespace,
+				Verb:      verb,
+				Group:     group,
+				Resource:  resource,
+			},
+		},
+	}
+	args := fmt.Sprintf("%s/%s/%s/%s", namespace, verb, group, resource)
+	response, err := authCli.SelfSubjectAccessReviews().Create(context.Background(), sar, metav1.CreateOptions{})
+	if err != nil {
+		return false, errors.Wrapf(err, "SelfSubjectAccessReviews %s", args)
+	}
+	if response.Status.Allowed {
+		return true, nil
+	}
+	return false, errors.Errorf("Not allowed %s: %s", args, response.Status.Reason)
+}
+
 func buildCacheController(
 	cluster manager.ICluster,
 	client *kubernetes.Clientset,
@@ -69,6 +96,11 @@ func buildCacheController(
 		if err != nil {
 			return nil, err
 		}
+		// test watch permissions
+		allowed, err := accessCheck(client, "", "watch", value.GroupVersionResourceKind.Group, value.GroupVersionResourceKind.Resource)
+		if !allowed {
+			return nil, errors.Wrap(err, "watch accessCheck")
+		}
 		resMan := cluster.GetK8sResourceManager(value.GroupVersionResourceKind.Kind)
 		if resMan != nil {
 			// register informer event handler
@@ -90,6 +122,11 @@ func buildCacheController(
 		log.Debugf("======res for ingress/cronjob: %#v, cluster: %q", res, cluster.GetName())
 		genericInformer := dynamicInformerFactory.ForResource(res)
 		if resMan != nil {
+			// test watch permissions
+			allowed, err := accessCheck(client, "", "watch", res.Group, res.Resource)
+			if !allowed {
+				return nil, errors.Wrap(err, "watch accessCheck")
+			}
 			// register informer event handler
 			genericInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
 			informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
@@ -100,9 +137,12 @@ func buildCacheController(
 	sharedInformerFactory.Start(stop)
 	dynamicInformerFactory.Start(stop)
 
+	log.Infof("[Start] WaitForCacheSync for cluster %s(%s)", cluster.GetName(), cluster.GetId())
 	if !cache.WaitForCacheSync(stop, informerSyncs...) {
+		log.Errorf("[End] WaitForCacheSync for cluster %s(%s) not done", cluster.GetName(), cluster.GetId())
 		return nil, errors.Errorf("informers not synced")
 	}
+	log.Infof("[End] WaitForCacheSync for cluster %s(%s)", cluster.GetName(), cluster.GetId())
 	cacheF.sharedInformerFactory = sharedInformerFactory
 	cacheF.dynamicInformerFactory = dynamicInformerFactory
 	cacheF.gvkrs = resources

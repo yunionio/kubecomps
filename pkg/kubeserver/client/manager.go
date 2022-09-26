@@ -107,7 +107,7 @@ func (m *ClustersManager) AddClient(dbCluster manager.ICluster) error {
 	}
 	cm, err := m.buildManager(dbCluster)
 	if err != nil {
-		return errors.Wrap(err, "build cluster manager")
+		return errors.Wrapf(err, "build cluster %s(%s) manager", dbCluster.GetName(), dbCluster.GetId())
 	}
 	m.addManager(cm)
 
