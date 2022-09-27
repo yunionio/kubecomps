@@ -96,6 +96,10 @@ func (a sClusterResAPI) UpdateFromRemoteObject(obj IClusterModel, ctx context.Co
 	if err != nil {
 		return errors.Wrapf(err, "Update from remote object error")
 	}
+	if _, ok := diff["resource_version"]; ok && len(diff) == 1 {
+		// not do OpsLog if only resource_version updated
+		return nil
+	}
 	db.OpsLog.LogSyncUpdate(obj, diff, userCred)
 	return nil
 }
