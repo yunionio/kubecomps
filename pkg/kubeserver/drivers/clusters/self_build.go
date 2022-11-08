@@ -728,7 +728,7 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		// EtcdKubeadmEnabled:     false,
 		KubeVersion:            k8sVersion,
 		KubeImageRepo:          "registry.aliyuncs.com/google_containers",
-		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/stable",
+		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/{{ ansible_distribution_major_version }}/$basearch/stable",
 		DockerRHRepoGPGKey:     "https://mirrors.aliyun.com/docker-ce/linux/centos/gpg",
 		EnableNodelocalDNS:     true,
 		NodelocalDNSVersion:    "1.16.0",
