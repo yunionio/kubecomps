@@ -758,6 +758,7 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		DockerUser:               options.Options.DockerUser,
 		DockerPassword:           options.Options.DockerPassword,
 		DockerHost:               options.Options.DockerHost,
+		AutoRenewCertificates:    true,
 	}
 	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_20_0
