@@ -129,6 +129,8 @@ type KubesprayVars struct {
 	DockerUser     string `json:"docker_user"`
 	DockerPassword string `json:"docker_password"`
 	DockerHost     string `json:"docker_host"`
+
+	AutoRenewCertificates bool `json:"auto_renew_certificates"`
 }
 
 func (v KubesprayVars) Validate() error {
