@@ -728,7 +728,7 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		// EtcdKubeadmEnabled:     false,
 		KubeVersion:            k8sVersion,
 		KubeImageRepo:          "registry.aliyuncs.com/google_containers",
-		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/$releasever/$basearch/stable",
+		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/{{ ansible_distribution_major_version }}/$basearch/stable",
 		DockerRHRepoGPGKey:     "https://mirrors.aliyun.com/docker-ce/linux/centos/gpg",
 		EnableNodelocalDNS:     true,
 		NodelocalDNSVersion:    "1.16.0",
@@ -758,6 +758,7 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		DockerUser:               options.Options.DockerUser,
 		DockerPassword:           options.Options.DockerPassword,
 		DockerHost:               options.Options.DockerHost,
+		AutoRenewCertificates:    true,
 	}
 	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_20_0
