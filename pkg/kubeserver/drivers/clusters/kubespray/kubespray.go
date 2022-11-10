@@ -57,7 +57,7 @@ type KubesprayVars struct {
 	QuayImageRepo string `json:"quay_image_repo"`
 
 	// Docker CentOS/Redhat repo
-	// DockerRHRepoBaseUrl: {{ yum_repo }}/docker-ce/$releasever/$basearch
+	// DockerRHRepoBaseUrl: {{ yum_repo }}/docker-ce/{{ ansible_distribution_major_version }}/$basearch
 	DockerRHRepoBaseUrl string `json:"docker_rh_repo_base_url"`
 	// DockerRHRepoGPGKey: {{ yum_repo }}/docker-ce/gpg
 	DockerRHRepoGPGKey string `json:"docker_rh_repo_gpgkey"`
@@ -129,6 +129,8 @@ type KubesprayVars struct {
 	DockerUser     string `json:"docker_user"`
 	DockerPassword string `json:"docker_password"`
 	DockerHost     string `json:"docker_host"`
+
+	AutoRenewCertificates bool `json:"auto_renew_certificates"`
 }
 
 func (v KubesprayVars) Validate() error {
