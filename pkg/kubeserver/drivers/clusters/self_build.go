@@ -29,7 +29,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 	"yunion.io/x/kubecomps/pkg/utils/rand"
-	"yunion.io/x/kubecomps/pkg/utils/registry"
+	// "yunion.io/x/kubecomps/pkg/utils/registry"
 	"yunion.io/x/kubecomps/pkg/utils/ssh"
 )
 
@@ -663,10 +663,10 @@ func (d *selfBuildDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.
 		return "", err
 	}
 
-	reg, err := cluster.GetImageRepository()
-	if err != nil {
-		return "", err
-	}
+	// reg, err := cluster.GetImageRepository()
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	if !cluster.IsInClassicNetwork() {
 		commonConf.CloudProviderYunionConfig = nil
@@ -676,14 +676,14 @@ func (d *selfBuildDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.
 
 	pluginConf := &addons.YunionVMPluginsConfig{
 		YunionCommonPluginsConfig: commonConf,
-		CNICalicoConfig: &addons.CNICalicoConfig{
-			ControllerImage:     registry.MirrorImage(reg.Url, "kube-controllers", "v3.12.1", "calico"),
-			NodeImage:           registry.MirrorImage(reg.Url, "node", "v3.12.1", "calico"),
-			CNIImage:            registry.MirrorImage(reg.Url, "cni", "v3.12.1", "calico"),
-			ClusterCIDR:         cluster.GetPodCidr(),
-			EnableNativeIPAlloc: conf.Network.EnableNativeIPAlloc,
-			NodeAgentImage:      registry.MirrorImage(reg.Url, "node-agent", "latest", "calico"),
-		},
+		// CNICalicoConfig: &addons.CNICalicoConfig{
+		// 	ControllerImage:     registry.MirrorImage(reg.Url, "kube-controllers", "v3.12.1", "calico"),
+		// 	NodeImage:           registry.MirrorImage(reg.Url, "node", "v3.12.1", "calico"),
+		// 	CNIImage:            registry.MirrorImage(reg.Url, "cni", "v3.12.1", "calico"),
+		// 	ClusterCIDR:         cluster.GetPodCidr(),
+		// 	EnableNativeIPAlloc: conf.Network.EnableNativeIPAlloc,
+		// 	NodeAgentImage:      registry.MirrorImage(reg.Url, "node-agent", "latest", "calico"),
+		// },
 	}
 	return pluginConf.GenerateYAML()
 }
