@@ -53,9 +53,9 @@ func GetCommonAddonsConfig(cluster *models.SCluster) (*addons.YunionCommonPlugin
 	}
 
 	commonConf := &addons.YunionCommonPluginsConfig{
-		MetricsPluginConfig: &addons.MetricsPluginConfig{
+		/* MetricsPluginConfig: &addons.MetricsPluginConfig{
 			MetricsServerImage: registry.MirrorImage(reg.Url, "metrics-server-amd64", "v0.3.1", ""),
-		},
+		}, */
 		/*
 		 * HelmPluginConfig: &addons.HelmPluginConfig{
 		 *     TillerImage: registry.MirrorImage(reg.Url, "tiller", "v2.11.0", ""),
@@ -65,22 +65,22 @@ func GetCommonAddonsConfig(cluster *models.SCluster) (*addons.YunionCommonPlugin
 			YunionAuthConfig:   authConfig,
 			CloudProviderImage: registry.MirrorImage(reg.Url, "yunion-cloud-controller-manager", "v2.10.0", ""),
 		},
-		CSIYunionConfig: &addons.CSIYunionConfig{
+		/* CSIYunionConfig: &addons.CSIYunionConfig{
 			YunionAuthConfig: authConfig,
 			AttacherImage:    registry.MirrorImage(reg.Url, "csi-attacher", "v1.0.1", ""),
 			ProvisionerImage: registry.MirrorImage(reg.Url, "csi-provisioner", "v1.0.1", ""),
 			RegistrarImage:   registry.MirrorImage(reg.Url, "csi-node-driver-registrar", "v1.1.0", ""),
 			PluginImage:      registry.MirrorImage(reg.Url, "yunion-csi-plugin", "v2.10.0", ""),
 			Base64Config:     authConfig.ToJSONBase64String(),
-		},
+		}, */
 		IngressControllerYunionConfig: &addons.IngressControllerYunionConfig{
 			YunionAuthConfig: authConfig,
 			Image:            registry.MirrorImage(reg.Url, "yunion-ingress-controller", "v2.10.0", ""),
 		},
-		CSIRancherLocalPathConfig: &addons.CSIRancherLocalPathConfig{
+		/* CSIRancherLocalPathConfig: &addons.CSIRancherLocalPathConfig{
 			Image:       registry.MirrorImage(reg.Url, "local-path-provisioner", "v0.0.11", ""),
 			HelperImage: registry.MirrorImage(reg.Url, "busybox", "1.28.0-glibc", ""),
-		},
+		}, */
 	}
 
 	return commonConf, nil
