@@ -53,8 +53,16 @@ type PortMapping struct {
 	// Port that will be exposed on the service.
 	Port int32 `json:"port"`
 
-	// Docker image path for the application.
+	// Number of the port to access on the pods targeted by the service.
+	// Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
 	TargetPort int32 `json:"targetPort"`
+
+	// The port on each node on which this service is exposed when type=NodePort or LoadBalancer.
+	// Usually assigned by the system. If specified, it will be allocated to the service
+	// if unused or else creation of the service will fail.
+	// Default is to auto-allocate a port if the ServiceType of this Service requires one.
+	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+	NodePort int32 `json:"nodePort"`
 
 	// IP protocol for the mapping, e.g., "TCP" or "UDP".
 	Protocol v1.Protocol `json:"protocol"`
@@ -71,12 +79,15 @@ func GenerateName(base string) string {
 }
 
 func GeneratePortMappingName(portMapping PortMapping) string {
-	return GenerateName(fmt.Sprintf("%s-%d-%d-", strings.ToLower(string(portMapping.Protocol)),
-		portMapping.Port, portMapping.TargetPort))
+	prefix := fmt.Sprintf("%s-%d-%d-", strings.ToLower(string(portMapping.Protocol)), portMapping.Port, portMapping.TargetPort)
+	if portMapping.NodePort != 0 {
+		prefix = fmt.Sprintf("%s-%d-%d-%d-", strings.ToLower(string(portMapping.Protocol)), portMapping.Port, portMapping.TargetPort, portMapping.NodePort)
+	}
+	return GenerateName(prefix)
 }
 
 func (p PortMapping) ToServicePort() v1.ServicePort {
-	return v1.ServicePort{
+	sp := v1.ServicePort{
 		Protocol: p.Protocol,
 		Port:     p.Port,
 		Name:     GeneratePortMappingName(p),
@@ -85,6 +96,10 @@ func (p PortMapping) ToServicePort() v1.ServicePort {
 			IntVal: p.TargetPort,
 		},
 	}
+	if p.NodePort != 0 {
+		sp.NodePort = p.NodePort
+	}
+	return sp
 }
 
 type ServiceCreateOption struct {
