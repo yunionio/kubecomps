@@ -61,6 +61,7 @@ func (t *ClusterResourceCreateTask) OnCreateComplete(ctx context.Context, obj mo
 }
 
 func (t *ClusterResourceCreateTask) OnCreateCompleteFailed(ctx context.Context, obj models.IClusterModel, reason jsonutils.JSONObject) {
+	logclient.LogWithStartable(t, obj, logclient.ActionResourceCreate, reason, t.GetUserCred(), false)
 	SetObjectTaskFailed(ctx, t, obj, api.ClusterResourceStatusCreateFail, reason.String())
 }
 
