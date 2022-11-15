@@ -131,6 +131,15 @@ type KubesprayVars struct {
 	DockerHost     string `json:"docker_host"`
 
 	AutoRenewCertificates bool `json:"auto_renew_certificates"`
+
+	// kubernetes-apps
+	IngressNginxEnabled bool `json:"ingress_nginx_enabled"`
+	// IngressNginxControllerImageRepo is "{{ kube_image_repo }}/ingress-nginx/controller" by default
+	IngressNginxControllerImageRepo string `json:"ingress_nginx_controller_image_repo"`
+	// IngressNginxControllerImageTag is:
+	// - k8s v1.17 => v0.41.2
+	// - k8s v1.20 => v1.0.0
+	IngressNginxControllerImageTag string `json:"ingress_nginx_controller_image_tag"`
 }
 
 func (v KubesprayVars) Validate() error {
