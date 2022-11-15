@@ -36,7 +36,8 @@ type DaemonSetDetailV2 struct {
 	PodInfo             PodInfo           `json:"podsInfo"`
 	ContainerImages     []ContainerImage  `json:"containerImages"`
 	InitContainerImages []ContainerImage  `json:"initContainerImages"`
-	Selector            *v1.LabelSelector `json:"labelSelector"`
+	LabelSelector       *v1.LabelSelector `json:"labelSelector"`
+	Selector            map[string]string `json:"selector"`
 	DaemonSetStatus
 }
 
