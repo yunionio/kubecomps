@@ -759,7 +759,7 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		DockerPassword:                  options.Options.DockerPassword,
 		DockerHost:                      options.Options.DockerHost,
 		AutoRenewCertificates:           true,
-		NginxImageRepo:                  "registry.cn-beijing.aliyuncs.com/yunionio/nginx",
+		NginxImageRepo:                  "{{ image_repo }}/nginx",
 		NginxImageTag:                   "1.19",
 		IngressNginxEnabled:             true,
 		IngressNginxControllerImageRepo: "{{ kube_image_repo }}/nginx-ingress-controller",
