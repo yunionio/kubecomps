@@ -1550,9 +1550,11 @@ func (c *SCluster) validateDeployCondtion() error {
 	return nil
 }
 
-func (c *SCluster) PerformDeploy(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	if err := c.validateDeployCondtion(); err != nil {
-		return nil, err
+func (c *SCluster) PerformDeploy(ctx context.Context, userCred mcclient.TokenCredential, query, input *api.ClusterDeployInput) (jsonutils.JSONObject, error) {
+	if !input.Force {
+		if err := c.validateDeployCondtion(); err != nil {
+			return nil, err
+		}
 	}
 
 	ms, err := c.GetDeployMachines(nil)
