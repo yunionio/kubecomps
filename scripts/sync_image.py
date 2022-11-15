@@ -204,6 +204,7 @@ def docker_cluster_proportional_image(taget_repo):
 
 def sync_images(repo):
     imgs = [
+        Image("docker.io/library", "nginx", "1.19", repo, "nginx"),
         # Image("calico", "node", "v3.19.3", repo, "calico-node"),
         # Image("calico", "cni", "v3.19.3", repo, "calico-cni"),
         # Image("calico", "kube-controllers", "v3.19.3", repo, "calico-kube-controllers"),
@@ -248,6 +249,6 @@ def download_files():
 
 if __name__ == '__main__':
     repo = 'registry.cn-beijing.aliyuncs.com/yunionio'
-    # sync_images(repo)
+    sync_images(repo)
     #docker_cluster_proportional_image(repo)
-    download_files()
+    # download_files()

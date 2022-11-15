@@ -132,6 +132,11 @@ type KubesprayVars struct {
 
 	AutoRenewCertificates bool `json:"auto_renew_certificates"`
 
+	// NginxImageRepo is "{{ docker_image_repo }}/library/nginx" by default
+	NginxImageRepo string `json:"nginx_image_repo"`
+	// NginxImageTag is 1.19 by default
+	NginxImageTag string `json:"nginx_image_tag"`
+
 	// kubernetes-apps
 	IngressNginxEnabled bool `json:"ingress_nginx_enabled"`
 	// IngressNginxControllerImageRepo is "{{ kube_image_repo }}/ingress-nginx/controller" by default
