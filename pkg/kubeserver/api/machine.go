@@ -59,6 +59,7 @@ type MachineCreateVMConfig struct {
 	VmemSize     int    `json:"vmem_size"`
 	VcpuCount    int    `json:"vcpu_count"`
 	InstanceType string `json:"instance_type"`
+	IsSystem     bool   `json:"is_system"`
 }
 
 type MachinePrepareInput struct {

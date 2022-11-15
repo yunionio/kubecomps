@@ -243,8 +243,6 @@ type ServerCreateInput struct {
 }
 
 func (d *sYunionVMDriver) getServerCreateInput(machine *models.SMachine, prepareInput *api.MachinePrepareInput) (*ServerCreateInput, error) {
-	tmpFalse := false
-	tmpTrue := true
 	config := prepareInput.Config.Vm
 
 	input := ServerCreateInput{
@@ -262,11 +260,15 @@ func (d *sYunionVMDriver) getServerCreateInput(machine *models.SMachine, prepare
 		input.VmemSize = 0
 	}
 
+	cluster, err := machine.GetCluster()
+	if err != nil {
+		return nil, errors.Wrapf(err, "get cluster of machine %s", machine.GetName())
+	}
 	input.Name = machine.Name
 	input.DomainId = machine.DomainId
 	input.ProjectId = machine.ProjectId
-	input.IsSystem = &tmpTrue
-	input.DisableDelete = &tmpFalse
+	input.Description = fmt.Sprintf("K8s node of cluster %s", cluster.GetName())
+	input.IsSystem = &machine.IsSystem
 	input.Hypervisor = config.Hypervisor
 	input.Disks = config.Disks
 	input.Networks = config.Networks
