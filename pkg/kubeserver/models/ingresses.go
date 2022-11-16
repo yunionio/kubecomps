@@ -1,13 +1,18 @@
 package models
 
 import (
+	"fmt"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/log"
+	"yunion.io/x/pkg/errors"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
-	"yunion.io/x/pkg/errors"
 )
 
 var (
@@ -78,12 +83,23 @@ func (m *SIngressManager) NewRemoteObjectForCreate(model IClusterModel, cli *cli
 	res.SetName(objMeta.Name)
 	res.SetNamespace(objMeta.Namespace)
 	res.SetLabels(objMeta.Labels)
-	res.SetAnnotations(objMeta.Annotations)
+	anno := objMeta.Annotations
 	// optional ingress classname
 	ingressClassName, _ = data.GetString("ingressClassName")
 	if ingressClassName != "" {
 		spec["ingressClassName"] = ingressClassName
 	}
+	if ingressClassName == "nginx" {
+		anno["kubernetes.io/ingress.class"] = ingressClassName
+		ssConf := input.StickySession
+		if ssConf != nil && ssConf.Enabled {
+			anno["nginx.ingress.kubernetes.io/affinity"] = "cookie"
+			anno["nginx.ingress.kubernetes.io/session-cookie-expires"] = fmt.Sprintf("%d", ssConf.CookieExpires)
+			anno["nginx.ingress.kubernetes.io/session-cookie-max-age"] = fmt.Sprintf("%d", ssConf.CookieExpires)
+			anno["nginx.ingress.kubernetes.io/session-cookie-name"] = ssConf.Name
+		}
+	}
+	res.SetAnnotations(anno)
 	// optional backend
 	backend, err = data.Get("backend")
 	if err == nil {
@@ -113,6 +129,7 @@ func (m *SIngressManager) NewRemoteObjectForCreate(model IClusterModel, cli *cli
 		for _, rule := range rules {
 			ruleResult, err = m.generateRuleFromJson(rule)
 			if err != nil {
+				log.Warningf("generateRuleFromJson %s: %v", rule.PrettyString(), err)
 				continue
 			}
 			rulesArray = append(rulesArray, ruleResult)
@@ -177,10 +194,7 @@ func (m *SIngressManager) generateRuleFromJson(rule jsonutils.JSONObject) (map[s
 	if err != nil {
 		return nil, errors.Wrap(err, "rule not contain paths")
 	}
-	host, err = rule.GetString("host")
-	if err != nil {
-		return nil, errors.Wrap(err, "rule not contain hostname")
-	}
+	host, _ = rule.GetString("host")
 	for _, path := range paths {
 		pathname, err = path.GetString("path")
 		if err != nil {
