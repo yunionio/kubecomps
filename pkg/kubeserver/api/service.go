@@ -109,6 +109,7 @@ type ServiceCreateOption struct {
 	Selector            map[string]string `json:"selector"`
 	LoadBalancerCluster string            `json:"loadBalancerCluster"`
 	LoadBalancerNetwork string            `json:"loadBalancerNetwork"`
+	LoadBalancerAddress string            `json:"loadBalancerAddress`
 }
 
 type ServiceCreateInput struct {
@@ -123,6 +124,7 @@ const (
 
 	YUNION_LB_NETWORK_ANNOTATION = "loadbalancer.yunion.io/network"
 	YUNION_LB_CLUSTER_ANNOTATION = "loadbalancer.yunion.io/cluster"
+	YUNION_LB_ADDRESS_ANNOTATION = "loadbalancer.yunion.io/address"
 )
 
 type NetworkConfig struct {
