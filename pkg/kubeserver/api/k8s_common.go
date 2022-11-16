@@ -53,11 +53,18 @@ type K8sResourceCreateInput struct {
 }
 
 func (input K8sResourceCreateInput) ToObjectMeta() metav1.ObjectMeta {
-	return metav1.ObjectMeta{
+	om := metav1.ObjectMeta{
 		Name:        input.Name,
 		Labels:      input.Labels,
 		Annotations: input.Annotations,
 	}
+	if om.Labels == nil {
+		om.Labels = map[string]string{}
+	}
+	if om.Annotations == nil {
+		om.Annotations = map[string]string{}
+	}
+	return om
 }
 
 type K8sResourceUpdateInput struct {
