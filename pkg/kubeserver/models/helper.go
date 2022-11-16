@@ -350,6 +350,9 @@ func GetServiceFromOption(objMeta *metav1.ObjectMeta, opt *api.ServiceCreateOpti
 	if opt.LoadBalancerCluster != "" {
 		svc.Annotations[api.YUNION_LB_CLUSTER_ANNOTATION] = opt.LoadBalancerCluster
 	}
+	if opt.LoadBalancerAddress != "" {
+		svc.Annotations[api.YUNION_LB_ADDRESS_ANNOTATION] = opt.LoadBalancerAddress
+	}
 	return svc
 }
 
