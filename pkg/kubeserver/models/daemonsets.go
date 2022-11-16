@@ -139,7 +139,8 @@ func (obj *SDaemonSet) GetDetails(cli *client.ClusterManager, base interface{}, 
 		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		ContainerImages:         GetContainerImages(&ds.Spec.Template.Spec),
 		InitContainerImages:     GetInitContainerImages(&ds.Spec.Template.Spec),
-		Selector:                ds.Spec.Selector,
+		LabelSelector:           ds.Spec.Selector,
+		Selector:                ds.Spec.Selector.MatchLabels,
 	}
 	podInfo, err := obj.GetPodInfo(cli, ds)
 	if err != nil {

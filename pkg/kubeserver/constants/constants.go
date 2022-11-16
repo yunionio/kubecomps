@@ -28,5 +28,10 @@ const (
 )
 
 const (
+	NGINX_INGRESS_CONTROLLER_1_17_0 = "v0.41.2"
+	NGINX_INGRESS_CONTROLLER_1_20_0 = "v1.0.0"
+)
+
+const (
 	FILE_URL = "http"
 )

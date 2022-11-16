@@ -743,31 +743,37 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		CNIDownloadUrl: "{{ download_file_url }}/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
 
 		// etcd related vars
-		EtcdVersion:              "v3.4.13",
-		EtcdImageRepo:            "{{ image_repo }}/etcd",
-		CalicoctlDownloadUrl:     "{{ download_file_url }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
-		CalicoCRDsDownloadUrl:    "{{ download_file_url }}/calico/archive/{{ calico_version }}.tar.gz",
-		CrictlDownloadUrl:        "{{ download_file_url }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
-		CalicoNodeImageRepo:      "{{ image_repo }}/calico-node",
-		CalicoCNIImageRepo:       "{{ image_repo }}/calico-cni",
-		CalicoPolicyImageRepo:    "{{ image_repo }}/calico-kube-controllers",
-		CalicoTyphaImageRepo:     "{{ image_repo }}/calico-typha",
-		CorednsImageIsNamespaced: false,
-		DownloadFileURL:          options.Options.DownloadFileURL,
-		ImageRepo:                options.Options.ImageRepo,
-		DockerUser:               options.Options.DockerUser,
-		DockerPassword:           options.Options.DockerPassword,
-		DockerHost:               options.Options.DockerHost,
-		AutoRenewCertificates:    true,
+		EtcdVersion:                     "v3.4.13",
+		EtcdImageRepo:                   "{{ image_repo }}/etcd",
+		CalicoctlDownloadUrl:            "{{ download_file_url }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
+		CalicoCRDsDownloadUrl:           "{{ download_file_url }}/calico/archive/{{ calico_version }}.tar.gz",
+		CrictlDownloadUrl:               "{{ download_file_url }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
+		CalicoNodeImageRepo:             "{{ image_repo }}/calico-node",
+		CalicoCNIImageRepo:              "{{ image_repo }}/calico-cni",
+		CalicoPolicyImageRepo:           "{{ image_repo }}/calico-kube-controllers",
+		CalicoTyphaImageRepo:            "{{ image_repo }}/calico-typha",
+		CorednsImageIsNamespaced:        false,
+		DownloadFileURL:                 options.Options.DownloadFileURL,
+		ImageRepo:                       options.Options.ImageRepo,
+		DockerUser:                      options.Options.DockerUser,
+		DockerPassword:                  options.Options.DockerPassword,
+		DockerHost:                      options.Options.DockerHost,
+		AutoRenewCertificates:           true,
+		NginxImageRepo:                  "{{ image_repo }}/nginx",
+		NginxImageTag:                   "1.19",
+		IngressNginxEnabled:             true,
+		IngressNginxControllerImageRepo: "{{ kube_image_repo }}/nginx-ingress-controller",
 	}
 	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_20_0
 		vars.CalicoVersion = constants.CALICO_VERSION_1_20_0
 		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_20_0
+		vars.IngressNginxControllerImageTag = constants.NGINX_INGRESS_CONTROLLER_1_20_0
 	} else {
 		vars.CNIVersion = constants.CNI_VERSION_1_17_0
 		vars.CalicoVersion = constants.CALICO_VERSION_1_17_0
 		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_17_0
+		vars.IngressNginxControllerImageTag = constants.NGINX_INGRESS_CONTROLLER_1_17_0
 	}
 	return vars
 }
