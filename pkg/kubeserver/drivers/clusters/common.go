@@ -73,10 +73,10 @@ func GetCommonAddonsConfig(cluster *models.SCluster) (*addons.YunionCommonPlugin
 			PluginImage:      registry.MirrorImage(reg.Url, "yunion-csi-plugin", "v2.10.0", ""),
 			Base64Config:     authConfig.ToJSONBase64String(),
 		}, */
-		IngressControllerYunionConfig: &addons.IngressControllerYunionConfig{
-			YunionAuthConfig: authConfig,
-			Image:            registry.MirrorImage(reg.Url, "yunion-ingress-controller", "v2.10.0", ""),
-		},
+		// IngressControllerYunionConfig: &addons.IngressControllerYunionConfig{
+		// 	YunionAuthConfig: authConfig,
+		// 	Image:            registry.MirrorImage(reg.Url, "yunion-ingress-controller", "v2.10.0", ""),
+		// },
 		/* CSIRancherLocalPathConfig: &addons.CSIRancherLocalPathConfig{
 			Image:       registry.MirrorImage(reg.Url, "local-path-provisioner", "v0.0.11", ""),
 			HelperImage: registry.MirrorImage(reg.Url, "busybox", "1.28.0-glibc", ""),
