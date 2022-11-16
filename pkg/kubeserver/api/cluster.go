@@ -234,6 +234,11 @@ type ClusterSyncInput struct {
 	Force bool `json:"force"`
 }
 
+type ClusterDeployInput struct {
+	// Force deploy
+	Force bool `json:"force"`
+}
+
 type IClusterRemoteResource interface {
 	GetKey() string
 }
