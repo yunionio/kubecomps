@@ -46,4 +46,11 @@ type IngressCreateInput struct {
 type IngressCreateInputV2 struct {
 	NamespaceResourceCreateInput
 	extensions.IngressSpec
+	StickySession *IngressStickySession `json:"stickySession"`
+}
+
+type IngressStickySession struct {
+	Enabled       bool   `json:"enabled"`
+	Name          string `json:"name"`
+	CookieExpires uint   `json:"cookieExpires"`
 }
