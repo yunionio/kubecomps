@@ -389,8 +389,12 @@ func (d *selfBuildDriver) requestDeployMachines(ctx context.Context, userCred mc
 }
 
 func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray.KubesprayRunVars, error) {
+	extraConf, err := cluster.GetExtraConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "get extra config")
+	}
 	return &kubespray.KubesprayRunVars{
-		KubesprayVars: d.withKubespray(cluster.GetVersion()),
+		KubesprayVars: d.withKubespray(cluster.GetVersion(), extraConf),
 	}, nil
 }
 
@@ -721,7 +725,7 @@ func (d *selfBuildDriver) ValidateDeleteCondition() error {
 	return nil
 }
 
-func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVars {
+func (d *selfBuildDriver) withKubespray(k8sVersion string, extraConf *api.ClusterExtraConfig) kubespray.KubesprayVars {
 	vars := kubespray.KubesprayVars{
 		DownloadRunOnce: false,
 		// YumRepo:                "http://mirrors.aliyun.com",
@@ -764,6 +768,12 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string) kubespray.KubesprayVa
 		IngressNginxEnabled:             true,
 		IngressNginxControllerImageRepo: "{{ kube_image_repo }}/nginx-ingress-controller",
 	}
+
+	if extraConf != nil {
+		vars.DockerInsecureRegistries = extraConf.DockerInsecureRegistries
+		vars.DockerRegistryMirrors = extraConf.DockerRegistryMirrors
+	}
+
 	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_20_0
 		vars.CalicoVersion = constants.CALICO_VERSION_1_20_0
