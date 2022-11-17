@@ -146,6 +146,9 @@ type ClusterCreateInput struct {
 
 	// cluster addons config
 	AddonsConfig *ClusterAddonsManifestConfig `json:"addons_config"`
+
+	// cluster extra config
+	ExtraConfig *ClusterExtraConfig `json:"extra_config"`
 }
 
 type ImageRepository struct {
@@ -446,4 +449,9 @@ type ClusterKubesprayConfig struct {
 	InventoryContent string               `json:"inventory_content"`
 	PrivateKey       string               `json:"private_key"`
 	Vars             jsonutils.JSONObject `json:"vars"`
+}
+
+type ClusterExtraConfig struct {
+	DockerRegistryMirrors    []string `json:"docker_registry_mirrors"`
+	DockerInsecureRegistries []string `json:"docker_insecure_registries"`
 }

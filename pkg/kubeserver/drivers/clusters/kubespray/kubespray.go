@@ -60,7 +60,9 @@ type KubesprayVars struct {
 	// DockerRHRepoBaseUrl: {{ yum_repo }}/docker-ce/{{ ansible_distribution_major_version }}/$basearch
 	DockerRHRepoBaseUrl string `json:"docker_rh_repo_base_url"`
 	// DockerRHRepoGPGKey: {{ yum_repo }}/docker-ce/gpg
-	DockerRHRepoGPGKey string `json:"docker_rh_repo_gpgkey"`
+	DockerRHRepoGPGKey       string   `json:"docker_rh_repo_gpgkey"`
+	DockerRegistryMirrors    []string `json:"docker_registry_mirrors"`
+	DockerInsecureRegistries []string `json:"docker_insecure_registries"`
 
 	// kubespray etcd cluster not support kubeadm managed very well currently
 	// EtcdKubeadmEnabled     bool   `json:"etcd_kubeadm_enabled"`

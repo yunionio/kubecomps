@@ -120,6 +120,9 @@ type SCluster struct {
 	DistributionInfo jsonutils.JSONObject `nullable:"true" create:"optional" list:"user"`
 	// AddonsConfig records cluster addons config
 	AddonsConfig jsonutils.JSONObject `nullable:"true" create:"optional" list:"user"`
+
+	// ExtraConfig records others config
+	ExtraConfig jsonutils.JSONObject `nullable:"true" create:"optional" list:"user"`
 }
 
 func (m *SClusterManager) InitializeData() error {
@@ -621,7 +624,6 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 			return nil, err
 		}
 	}
-	log.Errorf("=====input: %s", jsonutils.Marshal(input).PrettyString())
 	return input, nil
 }
 
@@ -639,6 +641,32 @@ func (cluster *SCluster) GetAddonsConfig() (*api.ClusterAddonsManifestConfig, er
 	}
 	out := new(api.ClusterAddonsManifestConfig)
 	if err := cluster.AddonsConfig.Unmarshal(out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *SCluster) PerformSetExtraConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data *api.ClusterExtraConfig) (jsonutils.JSONObject, error) {
+	if data == nil {
+		return nil, nil
+	}
+	_, err := db.Update(c, func() error {
+		c.ExtraConfig = jsonutils.Marshal(data)
+		return nil
+	})
+	return nil, err
+}
+
+func (c *SCluster) GetDetailsExtraConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	return c.ExtraConfig, nil
+}
+
+func (cluster *SCluster) GetExtraConfig() (*api.ClusterExtraConfig, error) {
+	if cluster.ExtraConfig == nil {
+		return nil, nil
+	}
+	out := new(api.ClusterExtraConfig)
+	if err := cluster.ExtraConfig.Unmarshal(out); err != nil {
 		return nil, err
 	}
 	return out, nil
