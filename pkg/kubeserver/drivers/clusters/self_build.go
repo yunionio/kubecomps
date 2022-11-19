@@ -161,6 +161,20 @@ func (c *selfBuildDriver) ValidateCreateData(ctx context.Context, userCred mccli
 	if len(controls) == 0 {
 		return httperrors.NewInputParameterError("No controlplane nodes")
 	}
+	cnts := models.GetClusterManager().GetAllowedControlplanceCount()
+	if len(controls)%2 == 0 {
+		return httperrors.NewInputParameterError("The number of %d controlplane nodes is not odd, should be within %v", len(controls), cnts)
+	}
+	allowCnt := false
+	for _, cnt := range cnts {
+		if len(controls) == cnt {
+			allowCnt = true
+			break
+		}
+	}
+	if !allowCnt {
+		return httperrors.NewInputParameterError("The number of controlplane nodes should be within %v, you input %d", cnts, len(controls))
+	}
 
 	ctx = context.WithValue(ctx, "VmNamePrefix", strings.ToLower(input.Name))
 	info := &api.ClusterMachineCommonInfo{
