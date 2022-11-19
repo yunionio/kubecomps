@@ -1604,7 +1604,7 @@ func (c *SCluster) AllowPerformAddMachines(ctx context.Context, userCred mcclien
 	return c.allowPerformAction(userCred, "add-machines")
 }
 
-func (c *SCluster) GetAllowedControlplanceCount() []int {
+func (c *SClusterManager) GetAllowedControlplanceCount() []int {
 	return []int{1, 3, 5}
 }
 
@@ -1615,7 +1615,7 @@ func (c *SCluster) validateAddControlplaneMachinesCnt(ms []api.CreateMachineData
 	}
 	// check count
 	total := len(curMs) + len(ms)
-	allowedCount := c.GetAllowedControlplanceCount()
+	allowedCount := GetClusterManager().GetAllowedControlplanceCount()
 	maxCount := allowedCount[len(allowedCount)-1]
 	if total > maxCount {
 		return httperrors.NewInputParameterError("Out of max controlplane count %d", maxCount)
@@ -1636,7 +1636,7 @@ func (c *SCluster) validateAddControlplaneMachinesCnt(ms []api.CreateMachineData
 
 	allowCountStr := make([]string, len(allowCount))
 	for idx := range allowCount {
-		allowCountStr[idx] = fmt.Sprintf("%d", allowedCount[idx])
+		allowCountStr[idx] = fmt.Sprintf(" %d ", allowedCount[idx])
 	}
 	if !isAllow {
 		return httperrors.NewInputParameterError("Only %s controlplane machines can be added", strings.Join(allowCountStr, "or"))
