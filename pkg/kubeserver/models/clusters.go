@@ -916,7 +916,6 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 					log.Errorf("Set cluster %s status to running error: %v", c.GetName(), err)
 				} else {
 					c.Status = api.ClusterStatusRunning
-					log.Errorf("===set cluster %s status succ: %s", c.GetName(), c.GetStatus())
 				}
 				if err := client.GetClustersManager().UpdateClient(c); err != nil {
 					log.Errorf("Update cluster %s client error: %v", c.GetName(), err)
@@ -1712,6 +1711,7 @@ func (c *SCluster) NeedControlplane() (bool, error) {
 	return false, nil
 }
 
+// StartCreateMachinesTask will create machines and deploy cluster by tool like kubespray
 func (c *SCluster) StartCreateMachinesTask(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
@@ -1722,10 +1722,7 @@ func (c *SCluster) StartCreateMachinesTask(
 	data.Add(jsonutils.Marshal(machines), "machines")
 	SetDataDeployAction(data, action)
 
-	log.Errorf("==start ClusterCreateMachinesTask")
-
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterCreateMachinesTask", c, userCred, data, parentTaskId, "", nil)
-	log.Errorf("==run ClusterCreateMachinesTask")
 	if err != nil {
 		return err
 	}
