@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/appsrv"
@@ -31,6 +32,7 @@ func Start(httpsAddr string, app *appsrv.Application) error {
 
 	root.PathPrefix("/api/").Handler(app)
 
+	utilruntime.ReallyCrash = false
 	serveHTTPS := func() error {
 		return http.ListenAndServeTLS(httpsAddr, tlsCertFile, tlsPrivateKey, root)
 	}
