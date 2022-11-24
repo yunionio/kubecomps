@@ -83,7 +83,6 @@ func (h *resourceHandler) GetIndexer() *CacheFactory {
 
 func (h *resourceHandler) Close() {
 	// TODO: figure out the root cause of panic
-	utilruntime.ReallyCrash = false
 	log.Errorf("============close called")
 	defer utilruntime.HandleCrash()
 	close(h.cacheFactory.stopChan)
