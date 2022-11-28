@@ -98,8 +98,8 @@ func (obj *SFedNamespace) GetDetails(base interface{}, isList bool) interface{} 
 // ValidateDeleteCondition check steps:
 // 1. no releated clusters attached
 // 2. no releated federated namespace scope resource
-func (obj *SFedNamespace) ValidateDeleteCondition(ctx context.Context) error {
-	if err := obj.SFedResourceBase.ValidateDeleteCondition(ctx); err != nil {
+func (obj *SFedNamespace) ValidateDeleteCondition(ctx context.Context, info jsonutils.JSONObject) error {
+	if err := obj.SFedResourceBase.ValidateDeleteCondition(ctx, info); err != nil {
 		return err
 	}
 	fedNsMans := GetFedJointNamespaceScopeManager()
