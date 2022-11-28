@@ -289,7 +289,7 @@ func (res *SFedResourceBase) PostUpdate(ctx context.Context, userCred mcclient.T
 	}
 }
 
-func (obj *SFedResourceBase) ValidateDeleteCondition(ctx context.Context) error {
+func (obj *SFedResourceBase) ValidateDeleteCondition(ctx context.Context, _ jsonutils.JSONObject) error {
 	clusters, err := GetFedResAPI().GetAttachedClusters(obj)
 	if err != nil {
 		return errors.Wrap(err, "get attached clusters")
