@@ -183,10 +183,10 @@ type ComponentSettingVolume struct {
 }
 
 type ComponentSettingMonitorPromtail struct {
-	Disable           bool                   `json:"disable"`
-	Resources         *HelmValueResources    `json:"resources"`
-	DockerVolumeMount ComponentSettingVolume `json:"dockerVolumeMount"`
-	PodsVolumeMount   ComponentSettingVolume `json:"podsVolumeMount"`
+	Disable           bool                    `json:"disable"`
+	Resources         *HelmValueResources     `json:"resources"`
+	DockerVolumeMount *ComponentSettingVolume `json:"dockerVolumeMount"`
+	PodsVolumeMount   *ComponentSettingVolume `json:"podsVolumeMount"`
 }
 
 type HelmValueResource struct {

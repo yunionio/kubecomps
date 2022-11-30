@@ -333,11 +333,28 @@ type Loki struct {
 	Config  *LokiConfig `json:"config"`
 }
 
+type PromtailVolumeHostPath struct {
+	Path string `json:"path"`
+}
+
+type PromtailVolume struct {
+	Name     string                 `json:"name"`
+	HostPath PromtailVolumeHostPath `json:"hostPath"`
+}
+
+type PromtailVolumeMount struct {
+	Name      string `json:"name"`
+	MountPath string `json:"mountPath"`
+	ReadOnly  bool   `json:"readOnly"`
+}
+
 type Promtail struct {
 	Enabled      bool                    `json:"enabled"`
 	Resources    *api.HelmValueResources `json:"resources"`
 	BusyboxImage string                  `json:"busyboxImage"`
 	Image        Image                   `json:"image"`
+	Volumes      []*PromtailVolume       `json:"volumes"`
+	VolumeMounts []*PromtailVolumeMount  `json:"volumeMounts"`
 }
 
 type AdmissionWebhooksPatch struct {

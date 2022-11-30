@@ -92,9 +92,11 @@ func (c componentDriverMonitor) validateSetting(ctx context.Context, userCred mc
 	if err := c.validatePrometheus(ctx, userCred, cluster, conf.Prometheus); err != nil {
 		return errors.Wrap(err, "component prometheus")
 	}
-	if err := c.validatePromtail(conf.Promtail); err != nil {
+	promtailConf, err := c.validatePromtail(cluster, conf.Loki, conf.Promtail)
+	if err != nil {
 		return errors.Wrap(err, "component promtail")
 	}
+	conf.Promtail = promtailConf
 	return nil
 }
 
@@ -307,11 +309,32 @@ func (c componentDriverMonitor) validatePrometheusThanos(ctx context.Context, cl
 	return nil
 }
 
-func (c componentDriverMonitor) validatePromtail(conf *api.ComponentSettingMonitorPromtail) error {
+func (c componentDriverMonitor) validatePromtail(cluster *SCluster, lokiConf *api.ComponentSettingMonitorLoki, conf *api.ComponentSettingMonitorPromtail) (*api.ComponentSettingMonitorPromtail, error) {
 	// TODO
-	if conf.Disable {
-		return nil
+	if conf == nil {
+		conf = &api.ComponentSettingMonitorPromtail{
+			Disable: lokiConf.Disable,
+		}
+
 	}
+	if conf.Disable {
+		return conf, nil
+	}
+
+	defaultDockerPath := "/opt/docker/containers"
+	if !cluster.IsSystemCluster() {
+		defaultDockerPath = "/var/lib/docker/containers"
+	}
+	conf.DockerVolumeMount = &api.ComponentSettingVolume{
+		HostPath:  defaultDockerPath,
+		MountPath: defaultDockerPath,
+	}
+	defaultPodPath := "/var/log/pods"
+	conf.PodsVolumeMount = &api.ComponentSettingVolume{
+		HostPath:  defaultPodPath,
+		MountPath: defaultPodPath,
+	}
+
 	var err error
 	conf.Resources, err = c.setDefaultHelmValueResources(
 		conf.Resources,
@@ -319,9 +342,9 @@ func (c componentDriverMonitor) validatePromtail(conf *api.ComponentSettingMonit
 		api.NewHelmValueResource("0.01", "10Mi"),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return conf, nil
 }
 
 func (c componentDriverMonitor) ValidateUpdateData(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, input *api.ComponentUpdateInput) error {
@@ -677,6 +700,36 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 				RetentionDeletesEnabled: true,
 				// 7 days
 				RetentionPeriod: "168h",
+			},
+		}
+	}
+
+	// inject promtail spec
+	if !input.Loki.Disable {
+		conf.Promtail.Volumes = []*components.PromtailVolume{
+			{
+				Name: "docker",
+				HostPath: components.PromtailVolumeHostPath{
+					Path: input.Promtail.DockerVolumeMount.HostPath,
+				},
+			},
+			{
+				Name: "pods",
+				HostPath: components.PromtailVolumeHostPath{
+					Path: input.Promtail.PodsVolumeMount.HostPath,
+				},
+			},
+		}
+		conf.Promtail.VolumeMounts = []*components.PromtailVolumeMount{
+			{
+				Name:      "docker",
+				MountPath: input.Promtail.DockerVolumeMount.MountPath,
+				ReadOnly:  true,
+			},
+			{
+				Name:      "pods",
+				MountPath: input.Promtail.PodsVolumeMount.MountPath,
+				ReadOnly:  true,
 			},
 		}
 	}
