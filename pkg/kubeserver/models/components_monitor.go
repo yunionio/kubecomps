@@ -29,7 +29,8 @@ var (
 )
 
 const (
-	MonitorNamespace                  = "onecloud-monitoring"
+	//MonitorNamespace                  = "onecloud-monitoring"
+	MonitorNamespace                  = "kube-monitoring"
 	MonitorReleaseName                = "monitor"
 	ThanosObjectStoreConfigSecretName = "thanos-objstore-config"
 	ThanosObjectStoreConfigSecretKey  = "thanos.yaml"
@@ -40,7 +41,7 @@ const (
 
 func init() {
 	MonitorComponentManager = NewMonitorComponentManager()
-	ComponentManager.RegisterDriver(newComponentDriverMonitor())
+	//ComponentManager.RegisterDriver(newComponentDriverMonitor())
 }
 
 type SMonitorComponentManager struct {
