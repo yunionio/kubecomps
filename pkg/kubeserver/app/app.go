@@ -73,10 +73,6 @@ func Run(ctx context.Context) error {
 
 	httpsAddr := net.JoinHostPort(opt.Address, strconv.Itoa(opt.HttpsPort))
 
-	if err := models.GetClusterManager().RegisterSystemCluster(); err != nil {
-		log.Fatalf("Register system cluster %v", err)
-	}
-
 	if err := models.GetClusterManager().SyncClustersFromCloud(ctx); err != nil {
 		// log.Fatalf("Sync clusters from cloud: %v", err)
 		log.Errorf("Sync clusters from cloud: %v", err)
@@ -86,6 +82,10 @@ func Run(ctx context.Context) error {
 	initial.InitClient(cron)
 	cron.Start()
 	defer cron.Stop()
+
+	if err := models.GetClusterManager().RegisterSystemCluster(); err != nil {
+		log.Fatalf("Register system cluster %v", err)
+	}
 
 	if err := server.Start(httpsAddr, app); err != nil {
 		return err
