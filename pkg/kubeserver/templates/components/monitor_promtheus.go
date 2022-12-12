@@ -223,10 +223,27 @@ type GrafanaIniDatabase struct {
 	Password string `json:"password"`
 }
 
+type GrafanaIniUsers struct {
+	DefaultTheme string `json:"default_theme"`
+}
+
+type GrafanaIniSecurity struct {
+	CookieSamesite string `json:"cookie_samesite"`
+	CookieSecure   bool   `json:"cookie_secure"`
+	AllowEmbedding bool   `json:"allow_embedding"`
+}
+
+type GrafanaIniAuth struct {
+	LoginCookieName string `json:"login_cookie_name"`
+}
+
 type GrafanaIni struct {
 	Server   *GrafanaIniServer   `json:"server"`
 	OAuth    *GrafanaIniOAuth    `json:"auth.generic_oauth"`
 	Database *GrafanaIniDatabase `json:"database"`
+	Users    *GrafanaIniUsers    `json:"users"`
+	Security *GrafanaIniSecurity `json:"security"`
+	Auth     *GrafanaIniAuth     `json:"auth"`
 }
 
 type GrafanaDataSourceJsonData struct {
