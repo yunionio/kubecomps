@@ -18,6 +18,7 @@ import (
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
@@ -29,6 +30,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 	"yunion.io/x/kubecomps/pkg/utils/rand"
+
 	// "yunion.io/x/kubecomps/pkg/utils/registry"
 	"yunion.io/x/kubecomps/pkg/utils/ssh"
 )
@@ -740,64 +742,16 @@ func (d *selfBuildDriver) ValidateDeleteCondition() error {
 }
 
 func (d *selfBuildDriver) withKubespray(k8sVersion string, extraConf *api.ClusterExtraConfig) kubespray.KubesprayVars {
-	vars := kubespray.KubesprayVars{
-		DownloadRunOnce: false,
-		// YumRepo:                "http://mirrors.aliyun.com",
-		// EtcdKubeadmEnabled:     false,
-		KubeVersion:            k8sVersion,
-		KubeImageRepo:          "registry.aliyuncs.com/google_containers",
-		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/{{ ansible_distribution_major_version }}/$basearch/stable",
-		DockerRHRepoGPGKey:     "https://mirrors.aliyun.com/docker-ce/linux/centos/gpg",
-		EnableNodelocalDNS:     true,
-		NodelocalDNSVersion:    "1.16.0",
-		NodelocalDNSImageRepo:  "{{ image_repo }}/k8s-dns-node-cache",
-		DNSAutoscalerImageRepo: "{{ image_repo }}/cluster-proportional-autoscaler-{{ image_arch  }}",
-		// temporary use kubesphere binary download url check:
-		// https://github.com/kubesphere/kubekey/blob/d2a78d20c4a47ab55501ac65f11d54ae51514b1f/pkg/cluster/preinstall/preinstall.go#L50
-		KubeletDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet",
-		KubectlDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl",
-		KubeadmDownloadUrl: "{{ download_file_url }}/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm",
-		// CNIBinaryChecksum:  cniChecksum,
-		CNIDownloadUrl: "{{ download_file_url }}/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz",
-
-		// etcd related vars
-		EtcdVersion:                     "v3.4.13",
-		EtcdImageRepo:                   "{{ image_repo }}/etcd",
-		CalicoctlDownloadUrl:            "{{ download_file_url }}/calicoctl/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}",
-		CalicoCRDsDownloadUrl:           "{{ download_file_url }}/calico/archive/{{ calico_version }}.tar.gz",
-		CrictlDownloadUrl:               "{{ download_file_url }}/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz",
-		CalicoNodeImageRepo:             "{{ image_repo }}/calico-node",
-		CalicoCNIImageRepo:              "{{ image_repo }}/calico-cni",
-		CalicoPolicyImageRepo:           "{{ image_repo }}/calico-kube-controllers",
-		CalicoTyphaImageRepo:            "{{ image_repo }}/calico-typha",
-		CorednsImageIsNamespaced:        false,
-		DownloadFileURL:                 options.Options.DownloadFileURL,
-		ImageRepo:                       options.Options.ImageRepo,
-		DockerUser:                      options.Options.DockerUser,
-		DockerPassword:                  options.Options.DockerPassword,
-		DockerHost:                      options.Options.DockerHost,
-		AutoRenewCertificates:           true,
-		NginxImageRepo:                  "{{ image_repo }}/nginx",
-		NginxImageTag:                   "1.19",
-		IngressNginxEnabled:             true,
-		IngressNginxControllerImageRepo: "{{ kube_image_repo }}/nginx-ingress-controller",
+	useOffline := false
+	provider := d.driver.GetProvider()
+	if utils.IsInStringArray(
+		string(provider), []string{string(api.ProviderTypeOnecloud), string(api.ProviderTypeOnecloudKvm)}) {
+		if options.Options.OfflineRegistryServiceURL != "" || options.Options.OfflineRegistryServiceURL != "" {
+			useOffline = true
+		}
 	}
-
-	if extraConf != nil {
-		vars.DockerInsecureRegistries = extraConf.DockerInsecureRegistries
-		vars.DockerRegistryMirrors = extraConf.DockerRegistryMirrors
+	if useOffline {
+		return kubespray.NewOfflineVars(k8sVersion, extraConf)
 	}
-
-	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
-		vars.CNIVersion = constants.CNI_VERSION_1_20_0
-		vars.CalicoVersion = constants.CALICO_VERSION_1_20_0
-		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_20_0
-		vars.IngressNginxControllerImageTag = constants.NGINX_INGRESS_CONTROLLER_1_20_0
-	} else {
-		vars.CNIVersion = constants.CNI_VERSION_1_17_0
-		vars.CalicoVersion = constants.CALICO_VERSION_1_17_0
-		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_17_0
-		vars.IngressNginxControllerImageTag = constants.NGINX_INGRESS_CONTROLLER_1_17_0
-	}
-	return vars
+	return kubespray.NewDefaultVars(k8sVersion, extraConf)
 }

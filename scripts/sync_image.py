@@ -203,8 +203,19 @@ def docker_cluster_proportional_image(taget_repo):
 
 
 def sync_images(repo):
+    gcr = "registry.aliyuncs.com/google_containers"
+    def sameImg(src_repo, target_repo, name, tag):
+        return Image(src_repo, name, tag, target_repo, name)
     imgs = [
-        Image("docker.io/library", "nginx", "1.19", repo, "nginx"),
+        #Image("docker.io/library", "nginx", "1.19", repo, "nginx"),
+        sameImg(gcr, repo, "coredns", "1.8.0"),
+        sameImg(gcr, repo, "nginx-ingress-controller", "v1.0.0"),
+        sameImg(gcr, repo, "kube-apiserver", "v1.20.0"),
+        sameImg(gcr, repo, "kube-controller-manager", "v1.20.0"),
+        sameImg(gcr, repo, "kube-proxy", "v1.20.0"),
+        sameImg(gcr, repo, "kube-scheduler", "v1.20.0"),
+        sameImg(gcr, repo, "metrics-server", "v0.5.0"),
+        sameImg(gcr, repo, "pause", "3.3"),
         # Image("calico", "node", "v3.19.3", repo, "calico-node"),
         # Image("calico", "cni", "v3.19.3", repo, "calico-cni"),
         # Image("calico", "kube-controllers", "v3.19.3", repo, "calico-kube-controllers"),
