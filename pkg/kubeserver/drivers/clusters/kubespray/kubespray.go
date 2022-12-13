@@ -96,15 +96,17 @@ type KubesprayVars struct {
 	CalicoVersion        string `json:"calico_version"`
 	CalicoctlDownloadUrl string `json:"calicoctl_download_url"`
 	// https://github.com/projectcalico/calico/archive/{{ calico_version }}.tar.gz
-	CalicoCRDsDownloadUrl string `json:"calico_crds_download_url"`
-	CalicoNodeImageRepo   string `json:"calico_node_image_repo"`
-	CalicoNodeImageTag    string `json:"calico_node_image_tag"`
-	CalicoCNIImageRepo    string `json:"calico_cni_image_repo"`
-	CalicoCNIImageTag     string `json:"calico_cni_image_tag"`
-	CalicoPolicyImageRepo string `json:"calico_policy_image_repo"`
-	CalicoPolicyImageTag  string `json:"calico_policy_image_tag"`
-	CalicoTyphaImageRepo  string `json:"calico_typha_image_repo"`
-	CalicoTyphaImageTag   string `json:"calico_typha_image_tag"`
+	CalicoCRDsDownloadUrl  string `json:"calico_crds_download_url"`
+	CalicoNodeImageRepo    string `json:"calico_node_image_repo"`
+	CalicoNodeImageTag     string `json:"calico_node_image_tag"`
+	CalicoCNIImageRepo     string `json:"calico_cni_image_repo"`
+	CalicoCNIImageTag      string `json:"calico_cni_image_tag"`
+	CalicoPolicyImageRepo  string `json:"calico_policy_image_repo"`
+	CalicoPolicyImageTag   string `json:"calico_policy_image_tag"`
+	CalicoTyphaImageRepo   string `json:"calico_typha_image_repo"`
+	CalicoTyphaImageTag    string `json:"calico_typha_image_tag"`
+	CalicoFlexvolImageRepo string `json:"calico_flexvol_image_repo"`
+	CalicoFlexvolImageTag  string `json:"calico_flexvol_image_tag"`
 
 	// Address in cert sans
 	SupplementaryAddresses []string `json:"supplementary_addresses_in_ssl_keys"`

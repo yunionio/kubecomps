@@ -49,6 +49,7 @@ func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) Kubesp
 		CalicoCNIImageRepo:              "{{ image_repo }}/calico-cni",
 		CalicoPolicyImageRepo:           "{{ image_repo }}/calico-kube-controllers",
 		CalicoTyphaImageRepo:            "{{ image_repo }}/calico-typha",
+		CalicoFlexvolImageRepo:          "{{ image_repo }}/calico-pod2daemon-flexvol",
 		CorednsImageIsNamespaced:        false,
 		DownloadFileURL:                 options.Options.DownloadFileURL,
 		ImageRepo:                       options.Options.ImageRepo,
