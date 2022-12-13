@@ -36,6 +36,7 @@ const (
 
 	GrafanaSystemFolder = "Cloud-System"
 	InfluxdbTelegrafDS  = "Influxdb-Telegraf"
+	InfluxdbSystemDS    = "InfluxDB-system"
 )
 
 func init() {
@@ -652,6 +653,15 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 				JsonData: &components.GrafanaDataSourceJsonData{
 					TlsSkipVerify: true,
 				},
+			},components.GrafanaAdditionalDataSource{
+				Name:     InfluxdbSystemDS,
+				Type:     "influxdb",
+				Access:   "proxy",
+				Database: "system",
+				Url:      fmt.Sprintf("https://default-influxdb.onecloud:30086"),
+				JsonData: &components.GrafanaDataSourceJsonData{
+					TlsSkipVerify: true,
+				},
 			})
 	}
 
@@ -890,6 +900,22 @@ func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context
 	); err != nil {
 		return errors.Wrap(err, "import telegraf system dashboard to grafana")
 	}
+
+	log.Infof("import telegraf system dashboard to grafana successful")
+
+
+	if err := cli.ImportDashboard(ctx,
+		embed.Get(embed.SERVICE_MONITOR_JSON),
+		grafana.ImportDashboardParams{
+			FolderId:  0,
+			Overwrite: true,
+			Inputs:    nil,
+		},
+	); err != nil {
+		return errors.Wrap(err, "import service monitor dashboard to grafana")
+	}
+
+	log.Infof("import service monitor dashboard to grafana successful")
 
 	return nil
 }
