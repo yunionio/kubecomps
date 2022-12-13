@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,6 +40,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
 	k8sutil "yunion.io/x/kubecomps/pkg/kubeserver/k8s/util"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
+	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 	"yunion.io/x/kubecomps/pkg/utils/certificates"
 	onecloudcli "yunion.io/x/kubecomps/pkg/utils/onecloud/client"
 )
@@ -963,8 +965,14 @@ func (c *SCluster) GetNodesCount() (int, error) {
 }
 
 func (man *SClusterManager) GetImageRepository(input *api.ImageRepository) *api.ImageRepository {
+	defaultRegMirror := constants.DefaultRegistryMirror
 	ret := &api.ImageRepository{
-		Url: constants.DefaultRegistryMirror,
+		Url: defaultRegMirror,
+	}
+	if options.Options.OfflineRegistryServiceURL != "" {
+		defaultRegMirror = filepath.Join(options.Options.OfflineRegistryServiceURL, "yunionio")
+		ret.Url = defaultRegMirror
+		ret.Insecure = true
 	}
 	if input == nil {
 		return ret

@@ -8,7 +8,8 @@ REGISTRY_DIR="$CUR_DIR/registry"
 
 
 download_files() {
-    wget -c -x -P _output/files -i files.list
+    #wget -c -x -P _output/files -i files.list
+    grep -v '^#' files.list | wget -c -x -P _output/files -i -
 }
 
 start_registry() {
@@ -51,7 +52,25 @@ sync_images() {
 #     rm -rf download.docker.com
 # }
 
-download_files
+file_step() {
+    download_files
+}
 
-start_registry
-sync_images
+image_step() {
+    start_registry
+    sync_images
+}
+
+all_steps() {
+    file_step
+    image_step
+}
+
+if [[ "$1" == "file" ]]; then
+    file_step
+elif [[ "$1" == "image" ]]; then
+    image_step
+else
+    all_steps
+fi
+        
