@@ -1,0 +1,22 @@
+version: "3"
+services:
+  nginx:
+    image: registry.cn-beijing.aliyuncs.com/zexi/kubeserver-offline-nginx:v0.0.2
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    ports:
+      - "80:80"
+    # volumes:
+    #   - files-volume:/data/files
+  registry:
+    image: registry.cn-beijing.aliyuncs.com/zexi/kubeserver-offline-registry:v0.0.2
+    build:
+      context: .
+      dockerfile: ./registry/Dockerfile
+    ports:
+      - "15000:5000"
+#     volumes:
+#       - files-volume:/var/lib/registry
+# volumes:
+#   files-volume:
