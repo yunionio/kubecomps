@@ -471,12 +471,6 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Tag:        tag,
 		}
 	}
-	grafanaMi := func(name, tag string) components.Image {
-		return components.Image{
-			Repository: fmt.Sprintf("%s/%s", "hb.grgbanking.com/open/grafana", name),
-			Tag:        tag,
-		}
-	}
 	serverDomain := options.Options.ApiServer
 	grafanaEip, err := cluster.GetAPIServerPublicEndpoint()
 	if err != nil {
@@ -610,8 +604,7 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 					DefaultDatasourceEnabled: true,
 				},
 			},
-			Image: grafanaMi("grafana", "7.2.1-zh"),
-			//Image: mi("grafana", "6.7.1"),
+			Image: mi("grafana", "6.7.1"),
 			Service: &components.Service{
 				Type:     string(v1.ServiceTypeNodePort),
 				NodePort: m.GetGrafanaPort(),
