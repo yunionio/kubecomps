@@ -181,7 +181,8 @@ func NewPVCStorage(storage *api.ComponentStorage) (*Storage, error) {
 }
 
 type Service struct {
-	Type string `json:"type"`
+	Type     string `json:"type"`
+	NodePort string `json:"nodePort"`
 }
 
 type GrafanaIngress struct {
@@ -203,16 +204,19 @@ type GrafanaIniServer struct {
 }
 
 type GrafanaIniOAuth struct {
-	Enabled           bool   `json:"enabled"`
-	ClientId          string `json:"client_id"`
-	ClientSecret      string `json:"client_secret"`
-	Scopes            string `json:"scopes"`
-	AuthURL           string `json:"auth_url"`
-	TokenURL          string `json:"token_url"`
-	APIURL            string `json:"api_url"`
-	AllowedDomains    string `json:"allowed_domains"`
-	AllowSignUp       bool   `json:"allow_sign_up"`
-	RoleAttributePath string `json:"role_attribute_path"`
+	Enabled                 bool   `json:"enabled"`
+	ClientId                string `json:"client_id"`
+	ClientSecret            string `json:"client_secret"`
+	Scopes                  string `json:"scopes"`
+	AuthURL                 string `json:"auth_url"`
+	TokenURL                string `json:"token_url"`
+	APIURL                  string `json:"api_url"`
+	AllowedDomains          string `json:"allowed_domains"`
+	AllowSignUp             bool   `json:"allow_sign_up"`
+	RoleAttributePath       string `json:"role_attribute_path"`
+	IdTokenAttributeName    string `json:"id_token_attribute_name"`
+	TlsSkipVerifyInsecure   bool   `json:"tls_skip_verify_insecure"`
+	AllowAssignGrafanaAdmin bool   `json:"allow_assign_grafana_admin"`
 }
 
 type GrafanaIniDatabase struct {

@@ -2,7 +2,12 @@ package models
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"time"
+	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	"yunion.io/x/onecloud/pkg/mcclient/modules/identity"
+	"yunion.io/x/pkg/util/seclib"
 
 	"github.com/minio/minio-go/v7"
 	"k8s.io/api/core/v1"
@@ -41,7 +46,7 @@ const (
 
 func init() {
 	MonitorComponentManager = NewMonitorComponentManager()
-	//ComponentManager.RegisterDriver(newComponentDriverMonitor())
+	ComponentManager.RegisterDriver(newComponentDriverMonitor())
 }
 
 type SMonitorComponentManager struct {
@@ -394,6 +399,59 @@ func (c componentDriverMonitor) FetchStatus(cluster *SCluster, comp *SComponent,
 	return nil
 }
 
+func (m SMonitorComponentManager) CreateOIDCSecret(cluster *SCluster, uid string, pid string) (*identity.SOpenIDConnectCredential, error) {
+	grafanaHost, err := m.GetGrafanaHost(cluster)
+	if err != nil {
+		return nil, err
+	}
+	serverDomain := options.Options.ApiServer
+	redirectUrl := fmt.Sprintf("%s/grafana-proxy/%s/login/generic_oauth", serverDomain, grafanaHost)
+	s, err := GetClusterManager().GetSession()
+	if err != nil {
+		return nil, err
+	}
+	Credentials := &identity.SCredentialManager{
+		ResourceManager: modules.NewIdentityV3Manager("credential", "credentials",
+			[]string{},
+			[]string{"ID", "Type", "user_id", "project_id", "blob"}),
+	}
+	oidcCred := &identity.SOpenIDConnectCredential{}
+	oidcCred.Secret = base64.URLEncoding.EncodeToString([]byte(seclib.RandomPassword(32)))
+	oidcCred.RedirectUri = redirectUrl
+	blobJson := jsonutils.Marshal(&oidcCred)
+	params := jsonutils.NewDict()
+	name := fmt.Sprintf("oidc-%s-%s-%d", uid, pid, time.Now().Unix())
+	if len(pid) > 0 {
+		params.Add(jsonutils.NewString(pid), "project_id")
+	}
+	params.Add(jsonutils.NewString(identity.OIDC_CREDENTIAL_TYPE), "type")
+	if len(uid) > 0 {
+		params.Add(jsonutils.NewString(uid), "user_id")
+	}
+	params.Add(jsonutils.NewString(blobJson.String()), "blob")
+	params.Add(jsonutils.NewString(name), "name")
+	result, err := Credentials.Create(s, params)
+	if err != nil {
+		return oidcCred, err
+	}
+	oidcCred.ClientId, err = result.GetString("id")
+	return oidcCred, err
+}
+
+func (m SMonitorComponentManager) GetGrafanaHost(cluster *SCluster) (grafanaHost string, err error) {
+	grafanaEip, err := cluster.GetAPIServerPublicEndpoint()
+	if err != nil {
+		fmt.Println("k8s cluster no eip", err)
+		return "", err
+	}
+	grafanaHost = fmt.Sprintf("%s:%s", grafanaEip, m.GetGrafanaPort())
+	return
+}
+
+func (m SMonitorComponentManager) GetGrafanaPort() string {
+	return "30000"
+}
+
 func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
 	imgRepo, err := cluster.GetImageRepository()
 	if err != nil {
@@ -413,48 +471,60 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Tag:        tag,
 		}
 	}
-	grafanaHost := input.Grafana.Host
-	if grafanaHost == "" {
-		grafanaHost = input.Grafana.PublicAddress
+	grafanaMi := func(name, tag string) components.Image {
+		return components.Image{
+			Repository: fmt.Sprintf("%s/%s", "hb.grgbanking.com/open/grafana", name),
+			Tag:        tag,
+		}
 	}
-
-	grafanaProto := "https"
-	rootUrl := fmt.Sprintf("%s://%s", grafanaProto, grafanaHost)
-	serveSubPath := false
+	serverDomain := options.Options.ApiServer
+	grafanaEip, err := cluster.GetAPIServerPublicEndpoint()
+	if err != nil {
+		return nil, err
+	}
+	grafanaHost, err := m.GetGrafanaHost(cluster)
+	if err != nil {
+		return nil, err
+	}
+	rootUrl := fmt.Sprintf("%s/grafana-proxy/%s", serverDomain, grafanaHost)
 	grafanaIni := &components.GrafanaIni{
-		Server: &components.GrafanaIniServer{},
+		Server:   &components.GrafanaIniServer{},
+		OAuth:    &components.GrafanaIniOAuth{},
+		Users:    &components.GrafanaIniUsers{},
+		Security: &components.GrafanaIniSecurity{},
+		Auth:     &components.GrafanaIniAuth{},
 	}
-	if !input.Grafana.DisableSubpath {
-		serveSubPath = true
-		subpath := input.Grafana.Subpath
-		if subpath == "" {
-			subpath = "grafana"
-		}
-		rootUrl = fmt.Sprintf("%s/%s/", rootUrl, subpath)
-	}
-	grafanaIni.Server.ServeFromSubPath = serveSubPath
+
+	grafanaIni.Auth.LoginCookieName = "grafana_session_721"
+
+	grafanaIni.Server.ServeFromSubPath = true
 	grafanaIni.Server.RootUrl = rootUrl
-	if input.Grafana.EnforceDomain {
-		grafanaIni.Server.Domain = grafanaHost
-		grafanaIni.Server.EnforceDomain = true
+	grafanaIni.Server.EnforceDomain = true
+	grafanaIni.Server.Domain = grafanaEip
+	grafanaIni.Server.HttpPort = m.GetGrafanaPort()
+	grafanaIni.Server.Protocol = "http"
+
+	grafanaIni.Security.CookieSecure = true
+	grafanaIni.Security.CookieSamesite = "none"
+	grafanaIni.Security.AllowEmbedding = true
+
+	grafanaIni.Users.DefaultTheme = "light"
+
+	if setting.Monitor.Grafana.OAuth != nil {
+		grafanaIni.OAuth.ClientId = setting.Monitor.Grafana.OAuth.ClientId
+		grafanaIni.OAuth.ClientSecret = setting.Monitor.Grafana.OAuth.ClientSecret
 	}
 
-	if input.Grafana.OAuth != nil {
-		oauth := input.Grafana.OAuth
-		grafanaIni.OAuth = &components.GrafanaIniOAuth{
-			Enabled:           oauth.Enabled,
-			ClientId:          oauth.ClientId,
-			ClientSecret:      oauth.ClientSecret,
-			Scopes:            oauth.Scopes,
-			AuthURL:           oauth.AuthURL,
-			TokenURL:          oauth.TokenURL,
-			APIURL:            oauth.APIURL,
-			AllowedDomains:    oauth.AllowedDomains,
-			AllowSignUp:       oauth.AllowSignUp,
-			RoleAttributePath: oauth.RoleAttributePath,
-		}
-	}
-
+	grafanaIni.OAuth.Enabled = true
+	grafanaIni.OAuth.Scopes = "user profile"
+	grafanaIni.OAuth.IdTokenAttributeName = "data.id"
+	grafanaIni.OAuth.AuthURL = fmt.Sprintf("%s/api/v1/auth/oidc/auth", serverDomain)
+	grafanaIni.OAuth.TokenURL = fmt.Sprintf("%s/api/v1/auth/oidc/token", serverDomain)
+	grafanaIni.OAuth.APIURL = fmt.Sprintf("%s/api/v1/auth/oidc/user", serverDomain)
+	grafanaIni.OAuth.RoleAttributePath = "projectName == 'system' && contains(roles, 'admin') && 'Admin' || 'Editor'"
+	grafanaIni.OAuth.TlsSkipVerifyInsecure = true
+	grafanaIni.OAuth.AllowAssignGrafanaAdmin = true
+	grafanaIni.OAuth.AllowSignUp = true
 	if input.Grafana.DB != nil {
 		db := input.Grafana.DB
 		if db.Host == "" {
@@ -540,9 +610,11 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 					DefaultDatasourceEnabled: true,
 				},
 			},
-			Image: mi("grafana", "6.7.1"),
+			Image: grafanaMi("grafana", "7.2.1-zh"),
+			//Image: mi("grafana", "6.7.1"),
 			Service: &components.Service{
-				Type: string(v1.ServiceTypeClusterIP),
+				Type:     string(v1.ServiceTypeNodePort),
+				NodePort: m.GetGrafanaPort(),
 			},
 			Ingress: &components.GrafanaIngress{
 				Enabled: true,

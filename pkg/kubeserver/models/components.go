@@ -5,12 +5,12 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"reflect"
-
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/api/resource"
-
+	"reflect"
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/kubecomps/pkg/kubeserver/api"
+	"yunion.io/x/kubecomps/pkg/kubeserver/drivers"
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
@@ -21,9 +21,6 @@ import (
 	"yunion.io/x/pkg/tristate"
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
-
-	"yunion.io/x/kubecomps/pkg/kubeserver/api"
-	"yunion.io/x/kubecomps/pkg/kubeserver/drivers"
 )
 
 var (
