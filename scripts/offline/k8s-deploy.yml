@@ -1,0 +1,93 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  labels:
+    app: kubeserver-offline-server
+    app.kubernetes.io/component: kubeserver-offline-server
+  name: kubeserver-offline-server
+  namespace: onecloud
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kubeserver-offline-server
+      app.kubernetes.io/component: kubeserver-offline-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kubeserver-offline-server
+        app.kubernetes.io/component: kubeserver-offline-server
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: onecloud.yunion.io/controller
+                operator: In
+                values:
+                - enable
+      containers:
+      - command:
+        - nginx
+        - -g
+        - daemon off;
+        image: registry.cn-beijing.aliyuncs.com/zexi/kubeserver-offline-nginx:v0.0.2
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        ports:
+        - containerPort: 80
+          name: nginx
+          protocol: TCP
+      - image: registry.cn-beijing.aliyuncs.com/zexi/kubeserver-offline-registry:v0.0.2
+        imagePullPolicy: IfNotPresent
+        name: registry
+        ports:
+        - containerPort: 5000
+          name: registry
+          protocol: TCP
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/controlplane
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kubeserver-offline-server
+    app.kubernetes.io/component: kubeserver-offline-server
+  name: kubeserver-offline-server
+  namespace: onecloud
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 31080
+  - name: registry
+    port: 5000
+    protocol: TCP
+    targetPort: 5000
+    nodePort: 31500
+  selector:
+    app: kubeserver-offline-server
+    app.kubernetes.io/component: kubeserver-offline-server
+  sessionAffinity: None
+  type: NodePort
