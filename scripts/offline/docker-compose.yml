@@ -1,0 +1,10 @@
+version: "3"
+services:
+  nginx:
+    image: registry.cn-beijing.aliyuncs.com/zexi/kubeserver-offline-nginx:v0.0.2
+    ports:
+      - "80:80"
+  registry:
+    image: registry.cn-beijing.aliyuncs.com/zexi/kubeserver-offline-registry:v0.0.2
+    ports:
+      - "15000:5000"
