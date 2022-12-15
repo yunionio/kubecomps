@@ -493,8 +493,7 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 	grafanaIni.Server.RootUrl = rootUrl
 	grafanaIni.Server.EnforceDomain = true
 	grafanaIni.Server.Domain = grafanaEip
-	grafanaIni.Server.HttpPort = m.GetGrafanaPort()
-	grafanaIni.Server.Protocol = "http"
+	grafanaIni.Server.Protocol = "https"
 
 	grafanaIni.Security.CookieSecure = true
 	grafanaIni.Security.CookieSamesite = "none"

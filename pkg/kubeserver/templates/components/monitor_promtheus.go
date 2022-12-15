@@ -199,7 +199,6 @@ type GrafanaIniServer struct {
 	ServeFromSubPath bool   `json:"serve_from_sub_path"`
 	Domain           string `json:"domain,omitempty"`
 	EnforceDomain    bool   `json:"enforce_domain,omitempty"`
-	HttpPort         string `json:"http_port"`
 	Protocol         string `json:"protocol"`
 }
 
