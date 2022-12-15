@@ -1,6 +1,8 @@
 package addons
 
 const CSIRancherLocalPath = `
+---
+# deploy local path storage CSI component
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -12,14 +14,13 @@ metadata:
   name: local-path-provisioner-service-account
   namespace: local-path-storage
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: local-path-provisioner-role
-  namespace: local-path-storage
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "persistentvolumeclaims"]
+  resources: ["nodes", "persistentvolumeclaims", "configmaps"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["endpoints", "persistentvolumes", "pods"]
@@ -31,11 +32,10 @@ rules:
   resources: ["storageclasses"]
   verbs: ["get", "list", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: local-path-provisioner-bind
-  namespace: local-path-storage
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -61,8 +61,6 @@ spec:
         app: local-path-provisioner
     spec:
       serviceAccountName: local-path-provisioner-service-account
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       tolerations:
       - key: node-role.kubernetes.io/master
         effect: NoSchedule
@@ -70,7 +68,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: local-path-provisioner
-        image: {{.Image}}
+        image: {{ .Image }}
         imagePullPolicy: IfNotPresent
         command:
         - local-path-provisioner
@@ -86,8 +84,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: HELPER_IMAGE
-          value: {{.HelperImage}}
       volumes:
         - name: config-volume
           configMap:
@@ -116,5 +112,22 @@ data:
                 }
                 ]
         }
-
+  setup: |-
+    #!/bin/sh
+    set -eu
+    mkdir -m 0777 -p "$VOL_DIR"
+  teardown: |-
+    #!/bin/sh
+    set -eu
+    rm -rf "$VOL_DIR"
+  helperPod.yaml: |-
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: helper-pod
+    spec:
+      containers:
+      - name: helper-pod
+        image: {{ .HelperImage }}
+        imagePullPolicy: IfNotPresent
 `

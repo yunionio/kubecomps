@@ -30,4 +30,5 @@ registry.cn-beijing.aliyuncs.com/yunionio/calico-pod2daemon-flexvol:v3.19.2
 registry.cn-beijing.aliyuncs.com/yunionio/etcd:v3.4.13
 
 registry.cn-beijing.aliyuncs.com/yunionio/yunion-cloud-controller-manager:v2.10.0
-registry.cn-beijing.aliyuncs.com/yunionio/local-path-provisioner:v0.0.11
+registry.cn-beijing.aliyuncs.com/yunionio/local-path-provisioner:v0.0.22
+registry.cn-beijing.aliyuncs.com/yunionio/busybox:1.28.0-glibc
