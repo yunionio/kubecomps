@@ -1,6 +1,8 @@
 package api
 
-import "yunion.io/x/onecloud/pkg/apis"
+import (
+	"yunion.io/x/onecloud/pkg/apis"
+)
 
 const (
 	ClusterComponentCephCSI      = "cephCSI"

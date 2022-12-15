@@ -181,7 +181,8 @@ func NewPVCStorage(storage *api.ComponentStorage) (*Storage, error) {
 }
 
 type Service struct {
-	Type string `json:"type"`
+	Type     string `json:"type"`
+	NodePort string `json:"nodePort"`
 }
 
 type GrafanaIngress struct {
@@ -198,19 +199,23 @@ type GrafanaIniServer struct {
 	ServeFromSubPath bool   `json:"serve_from_sub_path"`
 	Domain           string `json:"domain,omitempty"`
 	EnforceDomain    bool   `json:"enforce_domain,omitempty"`
+	Protocol         string `json:"protocol"`
 }
 
 type GrafanaIniOAuth struct {
-	Enabled           bool   `json:"enabled"`
-	ClientId          string `json:"client_id"`
-	ClientSecret      string `json:"client_secret"`
-	Scopes            string `json:"scopes"`
-	AuthURL           string `json:"auth_url"`
-	TokenURL          string `json:"token_url"`
-	APIURL            string `json:"api_url"`
-	AllowedDomains    string `json:"allowed_domains"`
-	AllowSignUp       bool   `json:"allow_sign_up"`
-	RoleAttributePath string `json:"role_attribute_path"`
+	Enabled                 bool   `json:"enabled"`
+	ClientId                string `json:"client_id"`
+	ClientSecret            string `json:"client_secret"`
+	Scopes                  string `json:"scopes"`
+	AuthURL                 string `json:"auth_url"`
+	TokenURL                string `json:"token_url"`
+	APIURL                  string `json:"api_url"`
+	AllowedDomains          string `json:"allowed_domains"`
+	AllowSignUp             bool   `json:"allow_sign_up"`
+	RoleAttributePath       string `json:"role_attribute_path"`
+	IdTokenAttributeName    string `json:"id_token_attribute_name"`
+	TlsSkipVerifyInsecure   bool   `json:"tls_skip_verify_insecure"`
+	AllowAssignGrafanaAdmin bool   `json:"allow_assign_grafana_admin"`
 }
 
 type GrafanaIniDatabase struct {
@@ -221,10 +226,27 @@ type GrafanaIniDatabase struct {
 	Password string `json:"password"`
 }
 
+type GrafanaIniUsers struct {
+	DefaultTheme string `json:"default_theme"`
+}
+
+type GrafanaIniSecurity struct {
+	CookieSamesite string `json:"cookie_samesite"`
+	CookieSecure   bool   `json:"cookie_secure"`
+	AllowEmbedding bool   `json:"allow_embedding"`
+}
+
+type GrafanaIniAuth struct {
+	LoginCookieName string `json:"login_cookie_name"`
+}
+
 type GrafanaIni struct {
 	Server   *GrafanaIniServer   `json:"server"`
 	OAuth    *GrafanaIniOAuth    `json:"auth.generic_oauth"`
 	Database *GrafanaIniDatabase `json:"database"`
+	Users    *GrafanaIniUsers    `json:"users"`
+	Security *GrafanaIniSecurity `json:"security"`
+	Auth     *GrafanaIniAuth     `json:"auth"`
 }
 
 type GrafanaDataSourceJsonData struct {
