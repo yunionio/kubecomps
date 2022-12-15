@@ -78,7 +78,7 @@ func GetCommonAddonsConfig(cluster *models.SCluster) (*addons.YunionCommonPlugin
 		// 	Image:            registry.MirrorImage(reg.Url, "yunion-ingress-controller", "v2.10.0", ""),
 		// },
 		CSIRancherLocalPathConfig: &addons.CSIRancherLocalPathConfig{
-			Image:       registry.MirrorImage(reg.Url, "local-path-provisioner", "v0.0.11", ""),
+			Image:       registry.MirrorImage(reg.Url, "local-path-provisioner", "v0.0.22", ""),
 			HelperImage: registry.MirrorImage(reg.Url, "busybox", "1.28.0-glibc", ""),
 		},
 	}
