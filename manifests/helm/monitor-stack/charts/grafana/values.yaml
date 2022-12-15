@@ -33,12 +33,12 @@ deploymentStrategy:
 readinessProbe:
   httpGet:
     path: /api/health
-    port: 30000
+    port: 3000
 
 livenessProbe:
   httpGet:
     path: /api/health
-    port: 30000
+    port: 3000
   initialDelaySeconds: 60
   timeoutSeconds: 30
   failureThreshold: 10
@@ -113,7 +113,9 @@ podPortName: grafana
 ## ref: http://kubernetes.io/docs/user-guide/services/
 ##
 service:
-  port: 30000
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
     # targetPort: 4181 To be used with a proxy extraContainer
   annotations: {}
   labels: {}
@@ -380,20 +382,20 @@ dashboardsConfigMaps: {}
 ## ref: http://docs.grafana.org/installation/configuration/
 ##
 grafana.ini:
-#  paths:
-#    data: /var/lib/grafana/data
-#    logs: /var/log/grafana
-#    plugins: /var/lib/grafana/plugins
-#    provisioning: /etc/grafana/provisioning
-#  analytics:
-#    check_for_updates: false
+  paths:
+    data: /var/lib/grafana/data
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  analytics:
+    check_for_updates: false
   log:
     mode: console
-#  grafana_net:
-#    url: https://grafana.net
-#  auth.anonymous:
-#    enabled: true
-#    org_role: Viewer
+  grafana_net:
+    url: https://grafana.net
+  auth.anonymous:
+    enabled: true
+    org_role: Viewer
 ## grafana Authentication can be enabled with the following values on grafana.ini
  # server:
       # The full public facing url you use in browser, used for redirects and emails
@@ -505,4 +507,3 @@ sidecar:
 ## Override the deployment namespace
 ##
 namespaceOverride: ""
->>>>>>> d5a85d85 (fix: oidc auto create)

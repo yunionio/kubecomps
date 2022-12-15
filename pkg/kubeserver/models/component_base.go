@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"yunion.io/x/jsonutils"
-	"yunion.io/x/log"
-
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/release"
@@ -149,7 +146,6 @@ func (m HelmComponentManager) CreateHelmResource(
 	if err := m.EnsureNamespace(cluster, m.namespace); err != nil {
 		return errors.Wrapf(err, "%s ensure namespace %q", m.releaseName, m.namespace)
 	}
-	log.Errorf("**** helm install vals: %s", jsonutils.Marshal(vals).PrettyString())
 	if _, err := m.HelmInstall(cluster, m.namespace, m.embedChartName, m.releaseName, vals); err != nil {
 		return errors.Wrapf(err, "create helm %s release", m.releaseName)
 	}

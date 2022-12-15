@@ -218,7 +218,7 @@ containers:
         containerPort: {{ .Values.service.port }}
         protocol: TCP
       - name: {{ .Values.podPortName }}
-        containerPort: 30000
+        containerPort: 3000
         protocol: TCP
     env:
       {{- if not .Values.env.GF_SECURITY_ADMIN_USER }}
