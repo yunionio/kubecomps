@@ -223,5 +223,11 @@ func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.C
 		conf.Compactor.CommonConfig = commonConf
 	}
 
+	if setting.DisableResourceManagement {
+		conf.Query.CommonConfig.Resources = nil
+		conf.Storegateway.CommonConfig.Resources = nil
+		conf.Compactor.CommonConfig.Resources = nil
+	}
+
 	return components.GenerateHelmValues(conf), nil
 }
