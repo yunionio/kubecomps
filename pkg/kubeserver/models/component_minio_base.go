@@ -132,16 +132,16 @@ func DoDisableMinio(man IMinioComponentManager, cluster *SCluster, setting *api.
 	return man.DeleteHelmResource(cluster, setting)
 }
 
-func CreateMinioHelmResource(man HelmComponentManager, cluster *SCluster, input *api.ComponentSettingMinio) error {
-	vals, err := GetMinioHelmValues(cluster, input)
+func CreateMinioHelmResource(man HelmComponentManager, cluster *SCluster, setting *api.ComponentSettings, input *api.ComponentSettingMinio) error {
+	vals, err := GetMinioHelmValues(cluster, setting, input)
 	if err != nil {
 		return errors.Wrap(err, "get helm config values")
 	}
 	return man.CreateHelmResource(cluster, vals)
 }
 
-func UpdateMinioHelmResource(man HelmComponentManager, cluster *SCluster, input *api.ComponentSettingMinio) error {
-	vals, err := GetMinioHelmValues(cluster, input)
+func UpdateMinioHelmResource(man HelmComponentManager, cluster *SCluster, setting *api.ComponentSettings, input *api.ComponentSettingMinio) error {
+	vals, err := GetMinioHelmValues(cluster, setting, input)
 	if err != nil {
 		return errors.Wrap(err, "get helm config values")
 	}
@@ -152,8 +152,8 @@ func DeleteMinioHelmResource(man HelmComponentManager, cluster *SCluster) error 
 	return man.DeleteHelmResource(cluster)
 }
 
-func GetMinioHelmValues(cluster *SCluster, input *api.ComponentSettingMinio) (map[string]interface{}, error) {
-	imgRepo, err := cluster.GetImageRepository()
+func GetMinioHelmValues(cluster *SCluster, setting *api.ComponentSettings, input *api.ComponentSettingMinio) (map[string]interface{}, error) {
+	imgRepo, err := GetComponentImageRepository(cluster, setting)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
 	}
