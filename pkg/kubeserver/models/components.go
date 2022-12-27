@@ -224,6 +224,22 @@ func (m *SComponentManager) GetDriver(cType string) (IComponentDriver, error) {
 	return drv.(IComponentDriver), nil
 }
 
+func GetComponentImageRepository(cluster *SCluster, setting *api.ComponentSettings) (*api.ImageRepository, error) {
+	imgRepo := setting.ImageRepository
+	if imgRepo == nil {
+		var err error
+		imgRepo, err = cluster.GetImageRepository()
+		if err != nil {
+			return nil, errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
+		}
+	}
+	return imgRepo, nil
+}
+
+func (m *SComponentManager) GetImageRepository(cluster *SCluster, setting *api.ComponentSettings) (*api.ImageRepository, error) {
+	return GetComponentImageRepository(cluster, setting)
+}
+
 func (m *SComponentManager) GetDrivers() []IComponentDriver {
 	drvs := m.driverManager.GetDrivers()
 	ret := make([]IComponentDriver, 0)
@@ -511,6 +527,12 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 	settings, err := drv.GetUpdateSettings(oldSettings, input)
 	if err != nil {
 		return err
+	}
+	if settings.DisableResourceManagement != input.DisableResourceManagement {
+		settings.DisableResourceManagement = input.DisableResourceManagement
+	}
+	if input.ImageRepository != nil {
+		settings.ImageRepository = input.ImageRepository
 	}
 
 	cls, err := m.GetCluster()

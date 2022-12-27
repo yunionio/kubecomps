@@ -90,7 +90,7 @@ func (c componentDriverMinio) FetchStatus(cluster *SCluster, comp *SComponent, s
 }
 
 func (m SMinioComponentManager) CreateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	return CreateMinioHelmResource(m.GetHelmManager(), cluster, setting.Minio)
+	return CreateMinioHelmResource(m.GetHelmManager(), cluster, setting, setting.Minio)
 }
 
 func (m SMinioComponentManager) DeleteHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
@@ -98,9 +98,9 @@ func (m SMinioComponentManager) DeleteHelmResource(cluster *SCluster, setting *a
 }
 
 func (m SMinioComponentManager) UpdateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	return UpdateMinioHelmResource(m.HelmComponentManager, cluster, setting.Minio)
+	return UpdateMinioHelmResource(m.HelmComponentManager, cluster, setting, setting.Minio)
 }
 
 func (m SMinioComponentManager) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	return GetMinioHelmValues(cluster, setting.Minio)
+	return GetMinioHelmValues(cluster, setting, setting.Minio)
 }
