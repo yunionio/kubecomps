@@ -197,7 +197,7 @@ func fetchCephCSIClusterConfig(cluster *SCluster, namespace string) (*api.Compon
 }
 
 func (m *SCephCSIComponentManager) getK8sResourceManifest(cluster *SCluster, setting *api.ComponentSettings) (string, error) {
-	imgRepo, err := cluster.GetImageRepository()
+	imgRepo, err := m.GetImageRepository(cluster, setting)
 	if err != nil {
 		return "", errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
 	}

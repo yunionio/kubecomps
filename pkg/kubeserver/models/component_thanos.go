@@ -142,7 +142,7 @@ func (m SThanosComponentManager) UpdateHelmResource(cluster *SCluster, setting *
 }
 
 func (m SThanosComponentManager) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	imgRepo, err := cluster.GetImageRepository()
+	imgRepo, err := m.GetImageRepository(cluster, setting)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
 	}
