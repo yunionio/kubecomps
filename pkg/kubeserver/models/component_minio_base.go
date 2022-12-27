@@ -196,5 +196,9 @@ func GetMinioHelmValues(cluster *SCluster, setting *api.ComponentSettings, input
 			true, false)
 	}
 
+	if setting.DisableResourceManagement {
+		conf.Resources = nil
+	}
+
 	return components.GenerateHelmValues(conf), nil
 }
