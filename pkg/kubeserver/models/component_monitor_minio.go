@@ -84,11 +84,11 @@ type SMonitorMinioComponentManager struct {
 }
 
 func (m SMonitorMinioComponentManager) CreateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	return CreateMinioHelmResource(m.GetHelmManager(), cluster, setting.MonitorMinio)
+	return CreateMinioHelmResource(m.GetHelmManager(), cluster, setting, setting.MonitorMinio)
 }
 
 func (m SMonitorMinioComponentManager) UpdateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	return UpdateMinioHelmResource(m.GetHelmManager(), cluster, setting.MonitorMinio)
+	return UpdateMinioHelmResource(m.GetHelmManager(), cluster, setting, setting.MonitorMinio)
 }
 
 func (m SMonitorMinioComponentManager) DeleteHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
@@ -96,5 +96,5 @@ func (m SMonitorMinioComponentManager) DeleteHelmResource(cluster *SCluster, set
 }
 
 func (m SMonitorMinioComponentManager) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	return GetMinioHelmValues(cluster, setting.MonitorMinio)
+	return GetMinioHelmValues(cluster, setting, setting.MonitorMinio)
 }
