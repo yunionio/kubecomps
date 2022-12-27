@@ -154,7 +154,7 @@ func (c componentDriverFluentBit) FetchStatus(cluster *SCluster, comp *SComponen
 }
 
 func (m SFluentBitComponentManager) GetHelmValues(cluster *SCluster, settings *api.ComponentSettings) (map[string]interface{}, error) {
-	imgRepo, err := cluster.GetImageRepository()
+	imgRepo, err := m.GetImageRepository(cluster, settings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
 	}

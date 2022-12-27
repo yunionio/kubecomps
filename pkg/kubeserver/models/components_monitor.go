@@ -395,7 +395,7 @@ func (c componentDriverMonitor) FetchStatus(cluster *SCluster, comp *SComponent,
 }
 
 func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.ComponentSettings) (map[string]interface{}, error) {
-	imgRepo, err := cluster.GetImageRepository()
+	imgRepo, err := m.GetImageRepository(cluster, setting)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get cluster %s repo", cluster.GetName())
 	}
@@ -653,7 +653,7 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 				JsonData: &components.GrafanaDataSourceJsonData{
 					TlsSkipVerify: true,
 				},
-			},components.GrafanaAdditionalDataSource{
+			}, components.GrafanaAdditionalDataSource{
 				Name:     InfluxdbSystemDS,
 				Type:     "influxdb",
 				Access:   "proxy",
@@ -902,7 +902,6 @@ func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context
 	}
 
 	log.Infof("import telegraf system dashboard to grafana successful")
-
 
 	if err := cli.ImportDashboard(ctx,
 		embed.Get(embed.SERVICE_MONITOR_JSON),

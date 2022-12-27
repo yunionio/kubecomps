@@ -42,8 +42,9 @@ type ComponentDeleteInput struct {
 }
 
 type ComponentSettings struct {
-	Namespace                 string `json:"namespace"`
-	DisableResourceManagement bool   `json:"disableResourceManagement"`
+	Namespace                 string           `json:"namespace"`
+	DisableResourceManagement bool             `json:"disableResourceManagement"`
+	ImageRepository           *ImageRepository `json:"imageRepository"`
 	// Ceph CSI 组件配置
 	CephCSI *ComponentSettingCephCSI `json:"cephCSI"`
 	// Monitor stack 组件配置
