@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 	"yunion.io/x/pkg/errors"
@@ -22,11 +23,30 @@ type ClusterCreateTask struct {
 	taskman.STask
 }
 
-func (t *ClusterCreateTask) getMachines(cluster *models.SCluster) ([]*api.CreateMachineData, error) {
+func (t *ClusterCreateTask) getCreateInput() (*api.ClusterCreateInput, error) {
 	params := t.GetParams()
 	input := new(api.ClusterCreateInput)
 	if err := params.Unmarshal(input); err != nil {
 		return nil, errors.Wrapf(err, "unmarshal cluster create input data from: %s", params)
+	}
+	return input, nil
+}
+
+func (t *ClusterCreateTask) isImportCluster() (bool, error) {
+	input, err := t.getCreateInput()
+	if err != nil {
+		return false, errors.Wrap(err, "getCreateInput")
+	}
+	if input.Mode == api.ModeTypeImport {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (t *ClusterCreateTask) getMachines(cluster *models.SCluster) ([]*api.CreateMachineData, error) {
+	input, err := t.getCreateInput()
+	if err != nil {
+		return nil, errors.Wrap(err, "getCreateInput")
 	}
 	ms := input.Machines
 	ret := []*api.CreateMachineData{}
@@ -78,13 +98,43 @@ func (t *ClusterCreateTask) OnMachinesCreatedFailed(ctx context.Context, obj db.
 }
 
 func (t *ClusterCreateTask) OnApplyAddonsComplete(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
-	cluster := obj.(*models.SCluster)
-	logclient.LogWithStartable(t, cluster, logclient.ActionClusterCreate, nil, t.UserCred, true)
-	t.SetStageComplete(ctx, nil)
+	isImport, err := t.isImportCluster()
+	if err != nil {
+		log.Warningf("check isImportCluster error: %v", err)
+	}
+	if !isImport {
+		cluster := obj.(*models.SCluster)
+		logclient.LogWithStartable(t, cluster, logclient.ActionClusterCreate, nil, t.UserCred, true)
+		t.SetStageComplete(ctx, nil)
+	} else {
+		cluster := obj.(*models.SCluster)
+		t.SetStage("OnSyncStatusComplete", nil)
+		cluster.StartSyncStatus(ctx, t.UserCred, t.GetTaskId())
+	}
 }
 
 func (t *ClusterCreateTask) OnApplyAddonsCompleteFailed(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	t.SetFailed(ctx, obj, data)
+}
+
+func (t *ClusterCreateTask) OnSyncStatusComplete(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
+	t.SetStage("OnSyncComplete", nil)
+	if err := cluster.StartSyncTask(ctx, t.UserCred, nil, t.GetTaskId()); err != nil {
+		t.SetFailed(ctx, cluster, jsonutils.NewString(err.Error()))
+	}
+}
+
+func (t *ClusterCreateTask) OnSyncStatusCompleteFailed(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
+	t.SetFailed(ctx, obj, data)
+}
+
+func (t *ClusterCreateTask) OnSyncComplete(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
+	logclient.LogWithStartable(t, cluster, logclient.ActionClusterCreate, nil, t.UserCred, true)
+	t.SetStageComplete(ctx, nil)
+}
+
+func (t *ClusterCreateTask) OnSyncCompleteFailed(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
+	t.SetFailed(ctx, cluster, data)
 }
 
 func (t *ClusterCreateTask) onError(ctx context.Context, cluster db.IStandaloneModel, err error) {
