@@ -389,7 +389,26 @@ func (d *selfBuildDriver) GetUsableInstances(s *mcclient.ClientSession) ([]api.U
 
 func (d *selfBuildDriver) RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine, task taskman.ITask) error {
 	taskman.LocalTaskRun(task, func() (jsonutils.JSONObject, error) {
-		return nil, d.requestDeployMachines(ctx, userCred, cluster, action, ms)
+		if err := d.requestDeployMachines(ctx, userCred, cluster, action, ms); err != nil {
+			if err != nil {
+				return nil, errors.Wrapf(err, "requestDeployMachines by action %q", action)
+			}
+		}
+		if action == api.ClusterDeployActionScale {
+			existMaster := false
+			for _, m := range ms {
+				if m.IsControlplane() {
+					existMaster = true
+					break
+				}
+			}
+			if existMaster {
+				if err := d.requestDeployMachines(ctx, userCred, cluster, api.ClusterDeployActionUpgradeMasterConfig, ms); err != nil {
+					return nil, errors.Wrapf(err, "requestDeployMachines when upgrade master's configuration")
+				}
+			}
+		}
+		return nil, nil
 	})
 
 	return nil
@@ -523,6 +542,8 @@ func (d *selfBuildDriver) deployCluster(ctx context.Context, cli onecloudcli.ICl
 		err = d.deployClusterByCreate(ctx, cli, cluster, vars, ms)
 	case api.ClusterDeployActionScale:
 		err = d.deployClusterByScale(ctx, cli, cluster, vars, ms)
+	case api.ClusterDeployActionUpgradeMasterConfig:
+		err = d.deployClusterByUpgradeMasterConfig(ctx, cli, cluster, vars, ms)
 	case api.ClusterDeployActionRemoveNode:
 		err = d.deployClusterByRemove(ctx, cli, cluster, vars, ms)
 	default:
@@ -545,13 +566,32 @@ func (d *selfBuildDriver) deployClusterByCreate(
 		return errors.Wrap(err, "new kubespray inventory hosts")
 	}
 
-	if err := kubespray.NewDefaultKubesprayExecutor().Cluster(vars, hosts...).Run(false); err != nil {
+	if err := kubespray.NewDefaultKubesprayExecutor().Cluster(vars, hosts...).Run(false, nil); err != nil {
 		return errors.Wrap(err, "run kubespray error")
 	}
 
 	primaryMaster := hosts[0]
 	if err := d.setCAKeyPair(cli, cluster, primaryMaster); err != nil {
 		return errors.Wrapf(err, "set cluster ca key pair from %s", primaryMaster.Hostname)
+	}
+
+	return nil
+}
+
+func (d *selfBuildDriver) deployClusterByUpgradeMasterConfig(
+	ctx context.Context,
+	cli onecloudcli.IClient,
+	cluster *models.SCluster,
+	vars *kubespray.KubesprayRunVars,
+	ms []manager.IMachine,
+) error {
+	hosts, err := d.GetKubesprayInventory(vars, cli, cluster, ms)
+	if err != nil {
+		return errors.Wrap(err, "new kubespray inventory hosts")
+	}
+
+	if err := kubespray.NewDefaultKubesprayExecutor().UpgradeMasterConfig(vars, hosts...).Run(false, []string{"master"}); err != nil {
+		return errors.Wrap(err, "run kubespray error")
 	}
 
 	return nil
@@ -611,7 +651,7 @@ func (d *selfBuildDriver) deployClusterByScale(
 	return d.deployClusterByAction(
 		ctx, cli, cluster, vars, addedMs,
 		func(hosts, addedHosts []*kubespray.KubesprayInventoryHost, debug bool) error {
-			return kubespray.NewDefaultKubesprayExecutor().Scale(vars, hosts, addedHosts...).Run(debug)
+			return kubespray.NewDefaultKubesprayExecutor().Scale(vars, hosts, addedHosts...).Run(debug, nil)
 		},
 	)
 }
@@ -626,7 +666,7 @@ func (d *selfBuildDriver) deployClusterByRemove(
 	return d.deployClusterByAction(
 		ctx, cli, cluster, vars, removeMs,
 		func(hosts, removeHosts []*kubespray.KubesprayInventoryHost, debug bool) error {
-			return kubespray.NewDefaultKubesprayExecutor().RemoveNode(vars, hosts, removeHosts...).Run(debug)
+			return kubespray.NewDefaultKubesprayExecutor().RemoveNode(vars, hosts, removeHosts...).Run(debug, nil)
 		},
 	)
 }
