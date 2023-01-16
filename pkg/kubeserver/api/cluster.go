@@ -109,10 +109,11 @@ const (
 type ClusterDeployAction string
 
 const (
-	ClusterDeployActionCreate     ClusterDeployAction = "create"
-	ClusterDeployActionRun        ClusterDeployAction = "run"
-	ClusterDeployActionScale      ClusterDeployAction = "scale"
-	ClusterDeployActionRemoveNode ClusterDeployAction = "remove-node"
+	ClusterDeployActionCreate              ClusterDeployAction = "create"
+	ClusterDeployActionRun                 ClusterDeployAction = "run"
+	ClusterDeployActionScale               ClusterDeployAction = "scale"
+	ClusterDeployActionUpgradeMasterConfig ClusterDeployAction = "upgrade-master-config"
+	ClusterDeployActionRemoveNode          ClusterDeployAction = "remove-node"
 )
 
 type ClusterPreCheckResp struct {
@@ -240,6 +241,8 @@ type ClusterSyncInput struct {
 type ClusterDeployInput struct {
 	// Force deploy
 	Force bool `json:"force"`
+	// Action can be 'run' or 'upgrade'
+	Action ClusterDeployAction `json:"action"`
 }
 
 type IClusterRemoteResource interface {
