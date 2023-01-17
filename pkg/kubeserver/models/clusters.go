@@ -1603,7 +1603,16 @@ func (c *SCluster) PerformDeploy(ctx context.Context, userCred mcclient.TokenCre
 	}
 
 	// use run action to run kubespray cluster.yml
-	action := api.ClusterDeployActionRun
+	action := input.Action
+	if action == "" {
+		action = api.ClusterDeployActionRun
+	}
+	if !utils.IsInStringArray(string(action), []string{
+		string(api.ClusterDeployActionRun),
+		string(api.ClusterDeployActionUpgradeMasterConfig),
+	}) {
+		return nil, httperrors.NewInputParameterError("Unsupported action %s", action)
+	}
 	return nil, c.StartDeployMachinesTask(ctx, userCred, action, mIds, "")
 }
 

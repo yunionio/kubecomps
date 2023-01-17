@@ -161,7 +161,7 @@ func (r *AnsibleRunner) ResultsFunc() stdoutcallback.StdoutCallbackResultsFunc {
 	}
 }
 
-func (r *AnsibleRunner) Run(debug bool) error {
+func (r *AnsibleRunner) Run(debug bool, tags []string) error {
 	/*
 	 * connOpts := &ansibler.AnsiblePlaybookConnectionOptions{
 	 *     User:       user,
@@ -176,6 +176,10 @@ func (r *AnsibleRunner) Run(debug bool) error {
 		Inventory:     r.inventoryFile,
 		ExtraVarsFile: r.extraVarsFile,
 		Debug:         debug,
+	}
+
+	if len(tags) != 0 {
+		playbookOpts.Tags = strings.Join(tags, ",")
 	}
 
 	if len(r.limitHosts) != 0 {
