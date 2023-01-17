@@ -9,7 +9,7 @@ import (
 
 type KubesprayRunner interface {
 	AddLimitHosts(checkHost bool, hosts ...string) error
-	Run(debug bool) error
+	Run(debug bool, tags []string) error
 	// GetOutput get ansible playbook output
 	GetOutput() string
 }
@@ -18,6 +18,7 @@ type DefaultKubesprayExecutor interface {
 	Cluster(vars *KubesprayRunVars, hosts ...*KubesprayInventoryHost) KubesprayRunner
 	Scale(vars *KubesprayRunVars, allHosts []*KubesprayInventoryHost, addedHosts ...*KubesprayInventoryHost) KubesprayRunner
 	RemoveNode(vars *KubesprayRunVars, allHosts []*KubesprayInventoryHost, removeHosts ...*KubesprayInventoryHost) KubesprayRunner
+	UpgradeMasterConfig(vars *KubesprayRunVars, hosts ...*KubesprayInventoryHost) KubesprayRunner
 }
 
 type defaultKubesprayExecutor struct {
@@ -53,6 +54,16 @@ func (f *defaultKubesprayExecutor) Scale(vars *KubesprayRunVars, allHosts []*Kub
 		allHosts...)
 }
 
+func (f *defaultKubesprayExecutor) UpgradeMasterConfig(vars *KubesprayRunVars, hosts ...*KubesprayInventoryHost) KubesprayRunner {
+	return f.setRunner(
+		func(vars *KubesprayRunVars, allHosts ...*KubesprayInventoryHost) (KubesprayRunner, error) {
+			return NewDefaultKubesprayUpgradeRunner(vars, allHosts...)
+		},
+		vars,
+		hosts...,
+	)
+}
+
 func (f *defaultKubesprayExecutor) RemoveNode(
 	vars *KubesprayRunVars,
 	allHosts []*KubesprayInventoryHost,
@@ -67,11 +78,11 @@ func (f *defaultKubesprayExecutor) RemoveNode(
 	)
 }
 
-func (f *defaultKubesprayExecutor) Run(debug bool) error {
+func (f *defaultKubesprayExecutor) Run(debug bool, tags []string) error {
 	if f.err != nil {
 		return f.err
 	}
-	return f.runner.Run(debug)
+	return f.runner.Run(debug, tags)
 }
 
 func (f *defaultKubesprayExecutor) AddLimitHosts(checkHost bool, hosts ...string) error {
@@ -102,7 +113,16 @@ func NewDefaultKubesprayClusterRunner(vars *KubesprayRunVars, hosts ...*Kubespra
 }
 
 func NewDefaultKubesprayUpgradeRunner(vars *KubesprayRunVars, hosts ...*KubesprayInventoryHost) (KubesprayRunner, error) {
-	return newDefaultKubesprayRunner(DefaultKubesprayUpgradeClusterYML, vars, hosts...)
+	vars.IgnoreAssertErrors = "yes"
+	vars.EtcdRetries = 20
+	runner, err := newDefaultKubesprayRunner(DefaultKubesprayUpgradeClusterYML, vars, hosts...)
+	if err != nil {
+		return nil, err
+	}
+	if err := runner.AddLimitHosts(false, KubesprayNodeRoleEtcd, KubesprayNodeRoleMaster); err != nil {
+		return nil, errors.Errorf("add limit group %s,%s", KubesprayNodeRoleEtcd, KubesprayNodeRoleMaster)
+	}
+	return runner, nil
 }
 
 func checkTargetHosts(targetHosts []*KubesprayInventoryHost) (bool, error) {
@@ -220,7 +240,7 @@ func NewRunner(playbookPath string, vars *KubesprayRunVars, hosts ...*KubesprayI
 	return pr, nil
 }
 
-func (r *kubesprayRunner) Run(debug bool) error {
+func (r *kubesprayRunner) Run(debug bool, tags []string) error {
 	// defer r.runner.Clear()
-	return r.AnsibleRunner.Run(debug)
+	return r.AnsibleRunner.Run(debug, tags)
 }
