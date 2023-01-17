@@ -585,16 +585,14 @@ func (d *selfBuildDriver) deployClusterByUpgradeMasterConfig(
 	vars *kubespray.KubesprayRunVars,
 	ms []manager.IMachine,
 ) error {
-	hosts, err := d.GetKubesprayInventory(vars, cli, cluster, ms)
-	if err != nil {
-		return errors.Wrap(err, "new kubespray inventory hosts")
-	}
+	return d.deployClusterByAction(ctx, cli, cluster, vars, ms,
+		func(hosts, _ []*kubespray.KubesprayInventoryHost, debug bool) error {
+			if err := kubespray.NewDefaultKubesprayExecutor().UpgradeMasterConfig(vars, hosts...).Run(debug, []string{"master"}); err != nil {
+				return errors.Wrap(err, "run kubespray error")
+			}
 
-	if err := kubespray.NewDefaultKubesprayExecutor().UpgradeMasterConfig(vars, hosts...).Run(false, []string{"master"}); err != nil {
-		return errors.Wrap(err, "run kubespray error")
-	}
-
-	return nil
+			return nil
+		})
 }
 
 func (d *selfBuildDriver) deployClusterByAction(
