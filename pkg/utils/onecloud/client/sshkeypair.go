@@ -8,6 +8,7 @@ import (
 
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 	imagemod "yunion.io/x/onecloud/pkg/mcclient/modules/image"
 )
@@ -42,6 +43,14 @@ func GetKubernetesImage(session *mcclient.ClientSession) (string, error) {
 	}
 	image := ret.Data[0]
 	return image.GetString("id")
+}
+
+func ListImages(s *mcclient.ClientSession, query *jsonutils.JSONDict) (*modulebase.ListResult, error) {
+	ret, err := imagemod.Images.List(s, query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "list images by query %s", query.String())
+	}
+	return ret, nil
 }
 
 func GetImage(session *mcclient.ClientSession, name string) (jsonutils.JSONObject, error) {
