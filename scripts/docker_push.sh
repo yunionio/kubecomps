@@ -122,7 +122,11 @@ build_process_with_buildx() {
     local img_name=$(get_image_name $component $arch $is_all_arch)
 
     build_env="GOARCH=$arch "
-
+    if [[ "$DRY_RUN" == "true" ]]; then
+        build_bin $component $build_env
+        echo "[$(readlink -f ${BASH_SOURCE}):${LINENO} ${FUNCNAME[0]}] return for DRY_RUN"
+        return
+    fi
     case "$component" in
         kubeserver)
             buildx_and_push $img_name $DOCKER_DIR/Dockerfile.$component-mularch $SRC_DIR $arch
@@ -146,6 +150,10 @@ general_build(){
 make_manifest_image() {
     local component=$1
     local img_name=$(get_image_name $component "" "false")
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[$(readlink -f ${BASH_SOURCE}):${LINENO} ${FUNCNAME[0]}] return for DRY_RUN"
+        return
+    fi
     docker manifest create --amend $img_name \
         $img_name-amd64 \
         $img_name-arm64
