@@ -11,16 +11,6 @@ Kubecomps 主要包含 [Cloudpods](https://github.com/yunionio/cloudpods) 管理
 
 请先参考文档 [https://www.cloudpods.org/zh/docs/development/dev-env/](https://www.cloudpods.org/zh/docs/development/dev-env/) 搭建编译环境。
 
-- 编译 kubeserver 二进制:
-
-```bash
-# 先自动生成代码
-$ make generate
-
-# 编译 kubeserver 二进制
-$ make cmd/kubeserver
-```
-
 - 制作 kubeserver 镜像:
 
 ```bash
