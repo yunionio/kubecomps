@@ -132,10 +132,12 @@ func (m *ClustersManager) RemoveClient(clusterId string) error {
 	return nil
 }
 
-func (m *ClustersManager) parseAPIResources(dc discovery.DiscoveryInterface) ([]capi.ResourceMap, error) {
+func (m *ClustersManager) parseAPIResources(clusterName string, dc discovery.DiscoveryInterface) ([]capi.ResourceMap, error) {
 	lists, err := dc.ServerPreferredResources()
-	if err != nil {
+	if err != nil && len(lists) == 0 {
 		return nil, errors.Wrapf(err, "ServerPreferredResources for discovery client")
+	} else {
+		log.Warningf("ServerPreferredResources is not complete list of cluster %q: %s", clusterName, err)
 	}
 	resources := []capi.ResourceMap{}
 	for _, list := range lists {
@@ -187,7 +189,7 @@ func (m *ClustersManager) buildManager(dbCluster manager.ICluster) (*ClusterMana
 		return nil, errors.Wrapf(err, "build cluster %s kubeconfig path", clusterName)
 	}
 	dc := clientSet.Discovery()
-	resources, err := m.parseAPIResources(dc)
+	resources, err := m.parseAPIResources(clusterName, dc)
 	if err != nil {
 		return nil, errors.Wrapf(err, "parseAPIResources for cluster %s", clusterName)
 	}
