@@ -304,13 +304,21 @@ func (h *resourceHandler) getGenericInformer(kind string) (informers.GenericInfo
 			return nil, resource, fmt.Errorf("Resource kind (%s) not support yet.", kind)
 		}
 		resource = *gvkr
-		genericInformer = h.cacheFactory.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource)
-	} else {
-		gvr := resource.GroupVersionResourceKind.GroupVersionResource
-		genericInformer, err = h.cacheFactory.sharedInformerFactory.ForResource(gvr)
-		if err != nil {
-			return nil, resource, errors.Wrapf(err, "sharedInformerFactory for resource: %#v", gvr)
+		// genericInformer = h.cacheFactory.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource)
+		genericInformer, ok = h.cacheFactory.genericInformers[resource.GroupVersionResourceKind.Kind]
+		if !ok {
+			return nil, resource, errors.Errorf("Not found %s from %#v", resource.GroupVersionResourceKind.Kind, h.cacheFactory.genericInformers)
 		}
+	} else {
+		// gvr := resource.GroupVersionResourceKind.GroupVersionResource
+		genericInformer, ok = h.cacheFactory.genericInformers[resource.GroupVersionResourceKind.Kind]
+		if !ok {
+			return nil, resource, errors.Errorf("Not found %s from %#v", resource.GroupVersionResourceKind.Kind, h.cacheFactory.genericInformers)
+		}
+		// genericInformer, err = h.cacheFactory.sharedInformerFactory.ForResource(gvr)
+		// if err != nil {
+		// 	return nil, resource, errors.Wrapf(err, "sharedInformerFactory for resource: %#v", gvr)
+		// }
 	}
 	return genericInformer, resource, err
 }

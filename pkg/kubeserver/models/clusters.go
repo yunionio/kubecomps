@@ -1232,6 +1232,15 @@ func (c *SCluster) PerformPurge(ctx context.Context, userCred mcclient.TokenCred
 	return nil, c.StartClusterDeleteTask(ctx, userCred, input.JSON(input), "")
 }
 
+func (c *SCluster) PerformClientDelete(ctx context.Context, userCred mcclient.TokenCredential, query, input api.ClusterPurgeInput) (jsonutils.JSONObject, error) {
+	if err := client.GetClustersManager().RemoveClient(c.GetId()); err != nil {
+		return nil, errors.Wrap(err, "remove client before start delete task")
+	}
+	return jsonutils.Marshal(map[string]interface{}{
+		"ok": true,
+	}), nil
+}
+
 func (c *SCluster) AllowGetDetailsKubeconfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
 	return c.allowGetSpec(userCred, "kubeconfig")
 }
