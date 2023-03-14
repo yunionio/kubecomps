@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"yunion.io/x/pkg/utils"
-
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	// "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
@@ -19,8 +16,6 @@ import (
 	autoscalingv1 "k8s.io/client-go/listers/autoscaling/v1"
 	batch "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/listers/core/v1"
-
-	// extensions "k8s.io/client-go/listers/extensions/v1beta1"
 	rbac "k8s.io/client-go/listers/rbac/v1"
 	storage "k8s.io/client-go/listers/storage/v1"
 	cache "k8s.io/client-go/tools/cache"
@@ -32,6 +27,7 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/utils"
 
 	kapi "yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client/api"
@@ -48,6 +44,7 @@ type CacheFactory struct {
 	dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory
 	bidirectionalSync      bool
 	gvkrs                  []api.ResourceMap
+	genericInformers       map[string]informers.GenericInformer
 }
 
 func accessCheck(cli kubernetes.Interface, namespace string, verb string, group string, resource string) (bool, error) {
@@ -83,6 +80,7 @@ func buildCacheController(
 	cacheF := &CacheFactory{
 		stopChan:          stop,
 		bidirectionalSync: false,
+		genericInformers:  make(map[string]informers.GenericInformer),
 	}
 	// sharedInformerFactory := informers.NewSharedInformerFactory(client, defaultResyncPeriod)
 	sharedInformerFactory := informers.NewSharedInformerFactory(client, 0)
@@ -92,6 +90,9 @@ func buildCacheController(
 	// Start all Resources defined in KindToResourceMap
 	informerSyncs := make([]cache.InformerSynced, 0)
 	for _, value := range api.KindToResourceMap {
+		if utils.IsInStringArray(value.GroupVersionResourceKind.Kind, api.KindHandledByDynamic) {
+			continue
+		}
 		genericInformer, err := sharedInformerFactory.ForResource(value.GroupVersionResourceKind.GroupVersionResource)
 		if err != nil {
 			return nil, err
@@ -106,8 +107,9 @@ func buildCacheController(
 			// register informer event handler
 			genericInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
 			informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
+			cacheF.genericInformers[value.GroupVersionResourceKind.Kind] = genericInformer
+			go genericInformer.Informer().Run(stop)
 		}
-		go genericInformer.Informer().Run(stop)
 	}
 
 	// Start all dynamic rest mapper resource
@@ -115,12 +117,10 @@ func buildCacheController(
 		res := resource.GroupVersionResourceKind.GroupVersionResource
 		kind := resource.GroupVersionResourceKind.Kind
 		if !utils.IsInStringArray(kind, api.KindHandledByDynamic) {
-			log.Debugf("==skip res: %#v", res)
 			continue
 		}
 		resMan := cluster.GetK8sResourceManager(kind)
-		log.Debugf("======res for ingress/cronjob: %#v, cluster: %q", res, cluster.GetName())
-		genericInformer := dynamicInformerFactory.ForResource(res)
+		dynamicInformer := dynamicInformerFactory.ForResource(res)
 		if resMan != nil {
 			// test watch permissions
 			allowed, err := accessCheck(client, "", "watch", res.Group, res.Resource)
@@ -128,14 +128,16 @@ func buildCacheController(
 				return nil, errors.Wrap(err, "watch accessCheck")
 			}
 			// register informer event handler
-			genericInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
-			informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
+			dynamicInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
+			informerSyncs = append(informerSyncs, dynamicInformer.Informer().HasSynced)
+			cacheF.genericInformers[kind] = dynamicInformer
+			go dynamicInformer.Informer().Run(stop)
 		}
-		go genericInformer.Informer().Run(stop)
 	}
 
-	sharedInformerFactory.Start(stop)
-	dynamicInformerFactory.Start(stop)
+	// NOTE: Informer().Run has been called, so don't call Factory.Start again
+	// sharedInformerFactory.Start(stop)
+	// dynamicInformerFactory.Start(stop)
 
 	log.Infof("[Start] WaitForCacheSync for cluster %s(%s)", cluster.GetName(), cluster.GetId())
 	if !cache.WaitForCacheSync(stop, informerSyncs...) {
