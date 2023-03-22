@@ -2,7 +2,7 @@ package api
 
 import (
 	apps "k8s.io/api/apps/v1"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	// extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -76,8 +76,8 @@ var KindToResourceMap = map[string]ResourceMap{
 	api.ResourceNameHorizontalPodAutoscaler: {
 		GroupVersionResourceKind: GroupVersionResourceKind{
 			GroupVersionResource: schema.GroupVersionResource{
-				Group:    autoscalingv1.GroupName,
-				Version:  autoscalingv1.SchemeGroupVersion.Version,
+				Group:    autoscalingv2beta2.GroupName,
+				Version:  autoscalingv2beta2.SchemeGroupVersion.Version,
 				Resource: api.ResourceNameHorizontalPodAutoscaler,
 			},
 			Kind: api.KindNameHorizontalPodAutoscaler,
