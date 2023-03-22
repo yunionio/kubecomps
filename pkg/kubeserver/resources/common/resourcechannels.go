@@ -2,7 +2,7 @@ package common
 
 import (
 	apps "k8s.io/api/apps/v1"
-	autoscaling "k8s.io/api/autoscaling/v1"
+	autoscaling "k8s.io/api/autoscaling/v2beta2"
 	batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	// extensions "k8s.io/api/extensions/v1beta1"
