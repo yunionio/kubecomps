@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	apps "k8s.io/client-go/listers/apps/v1"
-	autoscalingv1 "k8s.io/client-go/listers/autoscaling/v1"
+	autoscalingv1 "k8s.io/client-go/listers/autoscaling/v2beta2"
 	batch "k8s.io/client-go/listers/batch/v1"
 	"k8s.io/client-go/listers/core/v1"
 	rbac "k8s.io/client-go/listers/rbac/v1"
@@ -188,7 +188,7 @@ func (c *CacheFactory) EndpointLister() v1.EndpointsLister {
 }
 
 func (c *CacheFactory) HPALister() autoscalingv1.HorizontalPodAutoscalerLister {
-	return c.sharedInformerFactory.Autoscaling().V1().HorizontalPodAutoscalers().Lister()
+	return c.sharedInformerFactory.Autoscaling().V2beta2().HorizontalPodAutoscalers().Lister()
 }
 
 func (c *CacheFactory) GetGVKR(kindName string) *api.ResourceMap {
