@@ -82,9 +82,7 @@ func buildCacheController(
 		bidirectionalSync: false,
 		genericInformers:  make(map[string]informers.GenericInformer),
 	}
-	// sharedInformerFactory := informers.NewSharedInformerFactory(client, defaultResyncPeriod)
 	sharedInformerFactory := informers.NewSharedInformerFactory(client, 0)
-	// dynamicInformerFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, defaultResyncPeriod)
 	dynamicInformerFactory := dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 0)
 
 	// Start all Resources defined in KindToResourceMap
@@ -106,10 +104,10 @@ func buildCacheController(
 		if resMan != nil {
 			// register informer event handler
 			genericInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
-			informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
 			cacheF.genericInformers[value.GroupVersionResourceKind.Kind] = genericInformer
-			go genericInformer.Informer().Run(stop)
 		}
+		informerSyncs = append(informerSyncs, genericInformer.Informer().HasSynced)
+		go genericInformer.Informer().Run(stop)
 	}
 
 	// Start all dynamic rest mapper resource
@@ -129,10 +127,10 @@ func buildCacheController(
 			}
 			// register informer event handler
 			dynamicInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
-			informerSyncs = append(informerSyncs, dynamicInformer.Informer().HasSynced)
 			cacheF.genericInformers[kind] = dynamicInformer
-			go dynamicInformer.Informer().Run(stop)
 		}
+		informerSyncs = append(informerSyncs, dynamicInformer.Informer().HasSynced)
+		go dynamicInformer.Informer().Run(stop)
 	}
 
 	// NOTE: Informer().Run has been called, so don't call Factory.Start again

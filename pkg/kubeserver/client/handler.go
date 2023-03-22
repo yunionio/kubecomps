@@ -20,6 +20,7 @@ import (
 
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/client/api"
 )
@@ -304,21 +305,17 @@ func (h *resourceHandler) getGenericInformer(kind string) (informers.GenericInfo
 			return nil, resource, fmt.Errorf("Resource kind (%s) not support yet.", kind)
 		}
 		resource = *gvkr
-		// genericInformer = h.cacheFactory.dynamicInformerFactory.ForResource(gvkr.GroupVersionResourceKind.GroupVersionResource)
-		genericInformer, ok = h.cacheFactory.genericInformers[resource.GroupVersionResourceKind.Kind]
-		if !ok {
-			return nil, resource, errors.Errorf("Not found %s from %#v", resource.GroupVersionResourceKind.Kind, h.cacheFactory.genericInformers)
+	}
+
+	genericInformer, ok = h.cacheFactory.genericInformers[resource.GroupVersionResourceKind.Kind]
+	if !ok {
+		kind := resource.GroupVersionResourceKind.Kind
+		log.Warningf("Not found resource kind %q in genericInformers", kind)
+		if utils.IsInStringArray(kind, api.KindHandledByDynamic) {
+			genericInformer = h.cacheFactory.dynamicInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
+		} else {
+			genericInformer, err = h.cacheFactory.sharedInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
 		}
-	} else {
-		// gvr := resource.GroupVersionResourceKind.GroupVersionResource
-		genericInformer, ok = h.cacheFactory.genericInformers[resource.GroupVersionResourceKind.Kind]
-		if !ok {
-			return nil, resource, errors.Errorf("Not found %s from %#v", resource.GroupVersionResourceKind.Kind, h.cacheFactory.genericInformers)
-		}
-		// genericInformer, err = h.cacheFactory.sharedInformerFactory.ForResource(gvr)
-		// if err != nil {
-		// 	return nil, resource, errors.Wrapf(err, "sharedInformerFactory for resource: %#v", gvr)
-		// }
 	}
 	return genericInformer, resource, err
 }
