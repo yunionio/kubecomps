@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	apps "k8s.io/api/apps/v1"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -41,7 +41,13 @@ func (h *resourceHandler) getClientByGroupVersion(resource api.ResourceMap) rest
 			return h.client.AppsV1().RESTClient()
 		}
 		return h.client.AppsV1beta1().RESTClient()
-	case autoscalingv1.GroupName:
+	case autoscalingv2beta2.GroupName:
+		if resource.GroupVersionResourceKind.Version == "v2beta1" {
+			return h.client.AutoscalingV2beta1().RESTClient()
+		}
+		if resource.GroupVersionResourceKind.Version == "v2beta2" {
+			return h.client.AutoscalingV2beta2().RESTClient()
+		}
 		return h.client.AutoscalingV1().RESTClient()
 	case batchv1.GroupName:
 		if resource.GroupVersionResourceKind.Version == "v1beta1" {
