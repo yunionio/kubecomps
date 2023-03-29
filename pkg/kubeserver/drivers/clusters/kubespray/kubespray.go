@@ -151,7 +151,8 @@ type KubesprayVars struct {
 	// IngressNginxControllerImageTag is:
 	// - k8s v1.17 => v0.41.2
 	// - k8s v1.20 => v1.0.0
-	IngressNginxControllerImageTag string `json:"ingress_nginx_controller_image_tag"`
+	IngressNginxControllerImageTag string            `json:"ingress_nginx_controller_image_tag"`
+	IngressNginxConfigmap          map[string]string `json:"ingress_nginx_configmap"`
 }
 
 func (v KubesprayVars) Validate() error {
