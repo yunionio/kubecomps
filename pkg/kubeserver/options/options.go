@@ -41,7 +41,14 @@ type KubeServerOptions struct {
 	// offline service configuration
 	OfflineNginxServiceURL    string `help:"offline nginx service url"`
 	OfflineRegistryServiceURL string `help:"offline registry service url"`
+
+	RunningMode string `help:"running mode" choices:"k8s|docker-compose" default:"k8s"`
 }
+
+const (
+	RUNNING_MODE_K8S            = "k8s"
+	RUNNING_MODE_DOCKER_COMPOSE = "docker-compose"
+)
 
 func OnOptionsChange(oldO, newO interface{}) bool {
 	oldOpts := oldO.(*KubeServerOptions)

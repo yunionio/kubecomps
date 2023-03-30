@@ -78,8 +78,10 @@ func Run(ctx context.Context) error {
 	cron.Start()
 	defer cron.Stop()
 
-	if err := models.GetClusterManager().RegisterSystemCluster(); err != nil {
-		log.Fatalf("Register system cluster %v", err)
+	if opt.RunningMode == options.RUNNING_MODE_K8S {
+		if err := models.GetClusterManager().RegisterSystemCluster(); err != nil {
+			log.Fatalf("Register system cluster %v", err)
+		}
 	}
 
 	if err := models.GetClusterManager().SyncClustersFromCloud(ctx); err != nil {

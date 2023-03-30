@@ -10,6 +10,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
+	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 
 	_ "yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters"
 	_ "yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
@@ -22,5 +23,7 @@ func InitClient(cron *cronman.SCronJobManager) {
 
 	cron.AddJobAtIntervalsWithStartRun("StartKubeClusterHealthCheck", 5*time.Minute, models.ClusterManager.ClusterHealthCheckTask, true)
 	cron.AddJobAtIntervalsWithStartRun("StartKubeClusterAutoSyncTask", 30*time.Minute, models.ClusterManager.StartAutoSyncTask, true)
-	cron.AddJobAtIntervalsWithStartRun("StartSyncSystemGrafanaDashboard", 1*time.Minute, models.MonitorComponentManager.SyncSystemGrafanaDashboard, true)
+	if options.Options.RunningMode == options.RUNNING_MODE_K8S {
+		cron.AddJobAtIntervalsWithStartRun("StartSyncSystemGrafanaDashboard", 1*time.Minute, models.MonitorComponentManager.SyncSystemGrafanaDashboard, true)
+	}
 }
