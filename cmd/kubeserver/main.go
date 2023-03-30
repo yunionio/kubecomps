@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"yunion.io/x/log"
+	"yunion.io/x/onecloud/pkg/util/procutils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/app"
-	"yunion.io/x/onecloud/pkg/util/procutils"
 )
 
 func main() {
