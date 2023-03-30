@@ -813,6 +813,9 @@ func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context
 	if err != nil {
 		return errors.Wrap(err, "get system cluster")
 	}
+	if sysCls == nil {
+		return errors.Wrap(err, "system cluster is not exists")
+	}
 
 	comp, err := sysCls.GetComponentByType(api.ClusterComponentMonitor)
 	if err != nil {
