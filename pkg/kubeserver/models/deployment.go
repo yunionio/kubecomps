@@ -90,6 +90,7 @@ func (m *SDeploymentManager) ValidateCreateData(ctx context.Context, userCred mc
 }
 
 func (m *SDeploymentManager) NewRemoteObjectForCreate(model IClusterModel, cli *client.ClusterManager, data jsonutils.JSONObject) (interface{}, error) {
+	log.Errorf("=====deployment create data: %s", data.PrettyString())
 	input := new(api.DeploymentCreateInput)
 	data.Unmarshal(input)
 	objMeta, err := input.ToObjectMeta(model.(api.INamespaceGetter))
