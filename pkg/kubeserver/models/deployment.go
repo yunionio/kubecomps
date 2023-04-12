@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -67,12 +66,7 @@ func (m *SDeploymentManager) ValidateDeploymentObject(deploy *apps.Deployment) e
 	})
 }
 
-func (m *SDeploymentManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) (*api.DeploymentCreateInput, error) {
-	input := new(api.DeploymentCreateInput)
-	if err := json.Unmarshal([]byte(data.String()), input); err != nil {
-		return nil, err
-	}
-
+func (m *SDeploymentManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.DeploymentCreateInput) (*api.DeploymentCreateInput, error) {
 	nInput, err := m.SNamespaceResourceBaseManager.ValidateCreateData(ctx, userCred, ownerId, query, &input.NamespaceResourceCreateInput)
 	if err != nil {
 		return nil, err
