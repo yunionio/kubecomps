@@ -63,6 +63,7 @@ type KubesprayVars struct {
 	DockerRHRepoGPGKey       string   `json:"docker_rh_repo_gpgkey,allowempty"`
 	DockerRegistryMirrors    []string `json:"docker_registry_mirrors"`
 	DockerInsecureRegistries []string `json:"docker_insecure_registries"`
+	DockerOptions            string   `json:"docker_options"`
 	DockerVersion            string   `json:"docker_version"`
 	DockerCliVersion         string   `json:"docker_cli_version"`
 	ContainerdVersion        string   `json:"containerd_version"`
