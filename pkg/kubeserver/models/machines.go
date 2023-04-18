@@ -477,6 +477,11 @@ func (m *SMachine) RealDelete(ctx context.Context, userCred mcclient.TokenCreden
 }
 
 func (m *SMachine) CustomizeDelete(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) error {
+	if m.Address == "" {
+		log.Warningf("Machine %q address is empty, delete it directly", m.GetName())
+		return m.RealDelete(ctx, userCred)
+	}
+
 	cluster, err := m.GetCluster()
 	if err != nil {
 		return err
