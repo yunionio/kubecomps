@@ -67,6 +67,7 @@ func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) Kubesp
 		vars.DockerInsecureRegistries = extraConf.DockerInsecureRegistries
 		vars.DockerRegistryMirrors = extraConf.DockerRegistryMirrors
 	}
+	vars.DockerOptions = "--bridge=none"
 
 	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_20_0
