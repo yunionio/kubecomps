@@ -4,3 +4,6 @@
 [submodule "manifests/ansible/kubespray_2_17_0"]
 	path = manifests/ansible/kubespray_2_17_0
 	url = https://github.com/zexi/kubespray
+[submodule "manifests/ansible/kubespray_2_19_1"]
+	path = manifests/ansible/kubespray_2_19_1
+	url = https://github.com/zexi/kubespray.git
