@@ -69,7 +69,19 @@ func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) Kubesp
 	}
 	vars.DockerOptions = "--bridge=none"
 
-	if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
+	if strings.Compare(k8sVersion, "v1.21.0") >= 0 {
+		vars.CNIVersion = constants.CNI_VERSION_1_22_9
+		vars.CalicoVersion = constants.CALICO_VERSION_1_22_9
+		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_22_9
+		vars.ContainerManager = "docker"
+		vars.ContainerdVersion = constants.CONTAINERD_VERSION_1_22_9
+		vars.IngressNginxControllerImageTag = constants.NGINX_INGRESS_CONTROLLER_1_22_9
+		vars.EtcdVersion = constants.ETCD_VERSION_1_22_9
+		calicoctlDownloadUrl := "{{ download_file_url }}/calico/releases/download/{{ calico_version }}/calicoctl-linux-{{ image_arch }}"
+		vars.CalicoctlDownloadUrl = calicoctlDownloadUrl
+		vars.CalicoctlAlternateDownloadUrl = calicoctlDownloadUrl
+		vars.EtcdDownloadUrl = "{{ download_file_url }}/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+	} else if strings.Compare(k8sVersion, "v1.19.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_20_0
 		vars.CalicoVersion = constants.CALICO_VERSION_1_20_0
 		vars.KubesprayVersion = constants.KUBESPRAY_VERSION_1_20_0

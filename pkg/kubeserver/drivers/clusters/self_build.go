@@ -80,6 +80,7 @@ func (d *selfBuildClusterDriver) GetK8sVersions() []string {
 	return []string{
 		constants.K8S_VERSION_1_17_0,
 		constants.K8S_VERSION_1_20_0,
+		constants.K8S_VERSION_1_22_9,
 	}
 }
 
