@@ -66,7 +66,8 @@ type KubesprayVars struct {
 	DockerOptions            string   `json:"docker_options"`
 	DockerVersion            string   `json:"docker_version"`
 	DockerCliVersion         string   `json:"docker_cli_version"`
-	ContainerdVersion        string   `json:"containerd_version"`
+	ContainerManager         string   `json:"container_manager"`
+	ContainerdVersion        string   `json:"containerd_version,omitempty"`
 
 	// kubespray etcd cluster not support kubeadm managed very well currently
 	// EtcdKubeadmEnabled     bool   `json:"etcd_kubeadm_enabled"`
@@ -89,13 +90,15 @@ type KubesprayVars struct {
 	CrictlDownloadUrl string `json:"crictl_download_url"`
 
 	// etcd related vars
-	EtcdImageRepo string `json:"etcd_image_repo"`
-	EtcdVersion   string `json:"etcd_version"`
+	EtcdImageRepo   string `json:"etcd_image_repo"`
+	EtcdVersion     string `json:"etcd_version"`
+	EtcdDownloadUrl string `json:"etcd_download_url,omitempty"`
 
 	// Calico related vars
 	// CalicoctlDownloadUrl: https://iso.yunion.cn/binaries/calicoctl/releases/download/v3.16.5/calicoctl-linux-amd64
-	CalicoVersion        string `json:"calico_version"`
-	CalicoctlDownloadUrl string `json:"calicoctl_download_url"`
+	CalicoVersion                 string `json:"calico_version"`
+	CalicoctlDownloadUrl          string `json:"calicoctl_download_url"`
+	CalicoctlAlternateDownloadUrl string `json:"calicoctl_alternate_download_url"`
 	// https://github.com/projectcalico/calico/archive/{{ calico_version }}.tar.gz
 	CalicoCRDsDownloadUrl  string `json:"calico_crds_download_url"`
 	CalicoNodeImageRepo    string `json:"calico_node_image_repo"`

@@ -160,6 +160,15 @@ class DownloadCalicoctl(DownloadGithubFile):
         return f'calicoctl/releases/download/{self._version}/calicoctl-linux-{self._arch}'
 
 
+class DownloadCalicoctlV2(DownloadGithubFile):
+
+    def __init__(self, dest_dir, version, arch):
+        super(DownloadCalicoctlV2, self).__init__(dest_dir, 'projectcalico', version, arch)
+
+    def get_target_filepath(self):
+        return f'calico/releases/download/{self._version}/calicoctl-linux-{self._arch}'
+
+
 class DownloadCrictl(DownloadGithubFile):
 
     def __init__(self, dest_dir, version, arch):
@@ -187,6 +196,15 @@ class DownloadCalicoCRDs(DownloadGithubFile):
         return f'calico/archive/{self._version}.tar.gz'
 
 
+class DownloadEtcd(DownloadGithubFile):
+
+    def __init__(self, dest_dir, version, arch):
+        super().__init__(dest_dir, 'etcd-io', version, arch)
+
+    def get_target_filepath(self):
+        return f'etcd/releases/download/{self._version}/etcd-{self._version}-linux-{self._arch}.tar.gz'
+
+
 def docker_pull_push(src, target_repo):
     target = os.path.join(target_repo, src.split('/')[-1])
     cmds = [
@@ -208,18 +226,22 @@ def sync_images(repo):
         return Image(src_repo, name, tag, target_repo, name)
     imgs = [
         #Image("docker.io/library", "nginx", "1.19", repo, "nginx"),
-        sameImg(gcr, repo, "coredns", "1.7.0"),
-#        sameImg(gcr, repo, "coredns", "1.8.0"),
+        # sameImg(gcr, repo, "coredns", "1.7.0"),
+        sameImg(gcr, repo, "coredns", "1.8.0"),
        #sameImg(gcr, repo, "nginx-ingress-controller", "v1.0.0"),
          sameImg(gcr, repo, "nginx-ingress-controller", "v0.41.2"),
+       sameImg(gcr, repo, "kube-apiserver", "v1.22.9"),
+       sameImg(gcr, repo, "kube-controller-manager", "v1.22.9"),
+       sameImg(gcr, repo, "kube-proxy", "v1.22.9"),
+       sameImg(gcr, repo, "kube-scheduler", "v1.22.9"),
 #        sameImg(gcr, repo, "kube-apiserver", "v1.20.0"),
 #        sameImg(gcr, repo, "kube-controller-manager", "v1.20.0"),
 #        sameImg(gcr, repo, "kube-proxy", "v1.20.0"),
 #        sameImg(gcr, repo, "kube-scheduler", "v1.20.0"),
-        sameImg(gcr, repo, "kube-apiserver", "v1.17.0"),
-        sameImg(gcr, repo, "kube-controller-manager", "v1.17.0"),
-        sameImg(gcr, repo, "kube-proxy", "v1.17.0"),
-        sameImg(gcr, repo, "kube-scheduler", "v1.17.0"),
+        # sameImg(gcr, repo, "kube-apiserver", "v1.17.0"),
+        # sameImg(gcr, repo, "kube-controller-manager", "v1.17.0"),
+        # sameImg(gcr, repo, "kube-proxy", "v1.17.0"),
+        # sameImg(gcr, repo, "kube-scheduler", "v1.17.0"),
 #        sameImg(gcr, repo, "metrics-server", "v0.5.0"),
 #        sameImg(gcr, repo, "pause", "3.3"),
         # Image("calico", "node", "v3.19.3", repo, "calico-node"),
@@ -228,9 +250,17 @@ def sync_images(repo):
         # Image("calico", "kube-controllers", "v3.19.3", repo, "calico-kube-controllers"),
         # Image("calico", "typha", "v3.19.3", repo, "calico-typha"),
         # Image("calico", "pod2daemon-flexvol", "v3.19.2", repo, "calico-pod2daemon-flexvol"),
+        # Image("calico", "node", "v3.19.3", repo, "calico-node"),
+        Image("calico", "node", "v3.22.3", repo, "calico-node"),
+        Image("calico", "cni", "v3.22.3", repo, "calico-cni"),
+        Image("calico", "kube-controllers", "v3.22.3", repo, "calico-kube-controllers"),
+        Image("calico", "typha", "v3.22.3", repo, "calico-typha"),
+        Image("calico", "pod2daemon-flexvol", "v3.22.3", repo, "calico-pod2daemon-flexvol"),
         # Image('quay.io/coreos', 'etcd', 'v3.4.13', repo, 'etcd', arch=['arm64']),
         # Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.16.0", repo, "k8s-dns-node-cache"),
+        Image("k8s.gcr.io/dns", "k8s-dns-node-cache", "1.21.1", repo, "k8s-dns-node-cache"),
         # Image("k8s.grc.io/cpa", "cluster-proportional-autoscaler", "1.8.3", repo, "cluster-proportional-autoscaler"),
+        Image("k8s.grc.io/cpa", "cluster-proportional-autoscaler", "1.8.5", repo, "cluster-proportional-autoscaler"),
     ]
     for i in imgs:
         i.sync_archs_image()
@@ -252,22 +282,32 @@ def download_files():
     fs = [
         # DownloadCalicoctl(output_dir, "v3.19.3", "amd64"),
         # DownloadCalicoctl(output_dir, "v3.19.3", "arm64"),
+        #DownloadCalicoctlV2(output_dir, "v3.22.3", "amd64"),
+        #DownloadCalicoctlV2(output_dir, "v3.22.3", "arm64"),
         # DownloadCrictl(output_dir, 'v1.20.0', "amd64"),
         # DownloadCrictl(output_dir, 'v1.20.0', "arm64"),
+        #DownloadCrictl(output_dir, 'v1.22.0', "amd64"),
+        #DownloadCrictl(output_dir, 'v1.22.0', "arm64"),
         # DownloadCNI(output_dir, 'v0.9.1', 'arm64'),
         # DownloadCNI(output_dir, 'v0.9.1', 'amd64'),
         # DownloadCNI(output_dir, 'v0.8.6', 'arm64'),
         # DownloadCNI(output_dir, 'v0.8.6', 'amd64'),
-        DownloadCalicoCRDs(output_dir, 'v3.19.2'),
+        #DownloadCNI(output_dir, 'v1.1.1', 'arm64'),
+        #DownloadCNI(output_dir, 'v1.1.1', 'amd64'),
+        # DownloadCalicoCRDs(output_dir, 'v3.19.2'),
+        #DownloadCalicoCRDs(output_dir, 'v3.22.3'),
+        DownloadEtcd(output_dir, 'v3.5.3', 'amd64'),
+        DownloadEtcd(output_dir, 'v3.5.3', 'arm64'),
     ]
     # fs.extend(k8s_bins('v1.17.0'))
     # fs.extend(k8s_bins('v1.20.0'))
+    #fs.extend(k8s_bins('v1.22.9'))
     for f in fs:
         f.save_archive()
 
 
 if __name__ == '__main__':
     repo = 'registry.cn-beijing.aliyuncs.com/yunionio'
-    sync_images(repo)
+    #sync_images(repo)
     #docker_cluster_proportional_image(repo)
-    # download_files()
+    download_files()
