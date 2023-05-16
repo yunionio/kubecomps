@@ -13,9 +13,9 @@ import (
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
@@ -236,7 +236,7 @@ func (res *SNamespaceResourceBase) SetNamespace(userCred mcclient.TokenCredentia
 	res.NamespaceId = ns.GetId()
 }
 
-func (m *SNamespaceResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (m *SNamespaceResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	return m.SClusterResourceBaseManager.FilterBySystemAttributes(q, userCred, query, scope)
 	//input := new(api.NamespaceResourceListInput)
 	//if err := query.Unmarshal(input); err != nil {

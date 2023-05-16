@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/pkg/util/printutils"
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/onecloud/pkg/httperrors"
@@ -32,18 +33,28 @@ type MetadataManager struct {
 }
 
 var (
-	Metadatas MetadataManager
+	ComputeMetadatas  MetadataManager
+	IdentityMetadatas MetadataManager
+	ImageMetadatas    MetadataManager
 )
 
 func init() {
-	Metadatas = MetadataManager{modules.NewComputeManager("metadata", "metadatas",
+	ComputeMetadatas = MetadataManager{modules.NewComputeManager("metadata", "metadatas",
 		[]string{"id", "key", "value"},
 		[]string{})}
-	modules.RegisterCompute(&Metadatas)
+	// !!! Register computer metadata ONLY !!! QIUJIAN
+	modules.RegisterCompute(&ComputeMetadatas)
+
+	IdentityMetadatas = MetadataManager{modules.NewIdentityV3Manager("metadata", "metadatas",
+		[]string{"id", "key", "value"},
+		[]string{})}
+	ImageMetadatas = MetadataManager{modules.NewImageManager("metadata", "metadatas",
+		[]string{"id", "key", "value"},
+		[]string{})}
 }
 
 func (this *MetadataManager) getModule(session *mcclient.ClientSession, params jsonutils.JSONObject) (modulebase.Manager, error) {
-	service, version := "compute", ""
+	service := "compute"
 	if params.Contains("service") {
 		service, _ = params.GetString("service")
 	} else {
@@ -68,18 +79,13 @@ func (this *MetadataManager) getModule(session *mcclient.ClientSession, params j
 			}
 			find := false
 			mods, _ := modulebase.GetRegisterdModules()
-			for _versin, mds := range mods {
-				if utils.IsInStringArray(keyString, mds) {
-					version = _versin
-					session.SetApiVersion(version)
-					mod, err := modulebase.GetModule(session, keyString)
-					if err != nil {
-						return nil, err
-					}
-					service = mod.ServiceType()
-					find = true
-					break
+			if utils.IsInStringArray(keyString, mods) {
+				mod, err := modulebase.GetModule(session, keyString)
+				if err != nil {
+					return nil, err
 				}
+				service = mod.ServiceType()
+				find = true
 			}
 			if !find {
 				return nil, fmt.Errorf("No such module %s", keyString)
@@ -87,16 +93,6 @@ func (this *MetadataManager) getModule(session *mcclient.ClientSession, params j
 		}
 	}
 
-	switch service {
-	case "identity":
-		version = "v3"
-	case "compute":
-		version = "v2"
-	default:
-		version = "v1"
-	}
-
-	session.SetApiVersion(version)
 	_, err := session.GetServiceURL(service, "")
 	if err != nil {
 		return nil, httperrors.NewNotFoundError("service %s not found error: %v", service, err)
@@ -108,7 +104,7 @@ func (this *MetadataManager) getModule(session *mcclient.ClientSession, params j
 	}, nil
 }
 
-func (this *MetadataManager) List(session *mcclient.ClientSession, params jsonutils.JSONObject) (*modulebase.ListResult, error) {
+func (this *MetadataManager) List(session *mcclient.ClientSession, params jsonutils.JSONObject) (*printutils.ListResult, error) {
 	mod, err := this.getModule(session, params)
 	if err != nil {
 		return nil, err

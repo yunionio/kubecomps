@@ -20,6 +20,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/printutils"
 
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
@@ -32,7 +33,7 @@ type SSshkeypairManager struct {
 	modulebase.ResourceManager
 }
 
-func (this *SSshkeypairManager) List(s *mcclient.ClientSession, params jsonutils.JSONObject) (*modulebase.ListResult, error) {
+func (this *SSshkeypairManager) List(s *mcclient.ClientSession, params jsonutils.JSONObject) (*printutils.ListResult, error) {
 	url := "/sshkeypairs"
 	if params != nil {
 		if queryStr := params.QueryString(); queryStr != "" {
@@ -43,16 +44,24 @@ func (this *SSshkeypairManager) List(s *mcclient.ClientSession, params jsonutils
 	if err != nil {
 		return nil, err
 	}
-	result := modulebase.ListResult{Data: []jsonutils.JSONObject{body}}
+	result := printutils.ListResult{Data: []jsonutils.JSONObject{body}}
 	return &result, nil
 }
 
 func (this *SSshkeypairManager) FetchPrivateKey(ctx context.Context, userCred mcclient.TokenCredential) (string, error) {
-	s := auth.GetSession(ctx, userCred, "", "")
+	s := auth.GetSession(ctx, userCred, "")
 	return this.FetchPrivateKeyBySession(ctx, s)
 }
 
 func (this *SSshkeypairManager) FetchPrivateKeyBySession(ctx context.Context, s *mcclient.ClientSession) (string, error) {
+	kp, err := this.FetchKeypairBySession(ctx, s)
+	if err != nil {
+		return "", errors.Wrap(err, "FetchKeypairBySession")
+	}
+	return kp.PrivateKey, nil
+}
+
+func (this *SSshkeypairManager) FetchKeypairBySession(ctx context.Context, s *mcclient.ClientSession) (*models.SshKeypair, error) {
 	userCred := s.GetToken()
 	jd := jsonutils.NewDict()
 	var jr jsonutils.JSONObject
@@ -60,24 +69,21 @@ func (this *SSshkeypairManager) FetchPrivateKeyBySession(ctx context.Context, s 
 		jd.Set("admin", jsonutils.JSONTrue)
 		r, err := Sshkeypairs.List(s, jd)
 		if err != nil {
-			return "", errors.Wrap(err, "get admin ssh key")
+			return nil, errors.Wrap(err, "get admin ssh key")
 		}
 		jr = r.Data[0]
 	} else {
 		r, err := Sshkeypairs.GetById(s, userCred.GetProjectId(), jd)
 		if err != nil {
-			return "", errors.Wrap(err, "get project ssh key")
+			return nil, errors.Wrap(err, "get project ssh key")
 		}
 		jr = r
 	}
 	kp := &models.SshKeypair{}
 	if err := jr.Unmarshal(kp); err != nil {
-		return "", errors.Wrap(err, "unmarshal ssh key")
+		return nil, errors.Wrap(err, "unmarshal ssh key")
 	}
-	if kp.PrivateKey == "" {
-		return "", errors.Error("empty ssh key")
-	}
-	return kp.PrivateKey, nil
+	return kp, nil
 }
 
 var (
@@ -89,5 +95,5 @@ func init() {
 		[]string{},
 		[]string{})}
 
-	modules.RegisterComputeV2(&Sshkeypairs)
+	modules.RegisterCompute(&Sshkeypairs)
 }

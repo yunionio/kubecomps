@@ -24,6 +24,8 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/util/httputils"
+	"yunion.io/x/pkg/util/printutils"
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/onecloud/pkg/httperrors"
@@ -31,7 +33,6 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	"yunion.io/x/onecloud/pkg/mcclient/modules"
 	"yunion.io/x/onecloud/pkg/mcclient/modules/identity"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 )
 
 type ImageManager struct {
@@ -41,6 +42,8 @@ type ImageManager struct {
 const (
 	IMAGE_META          = "X-Image-Meta-"
 	IMAGE_META_PROPERTY = "X-Image-Meta-Property-"
+
+	IMAGE_METADATA = "X-Image-Meta-Metadata"
 
 	IMAGE_META_COPY_FROM = "x-glance-api-copy-from"
 )
@@ -58,7 +61,12 @@ func FetchImageMeta(h http.Header) jsonutils.JSONObject {
 	meta := jsonutils.NewDict()
 	meta.Add(jsonutils.NewDict(), "properties")
 	for k, v := range h {
-		if strings.HasPrefix(k, IMAGE_META_PROPERTY) {
+		if k == IMAGE_METADATA && len(v) == 1 {
+			metadata, _ := jsonutils.Parse([]byte(v[0]))
+			if metadata != nil {
+				meta.Add(metadata, "metadata")
+			}
+		} else if strings.HasPrefix(k, IMAGE_META_PROPERTY) {
 			k := strings.ToLower(k[len(IMAGE_META_PROPERTY):])
 			meta.Add(jsonutils.NewString(decodeMeta(v[0])), "properties", k)
 			if strings.IndexByte(k, '-') > 0 {
@@ -98,7 +106,7 @@ func (this *ImageManager) Get(session *mcclient.ClientSession, id string, params
 	// hack: some GetPropertiesMethod must use HTTP GET action like:
 	// - GET /images/distinct-field
 	// hard code this id currently, should found a better solution
-	if ok, _ := utils.InStringArray(id, []string{"distinct-field"}); ok {
+	if ok, _ := utils.InStringArray(id, []string{"distinct-field", "statistics"}); ok {
 		return this.ResourceManager.Get(session, id, params)
 	}
 	r, e := this.GetById(session, id, params)
@@ -121,13 +129,13 @@ func (this *ImageManager) GetId(session *mcclient.ClientSession, id string, para
 	return img.GetString("id")
 }
 
-func (this *ImageManager) BatchGet(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []modulebase.SubmitResult {
+func (this *ImageManager) BatchGet(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []printutils.SubmitResult {
 	return modulebase.BatchDo(idlist, func(id string) (jsonutils.JSONObject, error) {
 		return this.Get(session, id, params)
 	})
 }
 
-func (this *ImageManager) List(session *mcclient.ClientSession, params jsonutils.JSONObject) (*modulebase.ListResult, error) {
+func (this *ImageManager) List(session *mcclient.ClientSession, params jsonutils.JSONObject) (*printutils.ListResult, error) {
 	path := fmt.Sprintf("/%s", this.URLPath())
 	if params != nil {
 		details, _ := params.Bool("details")
@@ -168,7 +176,7 @@ func (this *ImageManager) countUsage(session *mcclient.ClientSession, deleted bo
 	var limit int64 = 1000
 	var offset int64 = 0
 	ret := make(map[string]*ImageUsageCount)
-	count := func(ret map[string]*ImageUsageCount, results *modulebase.ListResult) {
+	count := func(ret map[string]*ImageUsageCount, results *printutils.ListResult) {
 		for _, r := range results.Data {
 			format, _ := r.GetString("disk_format")
 			status, _ := r.GetString("status")
@@ -263,7 +271,7 @@ func setImageMeta(params jsonutils.JSONObject) (http.Header, error) {
 	return header, nil
 }
 
-func (this *ImageManager) ListMemberProjects(s *mcclient.ClientSession, imageId string) (*modulebase.ListResult, error) {
+func (this *ImageManager) ListMemberProjects(s *mcclient.ClientSession, imageId string) (*printutils.ListResult, error) {
 	result, e := this.ListMemberProjectIds(s, imageId)
 	if e != nil {
 		return nil, e
@@ -282,7 +290,7 @@ func (this *ImageManager) ListMemberProjects(s *mcclient.ClientSession, imageId 
 	return result, nil
 }
 
-func (this *ImageManager) ListMemberProjectIds(s *mcclient.ClientSession, imageId string) (*modulebase.ListResult, error) {
+func (this *ImageManager) ListMemberProjectIds(s *mcclient.ClientSession, imageId string) (*printutils.ListResult, error) {
 	path := fmt.Sprintf("/%s/%s/members", this.URLPath(), url.PathEscape(imageId))
 	return modulebase.List(this.ResourceManager, s, path, "members")
 }
@@ -398,13 +406,13 @@ func (this *ImageManager) _removeMembership(s *mcclient.ClientSession, image_id 
 	return e
 }
 
-func (this *ImageManager) ListSharedImageIds(s *mcclient.ClientSession, projectId string) (*modulebase.ListResult, error) {
+func (this *ImageManager) ListSharedImageIds(s *mcclient.ClientSession, projectId string) (*printutils.ListResult, error) {
 	path := fmt.Sprintf("/shared-images/%s", projectId)
 	// {"shared_images": [{"image_id": "4d82c731-937e-4420-959b-de9c213efd2b", "can_share": false}]}
 	return modulebase.List(this.ResourceManager, s, path, "shared_images")
 }
 
-func (this *ImageManager) ListSharedImages(s *mcclient.ClientSession, projectId string) (*modulebase.ListResult, error) {
+func (this *ImageManager) ListSharedImages(s *mcclient.ClientSession, projectId string) (*printutils.ListResult, error) {
 	result, e := this.ListSharedImageIds(s, projectId)
 	if e != nil {
 		return nil, e
@@ -523,7 +531,7 @@ func (this *ImageManager) _update(s *mcclient.ClientSession, id string, params j
 
 func (this *ImageManager) BatchUpdate(
 	session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject,
-) []modulebase.SubmitResult {
+) []printutils.SubmitResult {
 	return modulebase.BatchDo(idlist, func(id string) (jsonutils.JSONObject, error) {
 		var curParams = params.(*jsonutils.JSONDict).Copy()
 		img, err := this.Get(session, id, nil)
@@ -586,7 +594,7 @@ func init() {
 		[]string{"ID", "Name", "Tags", "Disk_format",
 			"Size", "Is_public", "Protected", "Is_Standard",
 			"OS_Type", "OS_Distribution", "OS_version",
-			"Min_disk", "Min_ram", "Status",
+			"Min_disk", "Min_ram", "Status", "Encrypt_Status",
 			"Notes", "OS_arch", "Preference",
 			"OS_Codename", "Description",
 			"Checksum", "Tenant_Id", "Tenant",
@@ -613,7 +621,6 @@ func (this *SImageUsageManager) GetUsage(session *mcclient.ClientSession, params
 
 var (
 	ImageUsages SImageUsageManager
-	ImageLogs   modulebase.ResourceManager
 )
 
 func init() {
@@ -621,8 +628,5 @@ func init() {
 		[]string{},
 		[]string{})}
 
-	ImageLogs = modules.NewImageManager("event", "events",
-		[]string{"id", "ops_time", "obj_id", "obj_type", "obj_name", "user", "user_id", "tenant", "tenant_id", "owner_tenant_id", "action", "notes"},
-		[]string{})
 	// register(&ImageUsages)
 }

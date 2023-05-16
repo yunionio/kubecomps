@@ -14,23 +14,34 @@
 
 package compute
 
-import "yunion.io/x/onecloud/pkg/apis"
+import (
+	"yunion.io/x/cloudmux/pkg/apis/compute"
+	"yunion.io/x/cloudmux/pkg/cloudprovider"
+
+	"yunion.io/x/onecloud/pkg/apis"
+)
 
 const (
-	CDN_DOMAIN_STATUS_ONLINE        = "online"
-	CDN_DOMAIN_STATUS_OFFLINE       = "offline"
+	CDN_DOMAIN_STATUS_ONLINE        = compute.CDN_DOMAIN_STATUS_ONLINE
+	CDN_DOMAIN_STATUS_OFFLINE       = compute.CDN_DOMAIN_STATUS_OFFLINE
 	CDN_DOMAIN_STATUS_DELETING      = "deleting"
 	CDN_DOMAIN_STATUS_DELETE_FAILED = "delete_failed"
-	CDN_DOMAIN_STATUS_PROCESSING    = "processing"
-	CDN_DOMAIN_STATUS_REJECTED      = "rejected"
+	CDN_DOMAIN_STATUS_PROCESSING    = compute.CDN_DOMAIN_STATUS_PROCESSING
+	CDN_DOMAIN_STATUS_REJECTED      = compute.CDN_DOMAIN_STATUS_REJECTED
 	CDN_DOMAIN_STATUS_UNKNOWN       = "unknown"
 
-	CDN_DOMAIN_AREA_MAINLAND      = "mainland"
-	CDN_DOMAIN_AREA_OVERSEAS      = "overseas"
-	CDN_DOMAIN_AREA_GLOBAL        = "global"
-	CDN_DOMAIN_ORIGIN_TYPE_DOMAIN = "domain"
-	CDN_DOMAIN_ORIGIN_TYPE_IP     = "ip"
-	CDN_DOMAIN_ORIGIN_TYPE_BUCKET = "bucket"
+	CDN_DOMAIN_AREA_MAINLAND       = compute.CDN_DOMAIN_AREA_MAINLAND
+	CDN_DOMAIN_AREA_OVERSEAS       = compute.CDN_DOMAIN_AREA_OVERSEAS
+	CDN_DOMAIN_AREA_GLOBAL         = compute.CDN_DOMAIN_AREA_GLOBAL
+	CDN_DOMAIN_ORIGIN_TYPE_DOMAIN  = "domain"
+	CDN_DOMAIN_ORIGIN_TYPE_IP      = "ip"
+	CDN_DOMAIN_ORIGIN_TYPE_BUCKET  = compute.CDN_DOMAIN_ORIGIN_TYPE_BUCKET
+	CDN_DOMAIN_ORIGIN_THIRED_PARTY = "third_party"
+
+	// Qcloud
+	CDN_SERVICE_TYPE_WEB      = "web"      // 静态加速
+	CND_SERVICE_TYPE_DOWNLOAD = "download" // 下载加速
+	CND_SERVICE_TYPE_MEDIA    = "media"    // 流媒体点播加速
 )
 
 type CdnDomain struct {
@@ -53,16 +64,34 @@ type CdnDomains struct {
 }
 
 type CDNDomainCreateInput struct {
+	apis.EnabledStatusInfrasResourceBaseCreateInput
+
+	// 源站信息
+	// required: true
+	Origins *cloudprovider.SCdnOrigins
+
+	// 服务类型
+	// required: true
+	// enmu: web, download, media
+	ServiceType string `json:"service_type"`
+	// 加速区域
+	// enmu: mainland, overseas, global
+	// requrired: true
+	Area string `json:"area"`
+
+	CloudproviderResourceInput
+	DeletePreventableCreateInput
 }
 
 type CDNDomainDetails struct {
-	apis.EnabledStatusInfrasResourceBaseDetails
+	apis.VirtualResourceDetails
 	ManagedResourceInfo
 }
 
 type CDNDomainListInput struct {
-	apis.EnabledStatusInfrasResourceBaseListInput
+	apis.VirtualResourceListInput
 	apis.ExternalizedResourceBaseListInput
+	apis.EnabledResourceBaseListInput
 
 	ManagedResourceListInput
 }

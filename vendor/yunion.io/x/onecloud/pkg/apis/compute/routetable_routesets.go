@@ -14,39 +14,17 @@
 
 package compute
 
-import "yunion.io/x/onecloud/pkg/apis"
+import (
+	"yunion.io/x/cloudmux/pkg/apis/compute"
 
-const (
-	ROUTE_ENTRY_TYPE_CUSTOM    = "Custom" // 自定义路由
-	ROUTE_ENTRY_TYPE_SYSTEM    = "System" // 系统路由
-	ROUTE_ENTRY_TYPE_PROPAGATE = "Propagate"
+	"yunion.io/x/onecloud/pkg/apis"
 )
 
 const (
-	Next_HOP_TYPE_INSTANCE         = "Instance"              // ECS实例。
-	Next_HOP_TYPE_HAVIP            = "HaVip"                 // 高可用虚拟IP。
-	Next_HOP_TYPE_VPN              = "VpnGateway"            // VPN网关。
-	Next_HOP_TYPE_NAT              = "NatGateway"            // NAT网关。
-	Next_HOP_TYPE_NETWORK          = "NetworkInterface"      // 辅助弹性网卡。
-	Next_HOP_TYPE_EIP              = "Eip"                   // 弹性IP
-	Next_HOP_TYPE_ROUTER           = "RouterInterface"       // 路由器接口。
-	Next_HOP_TYPE_IPV6             = "IPv6Gateway"           // IPv6网关。
-	Next_HOP_TYPE_INTERNET         = "InternetGateway"       // Internet网关。
-	Next_HOP_TYPE_EGRESS_INTERNET  = "EgressInternetGateway" // egress only Internet网关。
-	Next_HOP_TYPE_VPCPEERING       = "VpcPeering"            // vpc对等连接
-	Next_HOP_TYPE_INTERVPCNETWORK  = "InterVpcNetwork"       //vpc 互联网络
-	Next_HOP_TYPE_DIRECTCONNECTION = "DirectConnection"      //专线
-	Next_HOP_TYPE_VPC              = "VPC"
-	Next_HOP_TYPE_VBR              = "VBR" // 边界路由器
+	NEXT_HOP_TYPE_INSTANCE   = compute.NEXT_HOP_TYPE_INSTANCE   // ECS实例。
+	NEXT_HOP_TYPE_VPCPEERING = compute.NEXT_HOP_TYPE_VPCPEERING // vpc对等连接
 
-	Next_HOP_TYPE_IP = "IP"
-)
-
-const (
-	ROUTE_ENTRY_STATUS_AVAILIABLE = "available"
-	ROUTE_ENTRY_STATUS_CONFLICT   = "conflict"
-	ROUTE_ENTRY_STATUS_DISABLED   = "disabled"
-	ROUTE_ENTRY_STATUS_UNKNOWN    = "unknown"
+	NEXT_HOP_TYPE_IP = compute.NEXT_HOP_TYPE_IP
 )
 
 type RouteTableRouteSetCreateInput struct {
@@ -70,4 +48,8 @@ type RouteTableRouteSetListInput struct {
 	apis.StatusStandaloneResourceListInput
 	apis.ExternalizedResourceBaseListInput
 	RouteTableFilterList
+	Type        string `json:"type"`
+	NextHopType string `json:"next_hop_type"`
+	NextHopId   string `json:"next_hop_id"`
+	Cidr        string `json:"cidr"`
 }

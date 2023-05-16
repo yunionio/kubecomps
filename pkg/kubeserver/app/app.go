@@ -53,7 +53,7 @@ func Run(ctx context.Context) error {
 	app_commmon.InitAuth(&opt.CommonOptions, func() {})
 	common_options.StartOptionManager(opt, opt.ConfigSyncPeriodSeconds, constants.ServiceType, constants.ServiceVersion, options.OnOptionsChange)
 
-	if db.CheckSync(options.Options.AutoSyncTable) {
+	if db.CheckSync(options.Options.AutoSyncTable, options.Options.EnableDBChecksumTables, options.Options.DBChecksumSkipInit) {
 		for _, initDBFunc := range []func() error{
 			models.InitDB,
 		} {

@@ -15,10 +15,24 @@
 package compute
 
 import (
+	"strconv"
+
 	"yunion.io/x/jsonutils"
 
 	"yunion.io/x/onecloud/pkg/apis"
 )
+
+type StorageUsage struct {
+	HostCount     int
+	DiskCount     int
+	SnapshotCount int
+	Used          int64
+	Wasted        int64
+}
+
+func (self StorageUsage) IsZero() bool {
+	return self.HostCount+self.DiskCount+self.SnapshotCount == 0
+}
 
 type StorageCreateInput struct {
 	apis.EnabledStatusInfrasResourceBaseCreateInput
@@ -27,16 +41,16 @@ type StorageCreateInput struct {
 	//
 	//
 	//
-	// | storage_type	| 参数						|是否必传	|	默认值	| 说明		|
-	// | --------		| -------					| --------	| --------	| ---------	|
-	// | rbd			| rbd_mon_host				| 是		|			| ceph mon_host	|
-	// | rbd 			| rbd_pool					| 是 		|			| ceph pool		|
-	// | rbd 			| rbd_key					| 否 		|			|若cephx认证开启,此参数必传	|
-	// | rbd 			| rbd_rados_mon_op_timeout	| 否 		|	3		|单位: 秒	|
-	// | rbd 			| rbd_rados_osd_op_timeout	| 否 		|	1200	|单位: 秒	|
-	// | rbd 			| rbd_client_mount_timeout	| 否 		|	120		|单位: 秒	|
-	// | nfs 			| nfs_host					| 是 		|			|网络文件系统主机	|
-	// | nfs 			| nfs_shared_dir			| 是 		|			|网络文件系统共享目录	|
+	// | storage_type    | 参数                        |是否必传    |    默认值    | 说明        |
+	// | --------        | -------                    | --------    | --------    | ---------    |
+	// | rbd            | rbd_mon_host                | 是        |            | ceph mon_host    |
+	// | rbd             | rbd_pool                    | 是         |            | ceph pool        |
+	// | rbd             | rbd_key                    | 否         |            |若cephx认证开启,此参数必传    |
+	// | rbd             | rbd_rados_mon_op_timeout    | 否         |    3        |单位: 秒    |
+	// | rbd             | rbd_rados_osd_op_timeout    | 否         |    1200    |单位: 秒    |
+	// | rbd             | rbd_client_mount_timeout    | 否         |    120        |单位: 秒    |
+	// | nfs             | nfs_host                    | 是         |            |网络文件系统主机    |
+	// | nfs             | nfs_shared_dir            | 是         |            |网络文件系统共享目录    |
 	// local: 本地存储
 	// rbd: ceph块存储, ceph存储创建时仅会检测是否重复创建，不会具体检测认证参数是否合法，只有挂载存储时
 	// 计算节点会验证参数，若挂载失败，宿主机和存储不会关联，可以通过查看存储日志查找挂载失败原因
@@ -138,13 +152,42 @@ type StorageDetails struct {
 	SStorage
 
 	SStorageCapacityInfo
+	ActualUsed int64 `json:"real_time_used_capacity,omitzero"`
+	VCapacity  int64 `json:"virtual_capacity,omitzero"`
 
 	Hosts []StorageHost `json:"hosts"`
 
 	Schedtags []SchedtagShortDescDetails `json:"schedtags"`
 
+	StorageUsage `json:"storage_usage"`
+
 	// 超分比
 	CommitBound float32 `json:"commit_bound"`
+}
+
+func (self StorageDetails) GetMetricTags() map[string]string {
+	ret := map[string]string{
+		"id":             self.Id,
+		"storage_id":     self.Id,
+		"storage_name":   self.Name,
+		"brand":          self.Brand,
+		"domain_id":      self.DomainId,
+		"project_domain": self.ProjectDomain,
+		"external_id":    self.ExternalId,
+	}
+	return ret
+}
+
+func (self StorageDetails) GetMetricPairs() map[string]string {
+	usageActive := "0"
+	if self.Capacity > 0 {
+		usageActive = strconv.FormatFloat(float64(self.ActualCapacityUsed)/float64(self.Capacity)*100.0, 'f', -1, 64)
+	}
+	ret := map[string]string{
+		"free":         strconv.FormatFloat(float64(self.Capacity-self.ActualCapacityUsed), 'f', 2, 64),
+		"usage_active": usageActive,
+	}
+	return ret
 }
 
 type StorageResourceInfo struct {

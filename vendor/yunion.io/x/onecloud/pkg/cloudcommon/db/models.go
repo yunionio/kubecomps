@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/appsrv"
-	"yunion.io/x/onecloud/pkg/cloudcommon"
 	common_options "yunion.io/x/onecloud/pkg/cloudcommon/options"
 )
 
@@ -35,14 +35,21 @@ func GlobalModelManagerTables() map[string]IModelManager {
 }
 
 func RegisterModelManager(modelMan IModelManager) {
+	RegisterModelManagerWithKeyword(modelMan, "")
+}
+
+func RegisterModelManagerWithKeyword(modelMan IModelManager, keyword string) {
 	if globalTables == nil {
 		globalTables = make(map[string]IModelManager)
 	}
-	mustCheckModelManager(modelMan)
-	if _, ok := globalTables[modelMan.Keyword()]; ok {
-		log.Fatalf("keyword %s exists in globalTables!", modelMan.Keyword())
+	if len(keyword) == 0 {
+		keyword = modelMan.Keyword()
 	}
-	globalTables[modelMan.Keyword()] = modelMan
+	mustCheckModelManager(modelMan)
+	if _, ok := globalTables[keyword]; ok {
+		log.Fatalf("keyword %s exists in globalTables!", keyword)
+	}
+	globalTables[keyword] = modelMan
 }
 
 func mustCheckModelManager(modelMan IModelManager) {
@@ -94,16 +101,38 @@ func mustCheckModelManager(modelMan IModelManager) {
 	}
 }
 
-func CheckSync(autoSync bool) bool {
-	log.Infof("Start check database schema ...")
+func tableSpecId(tableSpec ITableSpec) string {
+	keys := []string{
+		tableSpec.Name(),
+	}
+	for _, c := range tableSpec.Columns() {
+		keys = append(keys, c.Name())
+	}
+	return strings.Join(keys, "-")
+}
+
+func CheckSync(autoSync bool, enableChecksumTables bool, skipInitChecksum bool) bool {
+	log.Infof("Start check database schema: autoSync(%v), enableChecksumTables(%v), skipInitChecksum(%v)", autoSync, enableChecksumTables, skipInitChecksum)
 	inSync := true
+
+	var err error
+	foreignProcessedTbl := make(map[string]bool)
 	for modelName, modelMan := range globalTables {
 		tableSpec := modelMan.TableSpec()
+		tableKey := tableSpecId(tableSpec)
+		if _, ok := foreignProcessedTbl[tableKey]; ok {
+			continue
+		}
+		foreignProcessedTbl[tableKey] = true
 		dropFKSqls := tableSpec.DropForeignKeySQL()
 		if len(dropFKSqls) > 0 {
 			log.Infof("model %s drop foreign key constraints!!!", modelName)
 			if autoSync {
-				err := commitSqlDIffs(dropFKSqls)
+				if ts, ok := tableSpec.(*sTableSpec); ok {
+					err = commitSqlDiffWithName(dropFKSqls, ts.GetDBName())
+				} else {
+					err = commitSqlDIffs(dropFKSqls)
+				}
 				if err != nil {
 					log.Errorf("commit sql error %s", err)
 					return false
@@ -116,13 +145,24 @@ func CheckSync(autoSync bool) bool {
 			}
 		}
 	}
+
+	processedTbl := make(map[string]bool)
 	for modelName, modelMan := range globalTables {
 		tableSpec := modelMan.TableSpec()
+		tableKey := tableSpecId(tableSpec)
+		if _, ok := processedTbl[tableKey]; ok {
+			continue
+		}
+		processedTbl[tableKey] = true
 		sqls := tableSpec.SyncSQL()
 		if len(sqls) > 0 {
 			log.Infof("model %s is not in SYNC!!!", modelName)
 			if autoSync {
-				err := commitSqlDIffs(sqls)
+				if ts, ok := tableSpec.(*sTableSpec); ok {
+					err = commitSqlDiffWithName(sqls, ts.GetDBName())
+				} else {
+					err = commitSqlDIffs(sqls)
+				}
 				if err != nil {
 					log.Errorf("commit sql error %s", err)
 					return false
@@ -134,14 +174,27 @@ func CheckSync(autoSync bool) bool {
 				inSync = false
 			}
 		}
+
+		recordMan, ok := modelMan.(IRecordChecksumModelManager)
+		if ok {
+			recordMan.SetEnableRecordChecksum(enableChecksumTables)
+			if recordMan.EnableRecordChecksum() {
+				if len(sqls) > 0 || !skipInitChecksum {
+					if err := InjectModelsChecksum(recordMan); err != nil {
+						log.Errorf("InjectModelsChecksum for %q error: %v", modelMan.TableSpec().Name(), err)
+						return false
+					}
+				}
+			}
+		}
 	}
 	return inSync
 }
 
-func EnsureAppInitSyncDB(app *appsrv.Application, opt *common_options.DBOptions, modelInitDBFunc func() error) {
-	cloudcommon.InitDB(opt)
+func EnsureAppSyncDB(app *appsrv.Application, opt *common_options.DBOptions, modelInitDBFunc func() error) {
+	// cloudcommon.InitDB(opt)
 
-	if !CheckSync(opt.AutoSyncTable) {
+	if !CheckSync(opt.AutoSyncTable, opt.EnableDBChecksumTables, opt.DBChecksumSkipInit) {
 		log.Fatalf("database schema not in sync!")
 	}
 
@@ -156,7 +209,7 @@ func EnsureAppInitSyncDB(app *appsrv.Application, opt *common_options.DBOptions,
 		os.Exit(0)
 	}
 
-	cloudcommon.AppDBInit(app)
+	AppDBInit(app)
 }
 
 func GetModelManager(keyword string) IModelManager {
@@ -171,6 +224,23 @@ func GetModelManager(keyword string) IModelManager {
 func commitSqlDIffs(sqls []string) error {
 	db := sqlchemy.GetDB()
 
+	for _, sql := range sqls {
+		log.Infof("Exec %s", sql)
+		_, err := db.Exec(sql)
+		if err != nil {
+			log.Errorf("Exec sql failed %s\n%s", sql, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func commitSqlDiffWithName(sqls []string, dbName sqlchemy.DBName) error {
+	db := sqlchemy.GetDBWithName(dbName)
+	return execSqlDiffWithDb(sqls, db)
+}
+
+func execSqlDiffWithDb(sqls []string, db *sqlchemy.SDatabase) error {
 	for _, sql := range sqls {
 		log.Infof("Exec %s", sql)
 		_, err := db.Exec(sql)

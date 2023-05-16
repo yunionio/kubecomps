@@ -24,10 +24,12 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/appctx"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/cache"
 
 	"yunion.io/x/onecloud/pkg/apis/identity"
+	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/cloudcommon/syncman"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
@@ -181,12 +183,24 @@ func (a *authManager) verify(ctx context.Context, token string) (mcclient.TokenC
 	return cred, nil
 }
 
+var (
+	defaultAuthSource = mcclient.AuthSourceSrv
+)
+
+func SetDefaultAuthSource(src string) {
+	defaultAuthSource = src
+}
+
+func GetDefaultAuthSource() string {
+	return defaultAuthSource
+}
+
 func (a *authManager) authAdmin() error {
 	var token mcclient.TokenCredential
 	var err error
 	token, err = a.client.AuthenticateWithSource(
 		a.info.Username, a.info.Passwd, a.info.Domain,
-		a.info.Project, a.info.ProjectDomain, mcclient.AuthSourceSrv)
+		a.info.Project, a.info.ProjectDomain, GetDefaultAuthSource())
 	if err != nil {
 		log.Errorf("Admin auth failed: %s", err)
 		return err
@@ -221,17 +235,11 @@ func (a *authManager) reAuth() {
 }
 
 func (a *authManager) GetServiceURL(service, region, zone, endpointType string) (string, error) {
-	if endpointType == "" && globalEndpointType != "" {
-		endpointType = globalEndpointType
-	}
-	return a.adminCredential.GetServiceURL(service, region, zone, endpointType)
+	return a.getAdminSession(context.Background(), region, zone, endpointType).GetServiceURL(service, endpointType)
 }
 
 func (a *authManager) GetServiceURLs(service, region, zone, endpointType string) ([]string, error) {
-	if endpointType == "" && globalEndpointType != "" {
-		endpointType = globalEndpointType
-	}
-	return a.adminCredential.GetServiceURLs(service, region, zone, endpointType)
+	return a.getAdminSession(context.Background(), region, zone, endpointType).GetServiceURLs(service, endpointType)
 }
 
 func (a *authManager) getServiceIPs(service, region, zone, endpointType string, needResolve bool) ([]string, error) {
@@ -275,6 +283,25 @@ func (a *authManager) isAuthed() bool {
 		return false
 	}
 	return true
+}
+
+func (a *authManager) getAdminSession(ctx context.Context, region, zone, endpointType string) *mcclient.ClientSession {
+	return a.getSession(ctx, manager.adminCredential, region, zone, endpointType)
+}
+
+func (a *authManager) getSession(ctx context.Context, token mcclient.TokenCredential, region, zone, endpointType string) *mcclient.ClientSession {
+	cli := Client()
+	if cli == nil {
+		return nil
+	}
+	if endpointType == "" && globalEndpointType != "" {
+		endpointType = globalEndpointType
+	}
+	srvType := consts.GetServiceType()
+	if len(srvType) > 0 && len(appctx.AppContextServiceName(ctx)) == 0 {
+		ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_APPNAME, srvType)
+	}
+	return cli.NewSession(ctx, region, zone, endpointType, token)
 }
 
 func GetCatalogData(serviceTypes []string, region string) jsonutils.JSONObject {
@@ -322,29 +349,25 @@ func Client() *mcclient.Client {
 }
 
 func AdminCredential() mcclient.TokenCredential {
+	if manager.adminCredential.GetExpires().Before(time.Now()) {
+		manager.reAuth()
+	}
 	return manager.adminCredential
 }
 
 // Deprecated
-func AdminSession(ctx context.Context, region, zone, endpointType, apiVersion string) *mcclient.ClientSession {
-	cli := Client()
-	if cli == nil {
-		return nil
-	}
-	if endpointType == "" && globalEndpointType != "" {
-		endpointType = globalEndpointType
-	}
-	return cli.NewSession(ctx, region, zone, endpointType, AdminCredential(), apiVersion)
+func AdminSession(ctx context.Context, region, zone, endpointType string) *mcclient.ClientSession {
+	return manager.getAdminSession(ctx, region, zone, endpointType)
 }
 
 // Deprecated
-func AdminSessionWithInternal(ctx context.Context, region, zone, apiVersion string) *mcclient.ClientSession {
-	return AdminSession(ctx, region, zone, "internal", apiVersion)
+func AdminSessionWithInternal(ctx context.Context, region, zone string) *mcclient.ClientSession {
+	return AdminSession(ctx, region, zone, identity.EndpointInterfaceInternal)
 }
 
 // Deprecated
-func AdminSessionWithPublic(ctx context.Context, region, zone, apiVersion string) *mcclient.ClientSession {
-	return AdminSession(ctx, region, zone, "public", apiVersion)
+func AdminSessionWithPublic(ctx context.Context, region, zone string) *mcclient.ClientSession {
+	return AdminSession(ctx, region, zone, identity.EndpointInterfacePublic)
 }
 
 type AuthCompletedCallback func()
@@ -368,38 +391,31 @@ func ReAuth() {
 	manager.reAuth()
 }
 
-func GetAdminSession(ctx context.Context, region string,
-	apiVersion string) *mcclient.ClientSession {
-	return GetSession(ctx, manager.adminCredential, region, apiVersion)
+func GetAdminSession(ctx context.Context, region string) *mcclient.ClientSession {
+	return GetSession(ctx, manager.adminCredential, region)
 }
 
-func GetAdminSessionWithPublic(ctx context.Context, region string,
-	apiVersion string) *mcclient.ClientSession {
-	return GetSessionWithPublic(ctx, manager.adminCredential, region, apiVersion)
+func GetAdminSessionWithPublic(ctx context.Context, region string) *mcclient.ClientSession {
+	return GetSessionWithPublic(ctx, manager.adminCredential, region)
 }
 
-func GetAdminSessionWithInternal(
-	ctx context.Context, region string, apiVersion string) *mcclient.ClientSession {
-	return GetSessionWithInternal(ctx, manager.adminCredential, region, apiVersion)
+func GetAdminSessionWithInternal(ctx context.Context, region string) *mcclient.ClientSession {
+	return GetSessionWithInternal(ctx, manager.adminCredential, region)
 }
 
-func GetSession(ctx context.Context, token mcclient.TokenCredential, region string, apiVersion string) *mcclient.ClientSession {
+func GetSession(ctx context.Context, token mcclient.TokenCredential, region string) *mcclient.ClientSession {
 	if len(globalEndpointType) != 0 {
-		return getSessionByType(ctx, token, region, apiVersion, globalEndpointType)
+		return manager.getSession(ctx, token, region, "", globalEndpointType)
 	}
-	return GetSessionWithInternal(ctx, token, region, apiVersion)
+	return GetSessionWithInternal(ctx, token, region)
 }
 
-func GetSessionWithInternal(ctx context.Context, token mcclient.TokenCredential, region string, apiVersion string) *mcclient.ClientSession {
-	return getSessionByType(ctx, token, region, apiVersion, identity.EndpointInterfaceInternal)
+func GetSessionWithInternal(ctx context.Context, token mcclient.TokenCredential, region string) *mcclient.ClientSession {
+	return manager.getSession(ctx, token, region, "", identity.EndpointInterfaceInternal)
 }
 
-func GetSessionWithPublic(ctx context.Context, token mcclient.TokenCredential, region string, apiVersion string) *mcclient.ClientSession {
-	return getSessionByType(ctx, token, region, apiVersion, identity.EndpointInterfacePublic)
-}
-
-func getSessionByType(ctx context.Context, token mcclient.TokenCredential, region string, apiVersion string, epType string) *mcclient.ClientSession {
-	return manager.client.NewSession(ctx, region, "", epType, token, apiVersion)
+func GetSessionWithPublic(ctx context.Context, token mcclient.TokenCredential, region string) *mcclient.ClientSession {
+	return manager.getSession(ctx, token, region, "", identity.EndpointInterfacePublic)
 }
 
 // use for climc test only

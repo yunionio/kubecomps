@@ -15,8 +15,9 @@
 package identity
 
 import (
+	"yunion.io/x/pkg/util/rbacscope"
+
 	"yunion.io/x/onecloud/pkg/apis"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 )
 
 type RoleDetails struct {
@@ -25,11 +26,16 @@ type RoleDetails struct {
 
 	SRole
 
-	UserCount    int `json:"user_count"`
-	GroupCount   int `json:"group_count"`
+	// 具有该角色的用户数量
+	UserCount int `json:"user_count"`
+	// 具有该角色的用户组数量
+	GroupCount int `json:"group_count"`
+	// 有该角色的用户或组的项目的数量
 	ProjectCount int `json:"project_count"`
 
+	// 该角色匹配的权限的名称列表
 	MatchPolicies []string `json:"match_policies"`
 
-	Policies map[rbacutils.TRbacScope][]string `json:"policies"`
+	// 不同级别的权限的名称列表
+	Policies map[rbacscope.TRbacScope][]string `json:"policies"`
 }

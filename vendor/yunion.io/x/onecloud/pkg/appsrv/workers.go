@@ -25,6 +25,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/errors"
 )
 
 const (
@@ -199,6 +200,17 @@ type sWorkerTask struct {
 	start   time.Time
 }
 
+func (wm *SWorkerManager) UpdateWorkerCount(workerCount int) error {
+	wm.workerLock.Lock()
+	defer wm.workerLock.Unlock()
+	if wm.queue.Size() > 0 {
+		return errors.Errorf("worker queue is not empty")
+	}
+	wm.queue = NewRing(workerCount * wm.backlog)
+	wm.workerCount = workerCount
+	return nil
+}
+
 func (wm *SWorkerManager) String() string {
 	return wm.name
 }
@@ -281,6 +293,8 @@ type SWorkerManagerStates struct {
 	MaxWorkerCnt    int
 	ActiveWorkerCnt int
 	DetachWorkerCnt int
+	DbWorker        bool
+	AllowOverflow   bool
 }
 
 func (s SWorkerManagerStates) IsBusy() bool {
@@ -299,6 +313,8 @@ func (wm *SWorkerManager) getState() SWorkerManagerStates {
 	state.MaxWorkerCnt = wm.workerCount
 	state.ActiveWorkerCnt = wm.activeWorker.size()
 	state.DetachWorkerCnt = wm.detachedWorker.size()
+	state.DbWorker = wm.dbWorker
+	state.AllowOverflow = wm.ignoreOverflow
 
 	return state
 }

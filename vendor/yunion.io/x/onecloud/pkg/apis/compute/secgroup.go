@@ -17,7 +17,6 @@ package compute
 import (
 	"fmt"
 
-	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/regutils"
 	"yunion.io/x/pkg/util/secrules"
@@ -37,23 +36,23 @@ type SSecgroupRuleResource struct {
 	//
 	//
 	//
-	// | protocol | name	|
-	// | -------- | ----	|
-	// | any	  | 所有协议|
-	// | tcp	  | TCP		|
-	// | icmp	  | ICMP	|
-	// | udp	  | UDP 	|
+	// | protocol | name    |
+	// | -------- | ----    |
+	// | any      | 所有协议|
+	// | tcp      | TCP     |
+	// | icmp     | ICMP    |
+	// | udp      | UDP     |
 	// enum: any, tcp, udp, icmp
 	Protocol string `json:"protocol"`
 
 	// 端口列表, 参数为空代表任意端口
 	// 此参数仅对protocol是tcp, udp时生效
 	// 支持格式:
-	// | 格式类型 | 举例	|
-	// | -------- | ----	|
-	// | 单端口	  | 22		|
-	// | 端口范围 | 100-200	|
-	// | 不连续端口| 80,443	|
+	// | 格式类型 | 举例    |
+	// | -------- | ----    |
+	// | 单端口   | 22      |
+	// | 端口范围 | 100-200 |
+	// | 不连续端口| 80,443 |
 	// requried: false
 	Ports string `json:"ports"`
 
@@ -82,10 +81,6 @@ type SSecgroupRuleResource struct {
 	// requried: false
 	// example: test to create rule
 	Description string `json:"description"`
-
-	// 对端安全组Id, 此参数和cidr参数互斥，并且优先级高于cidr, 同时peer_secgroup_id不能和它所在的安全组ID相同
-	// required: false
-	PeerSecgroupId string `json:"peer_secgroup_id"`
 }
 
 type SSecgroupRuleCreateInput struct {
@@ -237,14 +232,17 @@ type SecgroupDetails struct {
 	apis.SharableVirtualResourceDetails
 	SSecurityGroup
 
-	// 关联云主机数量
+	// 关联云主机数量, 不包含回收站云主机
 	GuestCnt int `json:"guest_cnt,allowempty"`
 
-	// 关联此安全组的云主机is_system为true数量
+	// 关联此安全组的云主机is_system为true数量, , 不包含回收站云主机
 	SystemGuestCnt int `json:"system_guest_cnt,allowempty"`
 
-	// admin_secgrp_id为此安全组的云主机数量
+	// admin_secgrp_id为此安全组的云主机数量, , 不包含回收站云主机
 	AdminGuestCnt int `json:"admin_guest_cnt,allowempty"`
+
+	// 所有关联的资源数量
+	TotalCnt int `json:"total_cnt,allowempty"`
 
 	// 安全组缓存数量
 	CacheCnt int `json:"cache_cnt,allowempty"`
@@ -254,8 +252,6 @@ type SecgroupDetails struct {
 	InRules []SecgroupRuleDetails `json:"in_rules"`
 	// 出方向规则信息
 	OutRules []SecgroupRuleDetails `json:"out_rules"`
-
-	CloudCaches []jsonutils.JSONObject `json:"cloud_caches"`
 }
 
 type SecurityGroupResourceInfo struct {
@@ -320,4 +316,20 @@ type SecgroupImportRulesInput struct {
 type SecgroupJsonDesc struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
+}
+
+type SSecurityGroupRef struct {
+	GuestCnt      int `json:"guest_cnt"`
+	AdminGuestCnt int `json:"admin_guest_cnt"`
+	RdsCnt        int `json:"rds_cnt"`
+	RedisCnt      int `json:"redis_cnt"`
+	TotalCnt      int `json:"total_cnt"`
+}
+
+func (self *SSecurityGroupRef) Sum() {
+	self.TotalCnt = self.GuestCnt + self.AdminGuestCnt + self.RdsCnt + self.RedisCnt
+}
+
+type SecurityGroupCacheInput struct {
+	VpcId string `json:"vpc_id"`
 }

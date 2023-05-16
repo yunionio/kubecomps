@@ -4,22 +4,23 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"yunion.io/x/kubecomps/pkg/kubeserver/models"
-	"yunion.io/x/kubecomps/pkg/utils/k8serrors"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
-	"yunion.io/x/onecloud/pkg/appctx"
 	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/appsrv/dispatcher"
 	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
+	"yunion.io/x/pkg/appctx"
+	"yunion.io/x/pkg/util/printutils"
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
 	"yunion.io/x/kubecomps/pkg/kubeserver/k8s/common/model"
+	"yunion.io/x/kubecomps/pkg/kubeserver/models"
+	"yunion.io/x/kubecomps/pkg/utils/k8serrors"
 )
 
 type IK8sModelDispatchHandler interface {
@@ -30,7 +31,7 @@ type IK8sModelDispatchHandler interface {
 	//ContextKeywordPlurals() [][]string
 
 	//List(ctx context.Context, query *jsonutils.JSONDict, ctxIds []dispatcher.SResourceContext) (*modulebase.ListResult, error)
-	List(ctx *model.RequestContext, query *jsonutils.JSONDict) (*modulebase.ListResult, error)
+	List(ctx *model.RequestContext, query *jsonutils.JSONDict) (*printutils.ListResult, error)
 	Get(ctx *model.RequestContext, id string, query *jsonutils.JSONDict) (jsonutils.JSONObject, error)
 	GetSpecific(ctx *model.RequestContext, id string, spec string, query *jsonutils.JSONDict) (jsonutils.JSONObject, error)
 	Create(ctx *model.RequestContext, query, data *jsonutils.JSONDict) (jsonutils.JSONObject, error)

@@ -12,9 +12,9 @@ import (
 	"k8s.io/client-go/rest"
 
 	"yunion.io/x/jsonutils"
-	"yunion.io/x/onecloud/pkg/appctx"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/pkg/appctx"
 
 	yclient "yunion.io/x/kubecomps/pkg/kubeserver/client"
 	clientapi "yunion.io/x/kubecomps/pkg/kubeserver/client/api"
@@ -116,9 +116,10 @@ func (r *Request) GetHelmClient(namespace string) (*helm.Client, error) {
 	return helm.NewClient(kubeConfigPath, namespace, true)
 }
 
-/*func (r *Request) GetGenericClient() (*k8sclient.GenericClient, error) {
-	return k8sclient.NewGeneric(r.KubeAdminConfig)
-}
+/*
+	func (r *Request) GetGenericClient() (*k8sclient.GenericClient, error) {
+		return k8sclient.NewGeneric(r.KubeAdminConfig)
+	}
 */
 func (r *Request) GetNamespaceByQuery() (string, error) {
 	if r.Query == nil {

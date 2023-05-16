@@ -4,7 +4,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
-	"yunion.io/x/onecloud/pkg/cloudcommon/object"
+	"yunion.io/x/pkg/object"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 )

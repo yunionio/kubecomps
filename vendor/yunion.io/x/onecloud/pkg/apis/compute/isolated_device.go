@@ -56,6 +56,9 @@ type IsolatedDeviceListInput struct {
 
 	// 展示物理机的上的设备
 	ShowBaremetalIsolatedDevices bool `json:"show_baremetal_isolated_devices"`
+
+	// 列出虚拟机上挂载的设备
+	GuestId string `json:"guest_id"`
 }
 
 type IsolatedDeviceCreateInput struct {
@@ -94,13 +97,18 @@ type IsolatedDeviceReservedResourceInput struct {
 type IsolatedDeviceUpdateInput struct {
 	apis.StandaloneResourceBaseUpdateInput
 	IsolatedDeviceReservedResourceInput
+	DevType string `json:"dev_type"`
 }
 
 type IsolatedDeviceJsonDesc struct {
-	Id             string `json:"id"`
-	DevType        string `json:"dev_type"`
-	Model          string `json:"model"`
-	Addr           string `json:"addr"`
-	VendorDeviceId string `json:"vendor_device_id"`
-	Vendor         string `json:"vendor"`
+	Id                  string `json:"id"`
+	DevType             string `json:"dev_type"`
+	Model               string `json:"model"`
+	Addr                string `json:"addr"`
+	VendorDeviceId      string `json:"vendor_device_id"`
+	Vendor              string `json:"vendor"`
+	NetworkIndex        int8   `json:"network_index"`
+	OvsOffloadInterface string `json:"ovs_offload_interface"`
+	DiskIndex           int8   `json:"disk_index"`
+	NvmeSizeMB          int    `json:"nvme_size_mb"`
 }

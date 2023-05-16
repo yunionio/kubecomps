@@ -59,21 +59,27 @@ const (
 	ACT_VM_SRC_CHECK                 = "vm_src_check"
 	ACT_VM_START                     = "vm_start"
 	ACT_VM_STOP                      = "vm_stop"
+	ACT_VM_SUSPEND                   = "vm_suspend"
 	ACT_VM_RESTART                   = "vm_restart"
+	ACT_VM_RESUME                    = "vm_resume"
 	ACT_VM_SYNC_CONF                 = "vm_sync_conf"
 	ACT_VM_SYNC_STATUS               = "vm_sync_status"
 	ACT_VM_UNBIND_KEYPAIR            = "vm_unbind_keypair"
 	ACT_VM_ASSIGNSECGROUP            = "vm_assignsecgroup"
 	ACT_VM_REVOKESECGROUP            = "vm_revokesecgroup"
 	ACT_VM_SETSECGROUP               = "vm_setsecgroup"
+	ACT_VM_CPUSET                    = "vm_cpuset"
+	ACT_VM_CPUSET_REMOVE             = "vm_cpuset_remove"
 	ACT_RESET_DISK                   = "reset_disk"
 	ACT_SYNC_STATUS                  = "sync_status"
 	ACT_SYNC_CONF                    = "sync_conf"
 	ACT_CREATE_BACKUP                = "create_backup"
 	ACT_SWITCH_TO_BACKUP             = "switch_to_backup"
 	ACT_RENEW                        = "renew"
+	ACT_SAVE_IMAGE                   = "save_image"
 	ACT_SET_AUTO_RENEW               = "set_auto_renew"
 	ACT_MIGRATE                      = "migrate"
+	ACT_MIGRATING                    = "migrating"
 	ACT_EIP_ASSOCIATE                = "eip_associate"
 	ACT_EIP_DISSOCIATE               = "eip_dissociate"
 	ACT_EIP_CONVERT                  = "eip_convert"
@@ -97,9 +103,13 @@ const (
 	ACT_VM_SNAPSHOT_AND_CLONE        = "vm_snapshot_and_clone"
 	ACT_VM_BLOCK_STREAM              = "vm_block_stream"
 	ACT_ATTACH_NETWORK               = "attach_network"
+	ACT_DETACH_NETWORK               = "detach_network"
 	ACT_VM_CONVERT                   = "vm_convert"
 	ACT_FREEZE                       = "freeze"
 	ACT_UNFREEZE                     = "unfreeze"
+	// 到期释放
+	ACT_SET_EXPIRED_TIME        = "set_expired_time"
+	ACT_VM_SYNC_ISOLATED_DEVICE = "vm_sync_isolated_device"
 
 	ACT_CACHED_IMAGE = "cached_image"
 
@@ -113,6 +123,7 @@ const (
 	ACT_IMAGE_PROBE = "image_probe"
 
 	ACT_AUTHENTICATE = "authenticate"
+	ACT_LOGOUT       = "logout"
 
 	ACT_HEALTH_CHECK = "health_check"
 
@@ -154,7 +165,10 @@ const (
 	ACT_VM_DISSOCIATE           = "vm_dissociate"
 	ACT_NATGATEWAY_ASSOCIATE    = "natgateway_associate"
 	ACT_NATGATEWAY_DISSOCIATE   = "natgateway_dissociate"
+	ACT_LOADBALANCER_ASSOCIATE  = "loadbalancer_associate"
 	ACT_LOADBALANCER_DISSOCIATE = "loadbalancer_dissociate"
+
+	ACT_INSTANCE_GROUP_DISSOCIATE = "instancegroup_dissociate"
 
 	ACT_PREPARE = "prepare"
 	ACT_PROBE   = "probe"
@@ -164,7 +178,8 @@ const (
 
 	ACT_FLUSH_INSTANCE = "flush_instance"
 
-	ACT_UPDATE_STATUS = "update_status"
+	ACT_UPDATE_STATUS              = "update_status"
+	ACT_UPDATE_BACKUP_GUEST_STATUS = "update_backup_guest_status"
 
 	ACT_UPDATE_PASSWORD = "update_password"
 
@@ -207,4 +222,33 @@ const (
 	ACT_CLOUDACCOUNT_SYNC_NETWORK = "sync_network"
 
 	ACT_MERGE_NETWORK = "merge_network"
+
+	ACT_RESTART_NETWORK = "restart_network"
+
+	ACT_RECOVERY = "recovery"
+	ACT_PACK     = "pack"
+	ACT_UNPACK   = "unpack"
+
+	ACT_SYNC_CLASS_METADATA = "sync_class_metadata"
+
+	ACT_ENCRYPTION = "encrypt"
+
+	ACT_CONSOLE           = "console"
+	ACT_WEBSSH            = "webssh"
+	ACT_SET_USER_PASSWORD = "set_user_password"
+
+	ACT_PANIC = "panic"
+
+	ACT_IP_MAC_BIND = "ip_mac_bind"
+	// 程序内初始化notifyconfigmap错误
+	ACT_INIT_NOTIFY_CONFIGMAP = "init_notify_configmap"
+
+	ACT_EXPORT = "export"
+
+	ACT_CANCEL = "cancel"
+	ACT_START  = "start"
+	ACT_DONE   = "done"
+
+	ACT_ASSOCIATE  = "associate"
+	ACT_DISSOCIATE = "dissociate"
 )

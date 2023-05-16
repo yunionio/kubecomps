@@ -22,9 +22,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
-
-	"yunion.io/x/pkg/util/osprofile"
 )
 
 func GetMD5Hash(text string) string {
@@ -127,67 +124,6 @@ func SplitByQuotation(line string) ([]string, error) {
 	return segs, nil
 }
 
-func GenerateHostName(name string, osType string) string {
-	if len(name) < 2 {
-		name = fmt.Sprintf("hostname-for-%s-%s", name, osType)
-	}
-	// ()英文句号（.）和短横线（-）不能作为首尾字符，更不能连续使用。
-	// 点号（.）和短横线（-）不能作为 HostName 的首尾字符，不能连续使用。
-	var init = func(s string) string {
-		for {
-			if strings.Contains(s, "..") || strings.Contains(s, "--") {
-				s = strings.ReplaceAll(s, "..", ".")
-				s = strings.ReplaceAll(s, "--", "-")
-				continue
-			}
-			if strings.HasPrefix(s, ".") || strings.HasPrefix(s, "-") {
-				s = strings.TrimPrefix(s, ".")
-				s = strings.TrimPrefix(s, "-")
-				continue
-			}
-			if strings.HasSuffix(s, ".") || strings.HasSuffix(s, "-") {
-				s = strings.TrimSuffix(s, ".")
-				s = strings.TrimSuffix(s, "-")
-				continue
-			}
-			break
-		}
-		return s
-	}
-	name = init(name)
-	// (阿里云)Windows实例：字符长度为2~15，不支持英文句号（.），不能全是数字。允许大小写英文字母、数字和短横线（-）。
-	// (腾讯云)Windows 实例：名字符长度为[2, 15]，允许字母（不限制大小写）、数字和短横线（-）组成，不支持点号（.），不能全是数字
-	var forWindows = func(s string) string {
-		s = strings.ReplaceAll(s, ".", "")
-		ret := ""
-		for _, c := range s {
-			if unicode.IsLetter(c) || unicode.IsNumber(c) || c == '-' {
-				ret += string(c)
-			}
-		}
-		_, err := strconv.Atoi(ret)
-		if err == nil {
-			ret = "host-" + ret
-		}
-		if len(ret) > 15 {
-			ret = init(ret[:15])
-		}
-		return ret
-	}
-	// (阿里云)其他类型实例（Linux等）：字符长度为2~64，支持多个英文句号（.），英文句号之间为一段，每段允许大小写英文字母、数字和短横线（-）。
-	// (腾讯云)其他类型（Linux 等）实例：字符长度为[2, 60]，允许支持多个点号，点之间为一段，每段允许字母（不限制大小写）、数字和短横线（-）组成。
-	var forOther = func(s string) string {
-		if len(s) > 60 {
-			return init(s[:60])
-		}
-		return s
-	}
-	if strings.ToLower(osType) == strings.ToLower(osprofile.OS_TYPE_WINDOWS) {
-		return forWindows(name)
-	}
-	return forOther(name)
-}
-
 func GetCharTypeCount(str string) int {
 	digitIdx := 0
 	lowerIdx := 1
@@ -239,6 +175,62 @@ func GenerateRoleName(roleName string) string {
 
 	if len(ret) > 64 {
 		return ret[:64]
+	}
+	return ret
+}
+
+func FilterEmpty(input []string) []string {
+	ret := make([]string, 0)
+	for i := range input {
+		if len(input[i]) > 0 {
+			ret = append(ret, input[i])
+		}
+	}
+	return ret
+}
+
+func PrettyFloat(f float64, precision int) string {
+	fstr := strconv.FormatFloat(f, 'f', -1, 64)
+	dotPos := strings.Index(fstr, ".")
+	if dotPos < 0 {
+		return fstr
+	}
+	neg := false
+	if fstr[0] == '-' {
+		neg = true
+		fstr = fstr[1:]
+		dotPos -= 1
+	}
+	numPart, _ := strconv.ParseInt(fstr[:dotPos], 10, 64)
+	prePartStr := fstr[dotPos+1:]
+	if numPart == 0 {
+		nonZeroPos := 0
+		for prePartStr[nonZeroPos] == '0' {
+			nonZeroPos += 1
+		}
+		precision += nonZeroPos
+	}
+	if precision < len(prePartStr) {
+		prePart, _ := strconv.ParseInt(prePartStr[:precision], 10, 64)
+		if prePartStr[precision] > '4' {
+			// rounding up
+			prePart += 1
+		}
+		prePartStr = fmt.Sprintf(fmt.Sprintf("%%.%dd", precision), prePart)
+		if len(prePartStr) > precision {
+			prePartStr = prePartStr[1:]
+			numPart += 1
+		}
+	}
+	for len(prePartStr) > 0 && prePartStr[len(prePartStr)-1] == '0' {
+		prePartStr = prePartStr[0 : len(prePartStr)-1]
+	}
+	ret := strconv.FormatInt(numPart, 10)
+	if len(prePartStr) > 0 {
+		ret += "." + prePartStr
+	}
+	if neg {
+		ret = "-" + ret
 	}
 	return ret
 }

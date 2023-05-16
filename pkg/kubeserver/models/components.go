@@ -393,7 +393,7 @@ func (m *SComponent) AllowPerformEnable(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return db.IsProjectAllowPerform(userCred, m, "enable")
+	return db.IsProjectAllowPerform(ctx, userCred, m, "enable")
 }
 
 func (m *SComponent) PerformEnable(
@@ -444,7 +444,7 @@ func (m *SComponent) AllowPerformDisable(
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return db.IsProjectAllowPerform(userCred, m, "disable")
+	return db.IsProjectAllowPerform(ctx, userCred, m, "disable")
 }
 
 func (m *SComponent) PerformDisable(

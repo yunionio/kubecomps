@@ -8,9 +8,9 @@ import (
 
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	cloudmod "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 	imagemod "yunion.io/x/onecloud/pkg/mcclient/modules/image"
+	"yunion.io/x/pkg/util/printutils"
 )
 
 func GetCloudSSHPrivateKey(session *mcclient.ClientSession) (string, error) {
@@ -45,7 +45,7 @@ func GetKubernetesImage(session *mcclient.ClientSession) (string, error) {
 	return image.GetString("id")
 }
 
-func ListImages(s *mcclient.ClientSession, query *jsonutils.JSONDict) (*modulebase.ListResult, error) {
+func ListImages(s *mcclient.ClientSession, query *jsonutils.JSONDict) (*printutils.ListResult, error) {
 	ret, err := imagemod.Images.List(s, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "list images by query %s", query.String())

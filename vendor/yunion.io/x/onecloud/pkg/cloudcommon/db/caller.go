@@ -22,6 +22,7 @@ import (
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/gotypes"
+	"yunion.io/x/pkg/util/version"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
@@ -109,7 +110,7 @@ func callObject(modelVal reflect.Value, fName string, inputs ...interface{}) ([]
 
 func callFunc(funcVal reflect.Value, fName string, inputs ...interface{}) ([]reflect.Value, error) {
 	if !funcVal.IsValid() || funcVal.IsNil() {
-		return nil, httperrors.NewActionNotFoundError("%s method not found", fName)
+		return nil, httperrors.NewActionNotFoundError("%s method not found, please check service version, current version: %s", fName, version.GetShortString())
 	}
 	funcType := funcVal.Type()
 	paramLen := funcType.NumIn()
@@ -178,6 +179,10 @@ func (p *param) convert() (reflect.Value, error) {
 }
 
 func ValueToJSONObject(out reflect.Value) jsonutils.JSONObject {
+	return _valueToJSONObject(out, false)
+}
+
+func _valueToJSONObject(out reflect.Value, allFields bool) jsonutils.JSONObject {
 	if gotypes.IsNil(out.Interface()) {
 		return nil
 	}
@@ -185,11 +190,19 @@ func ValueToJSONObject(out reflect.Value) jsonutils.JSONObject {
 	if obj, ok := isJSONObject(out); ok {
 		return obj
 	}
-	return jsonutils.MarshalAll(out.Interface())
+	if allFields {
+		return jsonutils.MarshalAll(out.Interface())
+	} else {
+		return jsonutils.Marshal(out.Interface())
+	}
 }
 
 func ValueToJSONDict(out reflect.Value) *jsonutils.JSONDict {
-	jsonObj := ValueToJSONObject(out)
+	return _valueToJSONDict(out, false)
+}
+
+func _valueToJSONDict(out reflect.Value, allFields bool) *jsonutils.JSONDict {
+	jsonObj := _valueToJSONObject(out, allFields)
 	if jsonObj == nil {
 		return nil
 	}
@@ -204,39 +217,21 @@ func ValueToError(out reflect.Value) error {
 	return nil
 }
 
-func mergeInputOutputData(data *jsonutils.JSONDict, resVal reflect.Value) *jsonutils.JSONDict {
-	retJson := ValueToJSONDict(resVal)
+func mergeInputOutputData(input *jsonutils.JSONDict, resVal reflect.Value) *jsonutils.JSONDict {
+	output := _valueToJSONDict(resVal, true)
 	// preserve the input info not returned by caller
-	output := data.Copy()
-	jsonMap, _ := retJson.GetMap()
+	ret := input.Copy()
+	jsonMap, _ := output.GetMap()
 	for k, v := range jsonMap {
-		if output.Contains(k) {
-			if v == jsonutils.JSONNull {
-				output.Remove(k)
-			} else {
-				switch v.(type) {
-				case *jsonutils.JSONString:
-					if v.IsZero() {
-						output.Remove(k)
-					} else {
-						output.Set(k, v)
-					}
-				default:
-					output.Set(k, v)
-				}
-			}
-		} else if v != jsonutils.JSONNull {
-			switch v.(type) {
-			case *jsonutils.JSONString:
-				if !v.IsZero() {
-					output.Add(v, k)
-				}
-			default:
-				output.Add(v, k)
-			}
+		if input.Contains(k) && v == jsonutils.JSONNull {
+			ret.Remove(k)
+			continue
+		}
+		if v != jsonutils.JSONNull && !v.IsZero() {
+			ret.Set(k, v)
 		}
 	}
-	return output
+	return ret
 }
 
 func ValidateCreateData(funcName string, manager IModelManager, ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error) {
