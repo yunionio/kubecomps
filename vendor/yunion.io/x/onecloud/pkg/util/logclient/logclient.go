@@ -22,19 +22,19 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/appctx"
 	"yunion.io/x/pkg/util/stringutils"
 	"yunion.io/x/pkg/util/timeutils"
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
 
-	"yunion.io/x/onecloud/pkg/appctx"
+	api "yunion.io/x/onecloud/pkg/apis/logger"
 	"yunion.io/x/onecloud/pkg/appsrv"
-	"yunion.io/x/onecloud/pkg/cloudcommon"
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	"yunion.io/x/onecloud/pkg/mcclient/modules/logger"
-	"yunion.io/x/onecloud/pkg/mcclient/modules/websocket"
+	// "yunion.io/x/onecloud/pkg/mcclient/modules/websocket"
 )
 
 type SessionGenerator func(ctx context.Context, token mcclient.TokenCredential, region, apiVersion string) *mcclient.ClientSession
@@ -58,6 +58,32 @@ type IObject interface {
 	Keyword() string
 }
 
+type sSimpleObject struct {
+	id      string
+	name    string
+	keyword string
+}
+
+func (s sSimpleObject) GetId() string {
+	return s.id
+}
+
+func (s sSimpleObject) GetName() string {
+	return s.name
+}
+
+func (s sSimpleObject) Keyword() string {
+	return s.keyword
+}
+
+func NewSimpleObject(id, name, keyword string) IObject {
+	return sSimpleObject{
+		id:      id,
+		name:    name,
+		keyword: keyword,
+	}
+}
+
 type IVirtualObject interface {
 	IObject
 	GetOwnerId() mcclient.IIdentityProvider
@@ -67,26 +93,45 @@ type IModule interface {
 	Create(session *mcclient.ClientSession, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 }
 
+type IStartable interface {
+	GetStartTime() time.Time
+}
+
 // save log to db.
 func AddSimpleActionLog(model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool) {
-	addLog(model, action, iNotes, userCred, success, time.Time{}, &logger.Actions)
+	addLog(model, action, iNotes, userCred, success, time.Time{}, &logger.Actions, "", "")
+}
+
+func AddSimpleActionLog2(model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool, severity api.TEventSeverity, kind api.TEventKind) {
+	addLog(model, action, iNotes, userCred, success, time.Time{}, &logger.Actions, severity, kind)
 }
 
 func AddActionLogWithContext(ctx context.Context, model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool) {
-	addLog(model, action, iNotes, userCred, success, appctx.AppContextStartTime(ctx), &logger.Actions)
+	addLog(model, action, iNotes, userCred, success, appctx.AppContextStartTime(ctx), &logger.Actions, "", "")
 }
 
-func AddActionLogWithStartable(task cloudcommon.IStartable, model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool) {
-	addLog(model, action, iNotes, userCred, success, task.GetStartTime(), &logger.Actions)
+func AddActionLogWithContext2(ctx context.Context, model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool, severity api.TEventSeverity, kind api.TEventKind) {
+	addLog(model, action, iNotes, userCred, success, appctx.AppContextStartTime(ctx), &logger.Actions, severity, kind)
+}
+
+func AddActionLogWithStartable(task IStartable, model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool) {
+	addLog(model, action, iNotes, userCred, success, task.GetStartTime(), &logger.Actions, "", "")
+}
+
+func AddActionLogWithStartable2(task IStartable, model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool, severity api.TEventSeverity, kind api.TEventKind) {
+	addLog(model, action, iNotes, userCred, success, task.GetStartTime(), &logger.Actions, severity, kind)
 }
 
 // add websocket log to notify active browser users
-func PostWebsocketNotify(model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool) {
-	addLog(model, action, iNotes, userCred, success, time.Time{}, &websocket.Websockets)
-}
+// func PostWebsocketNotify(model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool) {
+// 	addLog(model, action, iNotes, userCred, success, time.Time{}, &websocket.Websockets)
+// }
 
-func addLog(model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool, startTime time.Time, api IModule) {
-	if !consts.OpsLogEnabled() {
+func addLog(model IObject, action string, iNotes interface{}, userCred mcclient.TokenCredential, success bool, startTime time.Time, module IModule, severity api.TEventSeverity, kind api.TEventKind) {
+	// avoid log loop
+	if !consts.OpsLogEnabled() && utils.IsInStringArray(action, []string{
+		ACT_CREATE,
+	}) {
 		return
 	}
 	if ok, _ := utils.InStringArray(model.Keyword(), BLACK_LIST_OBJ_TYPE); ok {
@@ -128,6 +173,7 @@ func addLog(model IObject, action string, iNotes interface{}, userCred mcclient.
 	logentry.Add(jsonutils.NewString(userCred.GetProjectDomainId()), "project_domain_id")
 	logentry.Add(jsonutils.NewString(userCred.GetProjectDomain()), "project_domain")
 	logentry.Add(jsonutils.NewString(strings.Join(userCred.GetRoles(), ",")), "roles")
+	logentry.Add(jsonutils.NewString(userCred.GetLoginIp()), "ip")
 
 	service := consts.GetServiceType()
 	if len(service) > 0 {
@@ -155,22 +201,35 @@ func addLog(model IObject, action string, iNotes interface{}, userCred mcclient.
 	if !success {
 		// 失败日志
 		logentry.Add(jsonutils.JSONFalse, "success")
+		if len(severity) == 0 {
+			logentry.Add(jsonutils.NewString(string(api.SeverityError)), "severity")
+		}
 	} else {
 		// 成功日志
 		logentry.Add(jsonutils.JSONTrue, "success")
+		if len(severity) == 0 {
+			logentry.Add(jsonutils.NewString(string(api.SeverityInfo)), "severity")
+		}
+	}
+
+	if len(severity) > 0 {
+		logentry.Add(jsonutils.NewString(string(severity)), "severity")
+	}
+	if len(kind) > 0 {
+		logentry.Add(jsonutils.NewString(string(kind)), "kind")
 	}
 
 	logentry.Add(jsonutils.NewString(notes), "notes")
 
 	task := &logTask{
 		userCred: userCred,
-		api:      api,
+		api:      module,
 		logentry: logentry,
 	}
 	// keystone no need to auth
-	if auth.IsAuthed() {
-		task.userCred = auth.AdminCredential()
-	}
+	// if auth.IsAuthed() {
+	//	task.userCred = auth.AdminCredential()
+	// }
 
 	logclientWorkerMan.Run(task, nil, nil)
 }
@@ -182,7 +241,9 @@ type logTask struct {
 }
 
 func (t *logTask) Run() {
-	s := DefaultSessionGenerator(context.Background(), t.userCred, "", "")
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_APPNAME, consts.GetServiceName())
+	s := DefaultSessionGenerator(ctx, t.userCred, "")
 	_, err := t.api.Create(s, t.logentry)
 	if err != nil {
 		log.Errorf("create action log %s failed %s", t.logentry, err)

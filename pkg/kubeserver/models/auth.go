@@ -16,7 +16,7 @@ const (
 )
 
 func GetAdminSession() (*mcclient.ClientSession, error) {
-	session := auth.AdminSession(context.TODO(), options.Options.Region, "", "", "v2")
+	session := auth.AdminSessionWithInternal(context.TODO(), options.Options.Region, "")
 	if session == nil {
 		return nil, errors.Error("Can't get cloud session, maybe not init auth package ???")
 	}
@@ -28,7 +28,7 @@ func GetAdminCred() mcclient.TokenCredential {
 }
 
 func GetUserSession(ctx context.Context, userCred mcclient.TokenCredential) (*mcclient.ClientSession, error) {
-	s := auth.GetSession(ctx, userCred, options.Options.Region, "v2")
+	s := auth.GetSession(ctx, userCred, options.Options.Region)
 	if s == nil {
 		return nil, errors.Errorf("Get user session nil")
 	}

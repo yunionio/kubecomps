@@ -105,7 +105,7 @@ func (spec *SSplitTableSpec) SyncSQL() []string {
 	zeroMeta := false
 
 	if spec.metaSpec.Exists() {
-		metas, err := spec.GetTableMetas()
+		metas, err := spec.getTableMetasForInit()
 		if err != nil {
 			log.Errorf("GetTableMetas fail %s", err)
 			return nil
@@ -130,7 +130,7 @@ func (spec *SSplitTableSpec) SyncSQL() []string {
 		now := time.Now()
 		meta := STableMetadata{
 			Table: fmt.Sprintf("%s_%d", spec.tableName, now.Unix()),
-			Start: indexCol.(*sqlchemy.SIntegerColumn).AutoIncrementOffset,
+			Start: indexCol.AutoIncrementOffset(),
 		}
 		// insert the first meta
 		sql := fmt.Sprintf("INSERT INTO `%s`(`table`, `deleted`, `created_at`) VALUES('%s', 0, '%s')", spec.metaSpec.Name(), meta.Table, timeutils.MysqlTime(now))

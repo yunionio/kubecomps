@@ -29,15 +29,6 @@ type SCaseFunction struct {
 	elseField IQueryField
 }
 
-// NewFunction creates a field with SQL function
-// for example: SUM(count) as total
-func NewFunction(ifunc IFunction, name string) IQueryField {
-	return &SFunctionFieldBase{
-		IFunction: ifunc,
-		alias:     name,
-	}
-}
-
 // Else adds else clause for case when function
 func (cf *SCaseFunction) Else(field IQueryField) *SCaseFunction {
 	cf.elseField = field
@@ -68,7 +59,7 @@ func (cf *SCaseFunction) expression() string {
 		buf.WriteString(cf.branches[i].thenField.Reference())
 	}
 	buf.WriteString(" ELSE ")
-	buf.WriteString(cf.elseField.Reference())
+	buf.WriteString(cf.elseField.Expression())
 	buf.WriteString(" END")
 	return buf.String()
 }
@@ -84,4 +75,28 @@ func (cf *SCaseFunction) variables() []interface{} {
 	fromvars := cf.elseField.Variables()
 	vars = append(vars, fromvars...)
 	return vars
+}
+
+func (cf *SCaseFunction) database() *SDatabase {
+	for _, b := range cf.branches {
+		db := b.whenCondition.database()
+		if db != nil {
+			return db
+		}
+		db = b.thenField.database()
+		if db != nil {
+			return db
+		}
+	}
+	db := cf.elseField.database()
+	if db != nil {
+		return db
+	}
+	return nil
+}
+
+func (cf *SCaseFunction) queryFields() []IQueryField {
+	return []IQueryField{
+		cf.elseField,
+	}
 }

@@ -2,8 +2,8 @@ package model
 
 import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
-	"yunion.io/x/onecloud/pkg/cloudcommon/object"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/pkg/object"
 )
 
 type IModelManager interface {

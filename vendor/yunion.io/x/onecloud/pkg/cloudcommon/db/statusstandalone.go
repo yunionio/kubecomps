@@ -44,23 +44,11 @@ func NewStatusStandaloneResourceBaseManager(dt interface{}, tableName string, ke
 	}
 }
 
-func (model *SStatusStandaloneResourceBase) AllowGetDetailsStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAdminAllowGetSpec(userCred, model, "status")
-}
-
-func (self *SStatusStandaloneResourceBase) AllowPerformStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformStatusInput) bool {
-	return IsAdminAllowPerform(userCred, self, "status")
-}
-
 func (self *SStatusStandaloneResourceBase) GetIStatusStandaloneModel() IStatusStandaloneModel {
 	return self.GetVirtualObject().(IStatusStandaloneModel)
 }
 
-func (manager *SStatusStandaloneResourceBaseManager) AllowGetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAdminAllowGetSpec(userCred, manager, "statistics")
-}
-
-func (manager *SStatusStandaloneResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (map[string]apis.StatusStatistic, error) {
+func (manager *SStatusStandaloneResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*apis.StatusStatistic, error) {
 	im, ok := manager.GetVirtualObject().(IModelManager)
 	if !ok {
 		im = manager
@@ -85,11 +73,14 @@ func (manager *SStatusStandaloneResourceBaseManager) GetPropertyStatistics(ctx c
 	if err != nil {
 		return nil, errors.Wrapf(err, "q.All")
 	}
-	result := map[string]apis.StatusStatistic{}
+	result := &apis.StatusStatistic{
+		StatusInfo: []apis.StatusStatisticStatusInfo{},
+	}
 	for _, s := range ret {
-		result[s.Status] = apis.StatusStatistic{
+		result.StatusInfo = append(result.StatusInfo, apis.StatusStatisticStatusInfo{
+			Status:     s.Status,
 			TotalCount: s.TotalCount,
-		}
+		})
 	}
 	return result, nil
 }
@@ -109,15 +100,6 @@ func (model *SStatusStandaloneResourceBase) SetStatus(userCred mcclient.TokenCre
 
 func (model *SStatusStandaloneResourceBase) SetProgress(progress float32) error {
 	return statusBaseSetProgress(model.GetIStatusStandaloneModel(), progress)
-}
-
-func (model *SStatusStandaloneResourceBase) PreUpdate(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) {
-	// 减少更新日志
-	progress, _ := data.Float("progress")
-	if progress > 0 {
-		model.SetProgress(float32(progress))
-	}
-	model.SStandaloneResourceBase.PreUpdate(ctx, userCred, query, data)
 }
 
 func (manager *SStatusStandaloneResourceBaseManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input apis.StatusStandaloneResourceCreateInput) (apis.StatusStandaloneResourceCreateInput, error) {

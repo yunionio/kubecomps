@@ -44,10 +44,6 @@ func NewEnabledStatusInfrasResourceBaseManager(dt interface{}, tableName string,
 	}
 }
 
-func (self *SEnabledStatusInfrasResourceBase) AllowPerformEnable(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformEnableInput) bool {
-	return IsDomainAllowPerform(userCred, self, "enable")
-}
-
 // 启用资源
 func (self *SEnabledStatusInfrasResourceBase) PerformEnable(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformEnableInput) (jsonutils.JSONObject, error) {
 	err := EnabledPerformEnable(self, ctx, userCred, true)
@@ -55,10 +51,6 @@ func (self *SEnabledStatusInfrasResourceBase) PerformEnable(ctx context.Context,
 		return nil, errors.Wrap(err, "EnabledPerformEnable")
 	}
 	return nil, nil
-}
-
-func (self *SEnabledStatusInfrasResourceBase) AllowPerformDisable(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformDisableInput) bool {
-	return IsDomainAllowPerform(userCred, self, "disable")
 }
 
 // 禁用资源
@@ -70,11 +62,7 @@ func (self *SEnabledStatusInfrasResourceBase) PerformDisable(ctx context.Context
 	return nil, nil
 }
 
-func (manager *SEnabledStatusInfrasResourceBaseManager) AllowGetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAdminAllowGetSpec(userCred, manager, "statistics")
-}
-
-func (manager *SEnabledStatusInfrasResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (map[string]apis.StatusStatistic, error) {
+func (manager *SEnabledStatusInfrasResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*apis.StatusStatistic, error) {
 	im, ok := manager.GetVirtualObject().(IModelManager)
 	if !ok {
 		im = manager
@@ -99,11 +87,14 @@ func (manager *SEnabledStatusInfrasResourceBaseManager) GetPropertyStatistics(ct
 	if err != nil {
 		return nil, errors.Wrapf(err, "q.All")
 	}
-	result := map[string]apis.StatusStatistic{}
+	result := &apis.StatusStatistic{
+		StatusInfo: []apis.StatusStatisticStatusInfo{},
+	}
 	for _, s := range ret {
-		result[s.Status] = apis.StatusStatistic{
+		result.StatusInfo = append(result.StatusInfo, apis.StatusStatisticStatusInfo{
+			Status:     s.Status,
 			TotalCount: s.TotalCount,
-		}
+		})
 	}
 	return result, nil
 }

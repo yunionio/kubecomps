@@ -19,9 +19,9 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
@@ -562,7 +562,7 @@ func (m *SReleaseManager) NewFromRemoteObject(
 	return dbObj.(IClusterModel), nil
 }
 
-func (m *SReleaseManager) FilterBySystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (m *SReleaseManager) FilterBySystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	q = m.SStatusDomainLevelResourceBaseManager.FilterBySystemAttributes(q, userCred, query, scope)
 	// TODO: filter by type
 	// input := new(api.ReleaseListInputV2)
@@ -570,7 +570,7 @@ func (m *SReleaseManager) FilterBySystemAttributes(q *sqlchemy.SQuery, userCred 
 	return q
 }
 
-func (m *SReleaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (m *SReleaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	q = m.SStatusDomainLevelResourceBaseManager.FilterBySystemAttributes(q, userCred, query, scope)
 	return q
 }

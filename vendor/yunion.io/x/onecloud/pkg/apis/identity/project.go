@@ -16,14 +16,15 @@ package identity
 
 import (
 	"time"
-
-	"yunion.io/x/jsonutils"
 )
 
 type ExternalResourceInfo struct {
-	ExtResource            jsonutils.JSONObject `json:"ext_resource"`
-	ExtResourcesLastUpdate time.Time            `json:"ext_resources_last_update"`
-	ExtResourcesNextUpdate time.Time            `json:"ext_resources_next_update"`
+	// 外部资源统计信息（资源类别：数量）
+	ExtResource map[string]int `json:"ext_resource"`
+	// 外部资源统计信息上次更新时间
+	ExtResourcesLastUpdate time.Time `json:"ext_resources_last_update"`
+	// 外部资源统计信息下次更新时间
+	ExtResourcesNextUpdate time.Time `json:"ext_resources_next_update"`
 }
 
 type ProjectDetails struct {
@@ -31,8 +32,18 @@ type ProjectDetails struct {
 
 	SProject
 
-	GroupCount int `json:"group_count"`
-	UserCount  int `json:"user_count"`
+	// 项目管理员名称
+	Admin string `json:"admin"`
+	// 项目管理员域ID
+	AdminDomainId string `json:"admin_domain_id"`
+	// 项目管理员域名称
+	AdminDomain string `json:"admin_domain"`
 
+	// 加入项目的用户组数量
+	GroupCount int `json:"group_count"`
+	// 加入项目的用户数量
+	UserCount int `json:"user_count"`
+
+	// 归属该项目的外部资源统计信息
 	ExternalResourceInfo
 }

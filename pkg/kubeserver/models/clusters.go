@@ -19,18 +19,17 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	computeapi "yunion.io/x/onecloud/pkg/apis/compute"
-	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/tristate"
 	"yunion.io/x/pkg/util/netutils"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
 
@@ -215,20 +214,13 @@ func (c *SCluster) SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSess
 	return errors.NewAggregate(errs)
 }
 
-func (m *SClusterManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (m *SClusterManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	q = m.SStatusDomainLevelResourceBaseManager.FilterByHiddenSystemAttributes(q, userCred, query, scope)
 	isSystem := jsonutils.QueryBoolean(query, "system", false)
 	if isSystem {
 		var isAllow bool
-		if consts.IsRbacEnabled() {
-			allowScope := policy.PolicyManager.AllowScope(userCred, consts.GetServiceType(), m.KeywordPlural(), policy.PolicyActionList, "system")
-			if !scope.HigherThan(allowScope) {
-				isAllow = true
-			}
-		} else {
-			if userCred.HasSystemAdminPrivilege() {
-				isAllow = true
-			}
+		if userCred.HasSystemAdminPrivilege() {
+			isAllow = true
 		}
 		if !isAllow {
 			isSystem = false
@@ -524,7 +516,7 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 		return nil, err
 	}
 	input.StatusDomainLevelResourceCreateInput = sInput
-	if input.IsSystem != nil && *input.IsSystem && !db.IsAdminAllowCreate(userCred, m) {
+	if input.IsSystem != nil && *input.IsSystem && !db.IsAdminAllowCreate(userCred, m).Result.IsAllow() {
 		return nil, httperrors.NewNotSufficientPrivilegeError("non-admin user not allowed to create system object")
 	}
 
@@ -784,7 +776,7 @@ func (m *SClusterManager) PerformPreCheck(ctx context.Context, userCred mcclient
 }
 
 func (m *SClusterManager) AllowGetPropertyUsableInstances(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return userCred.IsAllow(rbacutils.ScopeSystem, m.KeywordPlural(), policy.PolicyActionGet, "usable-instances")
+	return userCred.IsAllow(rbacscope.ScopeSystem, m.KeywordPlural(), policy.PolicyActionGet, "usable-instances").Result.IsAllow()
 }
 
 func (m *SClusterManager) GetPropertyUsableInstances(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -1211,12 +1203,12 @@ func (c *SCluster) StartClusterDeleteTask(ctx context.Context, userCred mcclient
 	return nil
 }
 
-func (c *SCluster) allowPerformAction(userCred mcclient.TokenCredential, action string) bool {
-	return db.IsDomainAllowPerform(userCred, c, action)
+func (c *SCluster) allowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string) bool {
+	return db.IsDomainAllowPerform(ctx, userCred, c, action)
 }
 
-func (c *SCluster) allowGetSpec(userCred mcclient.TokenCredential, spec string) bool {
-	return db.IsDomainAllowGetSpec(userCred, c, spec)
+func (c *SCluster) allowGetSpec(ctx context.Context, userCred mcclient.TokenCredential, spec string) bool {
+	return db.IsDomainAllowGetSpec(ctx, userCred, c, spec)
 }
 
 func (c *SCluster) AllowPerformPurge(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
@@ -1242,7 +1234,7 @@ func (c *SCluster) PerformClientDelete(ctx context.Context, userCred mcclient.To
 }
 
 func (c *SCluster) AllowGetDetailsKubeconfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return c.allowGetSpec(userCred, "kubeconfig")
+	return c.allowGetSpec(ctx, userCred, "kubeconfig")
 }
 
 func (c *SCluster) GetRunningControlplaneMachine() (manager.IMachine, error) {
@@ -1473,7 +1465,7 @@ func (c *SCluster) GetK8sClient() (*kubernetes.Clientset, error) {
 }
 
 func (c *SCluster) AllowPerformApplyAddons(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "apply-addons")
+	return c.allowPerformAction(ctx, userCred, "apply-addons")
 }
 
 func (c *SCluster) PerformApplyAddons(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -1515,7 +1507,7 @@ func (c *SCluster) StartApplyAddonsTask(ctx context.Context, userCred mcclient.T
 }
 
 func (c *SCluster) AllowPerformSyncstatus(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "syncstatus")
+	return c.allowPerformAction(ctx, userCred, "syncstatus")
 }
 
 func (c *SCluster) PerformSyncstatus(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -1626,7 +1618,7 @@ func (c *SCluster) PerformDeploy(ctx context.Context, userCred mcclient.TokenCre
 }
 
 func (c *SCluster) AllowPerformAddMachines(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "add-machines")
+	return c.allowPerformAction(ctx, userCred, "add-machines")
 }
 
 func (c *SClusterManager) GetAllowedControlplanceCount() []int {
@@ -1865,7 +1857,7 @@ func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclien
 }
 
 func (c *SCluster) AllowPerformDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "delete-machines")
+	return c.allowPerformAction(ctx, userCred, "delete-machines")
 }
 
 func (c *SCluster) PerformDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -2090,7 +2082,7 @@ func (c *SCluster) ReRunDeployingComponents() error {
 }
 
 func (c *SCluster) AllowGetDetailsComponentsStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return db.IsProjectAllowGetSpec(userCred, c, "components-status")
+	return db.IsProjectAllowGetSpec(ctx, userCred, c, "components-status")
 }
 
 func (c *SCluster) GetDetailsComponentsStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*api.ComponentsStatus, error) {
@@ -2120,7 +2112,7 @@ func (c *SCluster) GetComponentsStatus() (*api.ComponentsStatus, error) {
 }
 
 func (c *SCluster) AllowGetDetailsComponentSetting(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return db.IsProjectAllowGetSpec(userCred, c, "component-setting")
+	return db.IsProjectAllowGetSpec(ctx, userCred, c, "component-setting")
 }
 
 func (c *SCluster) GetDetailsComponentSetting(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -2156,7 +2148,7 @@ func (c *SCluster) GetDetailsComponentSetting(ctx context.Context, userCred mccl
 }
 
 func (c *SCluster) AllowPerformEnableComponent(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "enable-component")
+	return c.allowPerformAction(ctx, userCred, "enable-component")
 }
 
 func (c *SCluster) PerformEnableComponent(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input *api.ComponentCreateInput) (jsonutils.JSONObject, error) {
@@ -2178,7 +2170,7 @@ func (c *SCluster) PerformEnableComponent(ctx context.Context, userCred mcclient
 }
 
 func (c *SCluster) AllowPerformDisableComponent(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "disable-component")
+	return c.allowPerformAction(ctx, userCred, "disable-component")
 }
 
 func (c *SCluster) PerformDisableComponent(ctx context.Context, userCred mcclient.TokenCredential, query, input api.ComponentDeleteInput) (jsonutils.JSONObject, error) {
@@ -2190,7 +2182,7 @@ func (c *SCluster) PerformDisableComponent(ctx context.Context, userCred mcclien
 }
 
 func (c *SCluster) AllowPerformDeleteComponent(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "delete-component")
+	return c.allowPerformAction(ctx, userCred, "delete-component")
 }
 
 func (c *SCluster) PerformDeleteComponent(ctx context.Context, userCred mcclient.TokenCredential, query, input *api.ComponentDeleteInput) (jsonutils.JSONObject, error) {
@@ -2202,7 +2194,7 @@ func (c *SCluster) PerformDeleteComponent(ctx context.Context, userCred mcclient
 }
 
 func (c *SCluster) AllowPerformUpdateComponent(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return c.allowPerformAction(userCred, "update-component")
+	return c.allowPerformAction(ctx, userCred, "update-component")
 }
 
 func (c *SCluster) PerformUpdateComponent(ctx context.Context, userCred mcclient.TokenCredential, query, input *api.ComponentUpdateInput) (jsonutils.JSONObject, error) {
@@ -2296,7 +2288,7 @@ func (m *SClusterManager) StartAutoSyncTask(ctx context.Context, userCred mcclie
 }
 
 func (c *SCluster) AllowPerformSync(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return db.IsDomainAllowPerform(userCred, c, "sync")
+	return db.IsDomainAllowPerform(ctx, userCred, c, "sync")
 }
 
 func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -2408,7 +2400,7 @@ type sClusterUsage struct {
 	Id string
 }
 
-func (m *SClusterManager) usageClusters(scope rbacutils.TRbacScope, ownerId mcclient.IIdentityProvider, isSystem bool) ([]sClusterUsage, error) {
+func (m *SClusterManager) usageClusters(scope rbacscope.TRbacScope, ownerId mcclient.IIdentityProvider, isSystem bool) ([]sClusterUsage, error) {
 	q := m.Query("id", "is_system")
 	if isSystem {
 		q = q.IsTrue("is_system")
@@ -2418,9 +2410,9 @@ func (m *SClusterManager) usageClusters(scope rbacutils.TRbacScope, ownerId mccl
 			sqlchemy.IsFalse(q.Field("is_system"))))
 	}
 	switch scope {
-	case rbacutils.ScopeSystem:
+	case rbacscope.ScopeSystem:
 		// do nothing
-	case rbacutils.ScopeDomain:
+	case rbacscope.ScopeDomain:
 		q = q.Equals("domain_id", ownerId.GetProjectDomainId())
 	}
 	var clusters []sClusterUsage
@@ -2430,7 +2422,7 @@ func (m *SClusterManager) usageClusters(scope rbacutils.TRbacScope, ownerId mccl
 	return clusters, nil
 }
 
-func (m *SClusterManager) Usage(scope rbacutils.TRbacScope, ownerId mcclient.IIdentityProvider, isSystem bool) (*api.ClusterUsage, error) {
+func (m *SClusterManager) Usage(scope rbacscope.TRbacScope, ownerId mcclient.IIdentityProvider, isSystem bool) (*api.ClusterUsage, error) {
 	usage := new(api.ClusterUsage)
 	clusters, err := m.usageClusters(scope, ownerId, isSystem)
 	if err != nil {

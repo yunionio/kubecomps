@@ -22,12 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/appctx"
+	"yunion.io/x/pkg/errors"
 
-	"yunion.io/x/onecloud/pkg/appctx"
 	"yunion.io/x/onecloud/pkg/appsrv"
+	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/cloudcommon/elect"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
@@ -35,10 +35,11 @@ import (
 
 var (
 	DefaultAdminSessionGenerator = auth.AdminCredential
-	ErrCronJobNameConflict       = errors.New("Cron job Name Conflict")
+	ErrCronJobNameConflict       = errors.Error("Cron job Name Conflict")
 )
 
 type TCronJobFunction func(ctx context.Context, userCred mcclient.TokenCredential, isStart bool)
+type TCronJobFunctionWithStartTime func(ctx context.Context, userCred mcclient.TokenCredential, start time.Time, isStart bool)
 
 var manager *SCronJobManager
 
@@ -73,11 +74,13 @@ func (t *TimerHour) Next(now time.Time) time.Time {
 }
 
 type SCronJob struct {
-	Name     string
-	job      TCronJobFunction
-	Timer    ICronTimer
-	Next     time.Time
-	StartRun bool
+	Name             string
+	job              TCronJobFunction
+	jobWithStartTime TCronJobFunctionWithStartTime
+	Timer            ICronTimer
+	Next             time.Time
+	StartRun         bool
+	times            []time.Time
 }
 
 type CronJobTimerHeap []*SCronJob
@@ -162,9 +165,41 @@ func (self *SCronJobManager) AddJobAtIntervals(name string, interval time.Durati
 	return self.AddJobAtIntervalsWithStartRun(name, interval, jobFunc, false)
 }
 
+func (self *SCronJobManager) AddJobAtIntervalsWithStarTime(name string, interval time.Duration, jobFunc TCronJobFunctionWithStartTime) error {
+	return self.AddJobAtIntervalsWithStarTimeStartRun(name, interval, jobFunc, false)
+}
+
+func (self *SCronJobManager) AddJobAtIntervalsWithStarTimeStartRun(name string, interval time.Duration, jobFunc TCronJobFunctionWithStartTime, startRun bool) error {
+	if interval <= 0 {
+		return errors.Error("AddJobAtIntervals: interval must > 0")
+	}
+	self.dataLock.Lock()
+	defer self.dataLock.Unlock()
+
+	if !self.IsNameUnique(name) {
+		return ErrCronJobNameConflict
+	}
+
+	t := Timer1{
+		dur: interval,
+	}
+	job := SCronJob{
+		Name:             name,
+		jobWithStartTime: jobFunc,
+		Timer:            &t,
+		StartRun:         startRun,
+	}
+	if !self.running {
+		self.jobs = append(self.jobs, &job)
+	} else {
+		self.addJob(&job)
+	}
+	return nil
+}
+
 func (self *SCronJobManager) AddJobAtIntervalsWithStartRun(name string, interval time.Duration, jobFunc TCronJobFunction, startRun bool) error {
 	if interval <= 0 {
-		return errors.New("AddJobAtIntervals: interval must > 0")
+		return errors.Error("AddJobAtIntervals: interval must > 0")
 	}
 	self.dataLock.Lock()
 	defer self.dataLock.Unlock()
@@ -193,13 +228,13 @@ func (self *SCronJobManager) AddJobAtIntervalsWithStartRun(name string, interval
 func (self *SCronJobManager) AddJobEveryFewDays(name string, day, hour, min, sec int, jobFunc TCronJobFunction, startRun bool) error {
 	switch {
 	case day <= 0:
-		return errors.New("AddJobEveryFewDays: day must > 0")
+		return errors.Error("AddJobEveryFewDays: day must > 0")
 	case hour < 0:
-		return errors.New("AddJobEveryFewDays: hour must > 0")
+		return errors.Error("AddJobEveryFewDays: hour must > 0")
 	case min < 0:
-		return errors.New("AddJobEveryFewDays: min must > 0")
+		return errors.Error("AddJobEveryFewDays: min must > 0")
 	case sec < 0:
-		return errors.New("AddJobEveryFewDays: sec must > 0")
+		return errors.Error("AddJobEveryFewDays: sec must > 0")
 	}
 
 	self.dataLock.Lock()
@@ -232,11 +267,11 @@ func (self *SCronJobManager) AddJobEveryFewDays(name string, day, hour, min, sec
 func (self *SCronJobManager) AddJobEveryFewHour(name string, hour, min, sec int, jobFunc TCronJobFunction, startRun bool) error {
 	switch {
 	case hour <= 0:
-		return errors.New("AddJobEveryFewHour: hour must > 0")
+		return errors.Error("AddJobEveryFewHour: hour must > 0")
 	case min < 0:
-		return errors.New("AddJobEveryFewHour: min must > 0")
+		return errors.Error("AddJobEveryFewHour: min must > 0")
 	case sec < 0:
-		return errors.New("AddJobEveryFewHour: sec must > 0")
+		return errors.Error("AddJobEveryFewHour: sec must > 0")
 	}
 
 	self.dataLock.Lock()
@@ -269,7 +304,7 @@ func (self *SCronJobManager) addJob(newJob *SCronJob) {
 	now := time.Now()
 	newJob.Next = newJob.Timer.Next(now)
 	if newJob.StartRun {
-		newJob.runJob(true)
+		newJob.runJob(true, now)
 	}
 	heap.Push(&self.jobs, newJob)
 	go func() { self.add <- struct{}{} }()
@@ -336,7 +371,7 @@ func (self *SCronJobManager) init() {
 	for i := 0; i < len(self.jobs); i += 1 {
 		if self.jobs[i].StartRun {
 			self.jobs[i].StartRun = false
-			self.jobs[i].runJob(true)
+			self.jobs[i].runJob(true, now)
 		}
 	}
 }
@@ -370,7 +405,7 @@ func (self *SCronJobManager) runJobs(now time.Time) {
 	defer self.dataLock.Unlock()
 	for i := 0; i < len(self.jobs); i++ {
 		if !(self.jobs[i].Next.After(now) || self.jobs[i].Next.IsZero()) {
-			self.jobs[i].runJob(false)
+			self.jobs[i].runJob(false, now)
 			self.jobs[i].Next = self.jobs[i].Timer.Next(now)
 			heap.Fix(&self.jobs, i)
 		}
@@ -378,19 +413,25 @@ func (self *SCronJobManager) runJobs(now time.Time) {
 }
 
 func (job *SCronJob) Run() {
-	job.runJobInWorker(job.StartRun)
+	startTime := time.Now()
+	if len(job.times) > 0 {
+		startTime = job.times[0]
+		job.times = job.times[1:]
+	}
+	job.runJobInWorker(job.StartRun, startTime)
 }
 
 func (job *SCronJob) Dump() string {
 	return ""
 }
 
-func (job *SCronJob) runJob(isStart bool) {
+func (job *SCronJob) runJob(isStart bool, now time.Time) {
 	job.StartRun = isStart
+	job.times = append(job.times, now)
 	manager.workers.Run(job, nil, nil)
 }
 
-func (job *SCronJob) runJobInWorker(isStart bool) {
+func (job *SCronJob) runJobInWorker(isStart bool, startTime time.Time) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Errorf("CronJob task %s run error: %s", job.Name, r)
@@ -398,10 +439,14 @@ func (job *SCronJob) runJobInWorker(isStart bool) {
 		}
 	}()
 
-	log.Debugf("Cron job: %s started", job.Name)
+	log.Debugf("Cron job: %s started, startTime: %s", job.Name, startTime)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_APPNAME, "Cron-Service")
+	ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_APPNAME, fmt.Sprintf("%s/cron-service", consts.GetServiceName()))
 	ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_TASKNAME, fmt.Sprintf("%s-%d", job.Name, time.Now().Unix()))
 	userCred := DefaultAdminSessionGenerator()
-	job.job(ctx, userCred, isStart)
+	if job.job != nil {
+		job.job(ctx, userCred, isStart)
+	} else if job.jobWithStartTime != nil {
+		job.jobWithStartTime(ctx, userCred, startTime, isStart)
+	}
 }

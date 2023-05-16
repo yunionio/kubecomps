@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,17 +28,21 @@ const (
 	ACT_DETACH_FAIL = "detach_fail"
 	ACT_DELETE_FAIL = "delete_fail"
 
+	ACT_CANCEL = "cancel"
+	ACT_DONE   = "done"
+
 	ACT_PUBLIC  = "public"
 	ACT_PRIVATE = "private"
 
 	ACT_SYNC_UPDATE = "sync_update"
 	ACT_SYNC_CREATE = "sync_create"
 
-	ACT_START_CREATE_BACKUP  = "start_create_backup"
-	ACT_CREATE_BACKUP        = "create_backup"
-	ACT_CREATE_BACKUP_FAILED = "create_backup_failed"
-	ACT_DELETE_BACKUP        = "delete_backup"
-	ACT_DELETE_BACKUP_FAILED = "delete_backup_failed"
+	ACT_START_CREATE_BACKUP        = "start_create_backup"
+	ACT_CREATE_BACKUP              = "create_backup"
+	ACT_CREATE_BACKUP_FAILED       = "create_backup_failed"
+	ACT_DELETE_BACKUP              = "delete_backup"
+	ACT_DELETE_BACKUP_FAILED       = "delete_backup_failed"
+	ACT_UPDATE_BACKUP_GUEST_STATUS = "update_backup_guest_status"
 
 	ACT_UPDATE_STATUS       = "updatestatus"
 	ACT_STARTING            = "starting"
@@ -74,8 +78,9 @@ const (
 	ACT_VM_CONVERTING   = "vm_converting"
 	ACT_VM_CONVERT_FAIL = "vm_convert_fail"
 
-	ACT_SPLIT = "net_split"
-	ACT_MERGE = "net_merge"
+	ACT_SPLIT       = "net_split"
+	ACT_MERGE       = "net_merge"
+	ACT_IP_MAC_BIND = "ip_mac_bind"
 
 	ACT_SAVING            = "saving"
 	ACT_SAVE              = "save"
@@ -141,6 +146,11 @@ const (
 	ACT_ISO_ATTACH       = "iso_attach"
 	ACT_ISO_DETACH       = "iso_detach"
 
+	ACT_VFD_PREPARING    = "vfd_preparing"
+	ACT_VFD_PREPARE_FAIL = "vfd_prepare_fail"
+	ACT_VFD_ATTACH       = "vfd_attach"
+	ACT_VFD_DETACH       = "vfd_detach"
+
 	ACT_EIP_ATTACH = "eip_attach"
 	ACT_EIP_DETACH = "eip_detach"
 
@@ -149,6 +159,9 @@ const (
 
 	ACT_VM_DEPLOY      = "deploy"
 	ACT_VM_DEPLOY_FAIL = "deploy_fail"
+
+	ACT_SET_USER_PASSWORD      = "set_user_password"
+	ACT_SET_USER_PASSWORD_FAIL = "set_user_password_fail"
 
 	ACT_VM_IO_THROTTLE      = "io_throttle"
 	ACT_VM_IO_THROTTLE_FAIL = "io_throttle_fail"
@@ -227,6 +240,11 @@ const (
 
 	ACT_GUEST_SRC_CHECK = "guest_src_check"
 
+	ACT_GUEST_CPUSET             = "guest_cpuset"
+	ACT_GUEST_CPUSET_FAIL        = "guest_cpuset_fail"
+	ACT_GUEST_CPUSET_REMOVE      = "guest_cpuset_remove"
+	ACT_GUEST_CPUSET_REMOVE_FAIL = "guest_cpuset_remove_fail"
+
 	ACT_CHANGE_BANDWIDTH = "eip_change_bandwidth"
 	ACT_EIP_CONVERT_FAIL = "eip_convert_fail"
 
@@ -287,4 +305,15 @@ const (
 
 	ACT_MERGE_NETWORK        = "merge_network"
 	ACT_MERGE_NETWORK_FAILED = "merge_network_failed"
+
+	ACT_RECOVERY      = "recovery"
+	ACT_RECOVERY_FAIL = "recovery_fail"
+	ACT_PACK          = "pack"
+	ACT_PACK_FAIL     = "pack_fail"
+	ACT_UNPACK        = "unpack"
+	ACT_UNPACK_FAIL   = "unpack_fail"
+
+	ACT_ENCRYPT_START = "encrypt_start"
+	ACT_ENCRYPT_FAIL  = "encrypt_fail"
+	ACT_ENCRYPT_DONE  = "encrypted"
 )

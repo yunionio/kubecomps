@@ -24,6 +24,7 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/httputils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
@@ -31,7 +32,6 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	modules "yunion.io/x/onecloud/pkg/mcclient/modules/identity"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -62,9 +62,9 @@ func init() {
 	DefaultUserFetcher = UserCacheManager.FetchUserByIdOrName
 }
 
-func (manager *SUserCacheManager) updateUserCache(userCred mcclient.TokenCredential) {
-	manager.Save(context.Background(), userCred.GetUserId(), userCred.GetUserName(),
-		userCred.GetDomainId(), userCred.GetDomainName())
+func (manager *SUserCacheManager) updateUserCache(ctx context.Context, userCred mcclient.TokenCredential) {
+	manager.Save(ctx, userCred.GetUserId(), userCred.GetUserName(),
+		userCred.GetDomainId(), userCred.GetDomainName(), "")
 }
 
 func (manager *SUserCacheManager) FetchUserByIdOrName(ctx context.Context, idStr string) (*SUser, error) {
@@ -125,7 +125,7 @@ func (manager *SUserCacheManager) FetchUserFromKeystone(ctx context.Context, idS
 	query.Set("scope", jsonutils.NewString("system"))
 	query.Set("system", jsonutils.JSONTrue)
 
-	s := auth.GetAdminSession(ctx, consts.GetRegion(), "v1")
+	s := auth.GetAdminSession(ctx, consts.GetRegion())
 	user, err := modules.UsersV3.GetById(s, idStr, query)
 	if err != nil {
 		if je, ok := err.(*httputils.JSONClientError); ok && je.Code == 404 {
@@ -143,10 +143,11 @@ func (manager *SUserCacheManager) FetchUserFromKeystone(ctx context.Context, idS
 	name, _ := user.GetString("name")
 	domainId, _ := user.GetString("domain_id")
 	domainNmae, _ := user.GetString("project_domain")
-	return manager.Save(ctx, id, name, domainId, domainNmae)
+	lang, _ := user.GetString("lang")
+	return manager.Save(ctx, id, name, domainId, domainNmae, lang)
 }
 
-func (manager *SUserCacheManager) Save(ctx context.Context, idStr string, name string, domainId string, domain string) (*SUser, error) {
+func (manager *SUserCacheManager) Save(ctx context.Context, idStr string, name string, domainId string, domain, lang string) (*SUser, error) {
 	lockman.LockRawObject(ctx, manager.KeywordPlural(), idStr)
 	defer lockman.ReleaseRawObject(ctx, manager.KeywordPlural(), idStr)
 
@@ -163,6 +164,9 @@ func (manager *SUserCacheManager) Save(ctx context.Context, idStr string, name s
 			obj.Domain = domain
 			obj.DomainId = domainId
 			obj.LastCheck = time.Now().UTC()
+			if len(lang) > 0 {
+				obj.Lang = lang
+			}
 			return nil
 		})
 		if err != nil {
@@ -178,6 +182,7 @@ func (manager *SUserCacheManager) Save(ctx context.Context, idStr string, name s
 		obj.Domain = domain
 		obj.DomainId = domainId
 		obj.LastCheck = time.Now().UTC()
+		obj.Lang = lang
 		err = manager.TableSpec().InsertOrUpdate(ctx, obj)
 		if err != nil {
 			return nil, err

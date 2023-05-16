@@ -20,13 +20,13 @@ import (
 	"time"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/pkg/object"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
-	"yunion.io/x/onecloud/pkg/cloudcommon/object"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/splitable"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
@@ -40,11 +40,14 @@ type IModelManager interface {
 
 	GetIModelManager() IModelManager
 
+	GetMutableInstance(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) IModelManager
+	GetImmutableInstance(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) IModelManager
+
 	// Table() *sqlchemy.STable
 	TableSpec() ITableSpec
 
 	// Keyword() string
-	KeywordPlural() string
+	// KeywordPlural() string
 	Alias() string
 	AliasPlural() string
 	SetAlias(alias string, aliasPlural string)
@@ -54,7 +57,7 @@ type IModelManager interface {
 	EnableGenerateName() bool
 
 	// list hooks
-	AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool
+	// AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool
 	ValidateListConditions(ctx context.Context, userCred mcclient.TokenCredential, query *jsonutils.JSONDict) (*jsonutils.JSONDict, error)
 	// ListItemFilter dynamic called by dispatcher
 	// ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*sqlchemy.SQuery, error)
@@ -72,9 +75,12 @@ type IModelManager interface {
 	FilterById(q *sqlchemy.SQuery, idStr string) *sqlchemy.SQuery
 	FilterByNotId(q *sqlchemy.SQuery, idStr string) *sqlchemy.SQuery
 	FilterByName(q *sqlchemy.SQuery, name string) *sqlchemy.SQuery
-	FilterByOwner(q *sqlchemy.SQuery, userCred mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery
-	FilterBySystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery
-	FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery
+
+	FilterByOwnerProvider
+	//FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery
+
+	FilterBySystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery
+	FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery
 	FilterByUniqValues(q *sqlchemy.SQuery, uniqValues jsonutils.JSONObject) *sqlchemy.SQuery
 
 	// GetOwnerId(userCred mcclient.IIdentityProvider) mcclient.IIdentityProvider
@@ -85,7 +91,7 @@ type IModelManager interface {
 	FetchByIdOrName(userCred mcclient.IIdentityProvider, idStr string) (IModel, error)
 
 	// create hooks
-	AllowCreateItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
+	// AllowCreateItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
 	// BatchCreateValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error)
 	// ValidateCreateData dynamic called by dispatcher
 	// ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error)
@@ -96,8 +102,8 @@ type IModelManager interface {
 	OnCreateFailed(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) error
 
 	// allow perform action
-	AllowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
-	AllowPerformCheckCreateData(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
+	// AllowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
+	// AllowPerformCheckCreateData(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
 	PerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
 
 	// DoCreate(ctx context.Context, userCred mcclient.TokenCredential, kwargs jsonutils.JSONObject, data jsonutils.JSONObject, realManager IModelManager) (IModel, error)
@@ -122,8 +128,8 @@ type IModelManager interface {
 	FetchUniqValues(ctx context.Context, data jsonutils.JSONObject) jsonutils.JSONObject
 
 	/* name uniqueness scope, system/domain/project, default is system */
-	NamespaceScope() rbacutils.TRbacScope
-	ResourceScope() rbacutils.TRbacScope
+	NamespaceScope() rbacscope.TRbacScope
+	ResourceScope() rbacscope.TRbacScope
 
 	// 如果error为非空，说明没有匹配的field，如果为空，说明匹配上了
 	QueryDistinctExtraField(q *sqlchemy.SQuery, field string) (*sqlchemy.SQuery, error)
@@ -133,6 +139,10 @@ type IModelManager interface {
 	GetI18N(ctx context.Context, idstr string, resObj jsonutils.JSONObject) *jsonutils.JSONDict
 
 	GetSplitTable() *splitable.SSplitTableSpec
+
+	CreateByInsertOrUpdate() bool
+
+	CustomizedTotalCount(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, totalQ *sqlchemy.SQuery) (int, jsonutils.JSONObject, error)
 }
 
 type IModel interface {
@@ -157,22 +167,23 @@ type IModel interface {
 	//GetCustomizeColumns(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) *jsonutils.JSONDict
 
 	// get hooks
-	AllowGetDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool
+	// AllowGetDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool
 	GetExtraDetailsHeaders(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) map[string]string
 
-	// create hooks
+	// before create hooks
 	CustomizeCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) error
+	// after create hooks
 	PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject)
 
 	// allow perform action
-	AllowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
+	// AllowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
 	PerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	PreCheckPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) error
 
 	// update hooks
 	ValidateUpdateCondition(ctx context.Context) error
 
-	AllowUpdateItem(ctx context.Context, userCred mcclient.TokenCredential) bool
+	// AllowUpdateItem(ctx context.Context, userCred mcclient.TokenCredential) bool
 	// ValidateUpdateData(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data *jsonutils.JSONDict) (*jsonutils.JSONDict, error)
 	PreUpdate(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject)
 	PostUpdate(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject)
@@ -180,7 +191,7 @@ type IModel interface {
 	UpdateInContext(ctx context.Context, userCred mcclient.TokenCredential, ctxObjs []IModel, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
 
 	// delete hooks
-	AllowDeleteItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
+	// AllowDeleteItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
 	// ValidateDeleteCondition(ctx context.Context, info jsonutils.JSONObject) error
 	// CustomizeDelete(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) error
 	PreDelete(ctx context.Context, userCred mcclient.TokenCredential)
@@ -228,8 +239,8 @@ type IJointModelManager interface {
 	// FetchByIds(masterId string, slaveId string, query jsonutils.JSONObject) (IJointModel, error)
 	FilterByParams(q *sqlchemy.SQuery, params jsonutils.JSONObject) *sqlchemy.SQuery
 
-	AllowListDescendent(ctx context.Context, userCred mcclient.TokenCredential, model IStandaloneModel, query jsonutils.JSONObject) bool
-	AllowAttach(ctx context.Context, userCred mcclient.TokenCredential, master IStandaloneModel, slave IStandaloneModel) bool
+	// AllowListDescendent(ctx context.Context, userCred mcclient.TokenCredential, model IStandaloneModel, query jsonutils.JSONObject) bool
+	// AllowAttach(ctx context.Context, userCred mcclient.TokenCredential, master IStandaloneModel, slave IStandaloneModel) bool
 }
 
 type IJointModel interface {
@@ -239,11 +250,11 @@ type IJointModel interface {
 
 	GetIJointModel() IJointModel
 
-	AllowDetach(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
+	// AllowDetach(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool
 
 	Detach(ctx context.Context, userCred mcclient.TokenCredential) error
-	AllowGetJointDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, item IJointModel) bool
-	AllowUpdateJointItem(ctx context.Context, userCred mcclient.TokenCredential, item IJointModel) bool
+	// AllowGetJointDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, item IJointModel) bool
+	// AllowUpdateJointItem(ctx context.Context, userCred mcclient.TokenCredential, item IJointModel) bool
 }
 
 type IMetadataBaseModelManager interface {
@@ -278,8 +289,8 @@ type IStandaloneModel interface {
 	GetIStandaloneModel() IStandaloneModel
 	ClearSchedDescCache() error
 
-	GetMetadata(key string, userCred mcclient.TokenCredential) string
-	GetMetadataJson(key string, userCred mcclient.TokenCredential) jsonutils.JSONObject
+	GetMetadata(ctx context.Context, key string, userCred mcclient.TokenCredential) string
+	GetMetadataJson(ctx context.Context, key string, userCred mcclient.TokenCredential) jsonutils.JSONObject
 	SetMetadata(ctx context.Context, key string, value interface{}, userCred mcclient.TokenCredential) error
 	SetAllMetadata(ctx context.Context, dictstore map[string]interface{}, userCred mcclient.TokenCredential) error
 	SetUserMetadataValues(ctx context.Context, dictstore map[string]interface{}, userCred mcclient.TokenCredential) error
@@ -287,7 +298,8 @@ type IStandaloneModel interface {
 	SetCloudMetadataAll(ctx context.Context, dictstore map[string]interface{}, userCred mcclient.TokenCredential) error
 	RemoveMetadata(ctx context.Context, key string, userCred mcclient.TokenCredential) error
 	RemoveAllMetadata(ctx context.Context, userCred mcclient.TokenCredential) error
-	GetAllMetadata(userCred mcclient.TokenCredential) (map[string]string, error)
+	GetAllMetadata(ctx context.Context, userCred mcclient.TokenCredential) (map[string]string, error)
+	GetAllClassMetadata() (map[string]string, error)
 
 	IsShared() bool
 

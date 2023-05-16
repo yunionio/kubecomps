@@ -17,6 +17,7 @@ package notifyclient
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"yunion.io/x/jsonutils"
@@ -36,10 +37,30 @@ var (
 
 	notifyAdminUsers  []string
 	notifyAdminGroups []string
+
+	notifyDBHookResources sync.Map
 )
 
 func init() {
 	notifyClientWorkerMan = appsrv.NewWorkerManager("NotifyClientWorkerManager", 1, 50, false)
+
+	// set db notify hook
+	db.SetUpdateNotifyHook(func(ctx context.Context, userCred mcclient.TokenCredential, obj db.IModel) {
+		_, ok := notifyDBHookResources.Load(obj.KeywordPlural())
+		if !ok {
+			return
+		}
+		EventNotify(ctx, userCred, SEventNotifyParam{
+			Obj:    obj,
+			Action: ActionUpdate,
+		})
+	})
+}
+
+func AddNotifyDBHookResources(keywordPlurals ...string) {
+	for _, kp := range keywordPlurals {
+		notifyDBHookResources.Store(kp, true)
+	}
 }
 
 func NotifyWithCtx(ctx context.Context, recipientId []string, isGroup bool, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) {
@@ -237,7 +258,7 @@ func (t *eventTask) Dump() string {
 }
 
 func (t *eventTask) Run() {
-	s, err := AdminSessionGenerator(context.Background(), "", "")
+	s, err := AdminSessionGenerator(context.Background(), "")
 	if err != nil {
 		log.Errorf("unable to get admin session: %v", err)
 		return
@@ -253,7 +274,7 @@ func EventNotify(ctx context.Context, userCred mcclient.TokenCredential, ep SEve
 	if ep.Action == ActionDelete || ep.Action == ActionSyncDelete {
 		objDetails = jsonutils.Marshal(ep.Obj).(*jsonutils.JSONDict)
 	} else {
-		ret, err := db.FetchCustomizeColumns(ep.Obj.GetModelManager(), ctx, userCred, jsonutils.NewDict(), []interface{}{ep.Obj}, stringutils2.SSortedStrings{}, false)
+		ret, err := db.FetchCustomizeColumns(ep.Obj.GetModelManager(), ctx, userCred, jsonutils.NewDict(), []interface{}{ep.Obj}, nil, false)
 		if err != nil {
 			log.Errorf("unable to FetchCustomizeColumns: %v", err)
 			return
@@ -292,11 +313,64 @@ func EventNotify(ctx context.Context, userCred mcclient.TokenCredential, ep SEve
 		Priority:        string(npk.NotifyPriorityNormal),
 		ProjectId:       projectId,
 		ProjectDomainId: projectDomainId,
+		ResourceType:    ep.ResourceType,
+		Action:          ep.Action,
 	}
 	t := eventTask{
 		params: params,
 	}
 	notifyClientWorkerMan.Run(&t, nil, nil)
+}
+
+func EventNotifyServiceAbnormal(ctx context.Context, userCred mcclient.TokenCredential, service, method, path string, body jsonutils.JSONObject, err error) {
+	event := api.Event.WithAction(api.ActionServiceAbnormal).WithResourceType(api.TOPIC_RESOURCE_SERVICE)
+	obj := jsonutils.NewDict()
+	if body != nil {
+		obj.Set("body", jsonutils.NewString(body.PrettyString()))
+	}
+	obj.Set("method", jsonutils.NewString(method))
+	obj.Set("path", jsonutils.NewString(path))
+	obj.Set("error", jsonutils.NewString(err.Error()))
+	obj.Set("service_name", jsonutils.NewString(service))
+	params := api.NotificationManagerEventNotifyInput{
+		ReceiverIds:     []string{userCred.GetUserId()},
+		ResourceDetails: obj,
+		Event:           event.String(),
+		AdvanceDays:     0,
+		Priority:        string(npk.NotifyPriorityNormal),
+		ResourceType:    api.TOPIC_RESOURCE_SERVICE,
+		Action:          api.ActionServiceAbnormal,
+	}
+	t := eventTask{
+		params: params,
+	}
+	notifyClientWorkerMan.Run(&t, nil, nil)
+}
+
+func systemEventNotify(ctx context.Context, action api.SAction, resType string, result api.SResult, priority string, obj *jsonutils.JSONDict) {
+	event := api.Event.WithAction(action).WithResourceType(resType).WithResult(result)
+	params := api.NotificationManagerEventNotifyInput{
+		ReceiverIds:     []string{},
+		ResourceDetails: obj,
+		Event:           event.String(),
+		Priority:        priority,
+	}
+	t := eventTask{
+		params: params,
+	}
+	notifyClientWorkerMan.Run(&t, nil, nil)
+}
+
+func SystemEventNotify(ctx context.Context, action api.SAction, resType string, obj *jsonutils.JSONDict) {
+	systemEventNotify(ctx, action, resType, api.ResultSucceed, string(npk.NotifyPriorityNormal), obj)
+}
+
+func SystemExceptionNotify(ctx context.Context, action api.SAction, resType string, obj *jsonutils.JSONDict) {
+	systemEventNotify(ctx, action, resType, api.ResultSucceed, string(npk.NotifyPriorityCritical), obj)
+}
+
+func SystemExceptionNotifyWithResult(ctx context.Context, action api.SAction, resType string, result api.SResult, obj *jsonutils.JSONDict) {
+	systemEventNotify(ctx, action, resType, result, string(npk.NotifyPriorityCritical), obj)
 }
 
 func RawNotifyWithCtx(ctx context.Context, recipientId []string, isGroup bool, channel npk.TNotifyChannel, priority npk.TNotifyPriority, event string, data jsonutils.JSONObject) {
@@ -335,7 +409,7 @@ func IntelliNotify(ctx context.Context, recipientId []string, isGroup bool, chan
 }
 
 func FetchNotifyAdminRecipients(ctx context.Context, region string, users []string, groups []string) {
-	s, err := AdminSessionGenerator(ctx, region, "v1")
+	s, err := AdminSessionGenerator(ctx, region)
 	if err != nil {
 		log.Errorf("unable to get admin session: %v", err)
 	}
@@ -358,4 +432,10 @@ func FetchNotifyAdminRecipients(ctx context.Context, region string, users []stri
 			notifyAdminGroups = append(notifyAdminGroups, gId)
 		}
 	}
+}
+
+func NotifyVmIntegrity(ctx context.Context, name string) {
+	data := jsonutils.NewDict()
+	data.Add(jsonutils.NewString(name), "name")
+	SystemExceptionNotifyWithResult(ctx, api.ActionChecksumTest, api.TOPIC_RESOURCE_VM_INTEGRITY_CHECK, api.ResultFailed, data)
 }

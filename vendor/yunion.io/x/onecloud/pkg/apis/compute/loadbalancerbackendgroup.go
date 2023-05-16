@@ -17,12 +17,14 @@ package compute
 import "yunion.io/x/onecloud/pkg/apis"
 
 type LoadbalancerBackendGroupDetails struct {
-	apis.VirtualResourceDetails
+	apis.StatusStandaloneResourceDetails
 	LoadbalancerResourceInfo
 
 	SLoadbalancerBackendGroup
 
 	LbListenerCount int `json:"lb_listener_count"`
+
+	ProjectId string `json:"tenant_id"`
 }
 
 type LoadbalancerBackendGroupResourceInfo struct {
@@ -51,4 +53,41 @@ type LoadbalancerBackendGroupFilterListInput struct {
 
 	// 以负载均衡后端组名称排序
 	OrderByBackendGroup string `json:"order_by_backend_group"`
+}
+
+type LoadbalancerBackendGroupCreateInput struct {
+	apis.StatusStandaloneResourceCreateInput
+
+	//swagger: ignore
+	Loadbalancer string `json:"loadbalancer" yunion-deprecated-by:"loadbalancer_id"`
+	// 负载均衡ID
+	LoadbalancerId string `json:"loadbalancer_id"`
+
+	Type string `json:"type"`
+
+	Backends []struct {
+		Index       int
+		Weight      int
+		Port        int
+		Id          string
+		Name        string
+		ExternalId  string
+		BackendType string
+		BackendRole string
+		Address     string
+		ZoneId      string
+		HostName    string
+	} `json:"backends"`
+}
+
+type LoadbalancerBackendGroupListInput struct {
+	apis.StatusStandaloneResourceListInput
+	apis.ExternalizedResourceBaseListInput
+
+	LoadbalancerFilterListInput
+
+	// filter LoadbalancerBackendGroup with no reference
+	NoRef *bool `json:"no_ref"`
+
+	Type []string `json:"type"`
 }

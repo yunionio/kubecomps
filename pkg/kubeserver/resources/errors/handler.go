@@ -8,7 +8,7 @@ import (
 
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/httperrors"
-	"yunion.io/x/onecloud/pkg/util/httputils"
+	"yunion.io/x/pkg/util/httputils"
 )
 
 // NonCriticalErrors is an array of error statuses, that are non-critical. That means, that this error can be

@@ -178,9 +178,9 @@ func (m *SMachine) SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSess
 	return nil
 }
 
-func (m *SMachine) GetCreateInput(userCred mcclient.TokenCredential) (*api.CreateMachineData, error) {
+func (m *SMachine) GetCreateInput(ctx context.Context, userCred mcclient.TokenCredential) (*api.CreateMachineData, error) {
 	input := new(api.CreateMachineData)
-	ret := m.GetMetadataJson(api.MachineMetadataCreateParams, userCred)
+	ret := m.GetMetadataJson(ctx, api.MachineMetadataCreateParams, userCred)
 	if ret == nil {
 		return nil, errors.Errorf("Not found %s in metadata", api.MachineMetadataCreateParams)
 	}

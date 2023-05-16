@@ -24,6 +24,7 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/httputils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
@@ -31,7 +32,6 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	"yunion.io/x/onecloud/pkg/mcclient/informer"
 	modules "yunion.io/x/onecloud/pkg/mcclient/modules/identity"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -123,7 +123,7 @@ func (manager *SRoleCacheManager) FetchRoleFromKeystone(ctx context.Context, idS
 	query.Set("scope", jsonutils.NewString("system"))
 	query.Set("system", jsonutils.JSONTrue)
 
-	s := auth.GetAdminSession(ctx, consts.GetRegion(), "")
+	s := auth.GetAdminSession(ctx, consts.GetRegion())
 	role, err := modules.RolesV3.GetById(s, idStr, query)
 	if err != nil {
 		if je, ok := err.(*httputils.JSONClientError); ok && je.Code == 404 {
@@ -263,7 +263,7 @@ func (manager *SRoleCacheManager) StartWatchRoleInKeystone() error {
 		return nil
 	}
 	ctx := context.Background()
-	s := auth.GetAdminSession(ctx, "", "")
+	s := auth.GetAdminSession(ctx, "")
 	watchMan, err := informer.NewWatchManagerBySession(s)
 	if err != nil {
 		return err

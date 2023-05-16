@@ -9,8 +9,8 @@ import (
 	"yunion.io/x/onecloud/pkg/mcclient"
 	modules "yunion.io/x/onecloud/pkg/mcclient/modules/compute"
 	cloudansible "yunion.io/x/onecloud/pkg/util/ansible"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/httputils"
 	"yunion.io/x/pkg/utils"
 )
 

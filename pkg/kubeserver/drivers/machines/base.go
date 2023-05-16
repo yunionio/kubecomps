@@ -40,7 +40,7 @@ func (d *sBaseDriver) RequestPrepareMachine(ctx context.Context, userCred mcclie
 	if err != nil {
 		return errors.Wrap(err, "GetCluster")
 	}*/
-	createInput, err := machine.GetCreateInput(userCred)
+	createInput, err := machine.GetCreateInput(ctx, userCred)
 	if err != nil {
 		log.Errorf("Get create input error: %v", err)
 	}

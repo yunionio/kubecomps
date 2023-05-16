@@ -19,6 +19,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/gotypes"
+	"yunion.io/x/pkg/util/rbacscope"
 
 	"yunion.io/x/onecloud/pkg/util/rbacutils"
 )
@@ -39,19 +40,20 @@ type Endpoint struct {
 	Interface   string
 }
 
-func OwnerIdString(owner IIdentityProvider, scope rbacutils.TRbacScope) string {
+func OwnerIdString(owner IIdentityProvider, scope rbacscope.TRbacScope) string {
 	switch scope {
-	case rbacutils.ScopeDomain:
+	case rbacscope.ScopeDomain:
 		return owner.GetProjectDomainId()
-	case rbacutils.ScopeProject:
+	case rbacscope.ScopeProject:
 		return owner.GetProjectId()
-	case rbacutils.ScopeUser:
+	case rbacscope.ScopeUser:
 		return owner.GetUserId()
 	default:
 		return ""
 	}
 }
 
+// interface for owner
 type IIdentityProvider interface {
 	GetProjectId() string
 	GetUserId() string
@@ -67,23 +69,32 @@ type IIdentityProvider interface {
 	GetDomainName() string
 }
 
+// interface for identity of user with project and roles
+type IUserIdentity interface {
+	IIdentityProvider
+
+	GetRoleIds() []string
+	GetRoles() []string
+}
+
+// interface for full keystone token
 type TokenCredential interface {
 	gotypes.ISerializable
 
 	IServiceCatalog
 
-	IIdentityProvider
+	IUserIdentity
 
 	GetTokenString() string
 	GetRoles() []string
-	GetRoleIds() []string
+	// GetRoleIds() []string
 	GetExpires() time.Time
 	IsValid() bool
 	ValidDuration() time.Duration
 	// IsAdmin() bool
 	HasSystemAdminPrivilege() bool
 
-	IsAllow(scope rbacutils.TRbacScope, service string, resource string, action string, extra ...string) bool
+	IsAllow(scope rbacscope.TRbacScope, service string, resource string, action string, extra ...string) rbacutils.SPolicyResult
 
 	GetRegions() []string
 

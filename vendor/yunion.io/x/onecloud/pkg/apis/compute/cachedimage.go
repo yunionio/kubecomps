@@ -26,6 +26,16 @@ type CachedImageUncacheImageInput struct {
 	IsForce bool `json:"is_force"`
 }
 
+type CachedImageManagerCacheImageInput struct {
+	ImageId string `json:"image_id"`
+}
+
+type CachedimageUsage struct {
+	// 此镜像被使用次数
+	// example: 0
+	CachedCount int `json:"cached_count"`
+}
+
 type CachedimageDetails struct {
 	apis.SharableVirtualResourceDetails
 
@@ -52,5 +62,9 @@ type CachedimageDetails struct {
 
 	// 此镜像被使用次数
 	// example: 0
-	CachedCount int `json:"cached_count"`
+	CachedimageUsage
+}
+
+type CachedImageSetClassMetadataInput struct {
+	ClassMetadata map[string]string `json:"class_metadata"`
 }

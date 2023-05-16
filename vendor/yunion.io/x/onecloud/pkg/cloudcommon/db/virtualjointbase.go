@@ -20,12 +20,12 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/reflectutils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -39,22 +39,6 @@ type SVirtualJointResourceBaseManager struct {
 
 func NewVirtualJointResourceBaseManager(dt interface{}, tableName string, keyword string, keywordPlural string, master IVirtualModelManager, slave IVirtualModelManager) SVirtualJointResourceBaseManager {
 	return SVirtualJointResourceBaseManager{SJointResourceBaseManager: NewJointResourceBaseManager(dt, tableName, keyword, keywordPlural, master, slave)}
-}
-
-func (manager *SVirtualJointResourceBaseManager) AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	if jsonutils.QueryBoolean(query, "admin", false) && !IsAllowList(rbacutils.ScopeSystem, userCred, manager) {
-		return false
-	}
-	return true
-	// return manager.SJointResourceBaseManager.AllowListItems(ctx, userCred, query)
-}
-
-func (manager *SVirtualJointResourceBaseManager) AllowListDescendent(ctx context.Context, userCred mcclient.TokenCredential, master IStandaloneModel, query jsonutils.JSONObject) bool {
-	masterVirtual := master.(IVirtualModel)
-	if masterVirtual.IsOwner(userCred) || IsAllowList(rbacutils.ScopeSystem, userCred, manager) {
-		return true
-	}
-	return false
 }
 
 func (manager *SVirtualJointResourceBaseManager) AllowAttach(ctx context.Context, userCred mcclient.TokenCredential, master IStandaloneModel, slave IStandaloneModel) bool {
@@ -75,12 +59,12 @@ func (manager *SVirtualJointResourceBaseManager) AllowAttach(ctx context.Context
 	return false
 }
 
-func (manager *SVirtualJointResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, owner mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SVirtualJointResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	if owner != nil {
 		masterQ := manager.GetMasterManager().Query("id")
-		masterQ = manager.GetMasterManager().FilterByOwner(masterQ, owner, scope)
+		masterQ = manager.GetMasterManager().FilterByOwner(masterQ, manager.GetMasterManager(), userCred, owner, scope)
 		slaveQ := manager.GetSlaveManager().Query("id")
-		slaveQ = manager.GetSlaveManager().FilterByOwner(slaveQ, owner, scope)
+		slaveQ = manager.GetSlaveManager().FilterByOwner(slaveQ, manager.GetSlaveManager(), userCred, owner, scope)
 		iManager := manager.GetIJointModelManager()
 		q = q.In(iManager.GetMasterFieldName(), masterQ.SubQuery())
 		q = q.In(iManager.GetSlaveFieldName(), slaveQ.SubQuery())
@@ -88,7 +72,7 @@ func (manager *SVirtualJointResourceBaseManager) FilterByOwner(q *sqlchemy.SQuer
 	return q
 }
 
-func (manager *SVirtualJointResourceBaseManager) FilterBySystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SVirtualJointResourceBaseManager) FilterBySystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	q = manager.SJointResourceBaseManager.FilterBySystemAttributes(q, userCred, query, scope)
 	masterQ := manager.GetMasterManager().Query("id")
 	masterQ = manager.GetMasterManager().FilterBySystemAttributes(masterQ, userCred, query, scope)
@@ -100,7 +84,7 @@ func (manager *SVirtualJointResourceBaseManager) FilterBySystemAttributes(q *sql
 	return q
 }
 
-func (manager *SVirtualJointResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SVirtualJointResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	q = manager.SJointResourceBaseManager.FilterByHiddenSystemAttributes(q, userCred, query, scope)
 	masterQ := manager.GetMasterManager().Query("id")
 	masterQ = manager.GetMasterManager().FilterByHiddenSystemAttributes(masterQ, userCred, query, scope)

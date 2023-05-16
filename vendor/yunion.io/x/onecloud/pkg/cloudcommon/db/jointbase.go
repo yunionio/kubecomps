@@ -22,12 +22,12 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/reflectutils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -95,14 +95,6 @@ func (manager *SJointResourceBaseManager) SlaveField(q *sqlchemy.SQuery) sqlchem
 
 func (manager *SJointResourceBaseManager) FilterByParams(q *sqlchemy.SQuery, params jsonutils.JSONObject) *sqlchemy.SQuery {
 	return q
-}
-
-func (manager *SJointResourceBaseManager) AllowListDescendent(ctx context.Context, userCred mcclient.TokenCredential, model IStandaloneModel, query jsonutils.JSONObject) bool {
-	return IsAllowList(rbacutils.ScopeSystem, userCred, manager)
-}
-
-func (manager *SJointResourceBaseManager) AllowAttach(ctx context.Context, userCred mcclient.TokenCredential, master IStandaloneModel, slave IStandaloneModel) bool {
-	return IsAllowCreate(rbacutils.ScopeSystem, userCred, manager)
 }
 
 func JointModelExtra(jointModel IJointModel) (string, string) {
@@ -179,36 +171,12 @@ func (joint *SJointResourceBase) GetIJointModel() IJointModel {
 	return joint.GetVirtualObject().(IJointModel)
 }
 
-func (self *SJointResourceBase) AllowGetJointDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, item IJointModel) bool {
-	master := JointMaster(item)
-	switch master.(type) {
-	case IVirtualModel:
-		return master.(IVirtualModel).IsOwner(userCred) || IsAllowGet(rbacutils.ScopeSystem, userCred, master)
-	default: // case item implemented customized AllowGetDetails, eg hostjoints
-		return item.AllowGetDetails(ctx, userCred, query)
-	}
-}
-
-func (self *SJointResourceBase) AllowUpdateJointItem(ctx context.Context, userCred mcclient.TokenCredential, item IJointModel) bool {
-	master := JointMaster(item)
-	switch master.(type) {
-	case IVirtualModel:
-		return master.(IVirtualModel).IsOwner(userCred) || IsAllowUpdate(rbacutils.ScopeSystem, userCred, master)
-	default: // case item implemented customized AllowGetDetails, eg hostjoints
-		return item.AllowUpdateItem(ctx, userCred)
-	}
-}
-
-func (self *SJointResourceBase) AllowDetach(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return false
-}
-
-func (manager *SJointResourceBaseManager) ResourceScope() rbacutils.TRbacScope {
+func (manager *SJointResourceBaseManager) ResourceScope() rbacscope.TRbacScope {
 	return manager.GetMasterManager().ResourceScope()
 }
 
-func (manager *SJointResourceBaseManager) NamespaceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeSystem
+func (manager *SJointResourceBaseManager) NamespaceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeSystem
 }
 
 func (manager *SJointResourceBaseManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input apis.JoinResourceBaseCreateInput) (apis.JoinResourceBaseCreateInput, error) {

@@ -16,16 +16,29 @@ package sqlchemy
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
-type sTableIndex struct {
-	name     string
+type STableIndex struct {
+	// name     string
 	columns  []string
 	isUnique bool
+
+	ts ITableSpec
 }
 
-/*type TColumnNames []string
+func NewTableIndex(ts ITableSpec, cols []string, unique bool) STableIndex {
+	sort.Sort(TColumnNames(cols))
+	return STableIndex{
+		// name:     name,
+		columns:  cols,
+		isUnique: unique,
+		ts:       ts,
+	}
+}
+
+type TColumnNames []string
 
 func (cols TColumnNames) Len() int {
 	return len(cols)
@@ -41,12 +54,23 @@ func (cols TColumnNames) Less(i, j int) bool {
 	} else {
 		return false
 	}
-}*/
+}
 
-func (index *sTableIndex) IsIdentical(cols ...string) bool {
+func (index *STableIndex) Name() string {
+	return fmt.Sprintf("ix_%s_%s", index.ts.Name(), strings.Join(index.columns, "_"))
+}
+
+func (index STableIndex) clone(ts ITableSpec) STableIndex {
+	cols := make([]string, len(index.columns))
+	copy(cols, index.columns)
+	return NewTableIndex(ts, cols, index.isUnique)
+}
+
+func (index *STableIndex) IsIdentical(cols ...string) bool {
 	if len(index.columns) != len(cols) {
 		return false
 	}
+	sort.Sort(TColumnNames(cols))
 	for i := 0; i < len(index.columns); i++ {
 		if index.columns[i] != cols[i] {
 			return false
@@ -55,7 +79,7 @@ func (index *sTableIndex) IsIdentical(cols ...string) bool {
 	return true
 }
 
-func (index *sTableIndex) QuotedColumns() []string {
+func (index *STableIndex) QuotedColumns() []string {
 	ret := make([]string, len(index.columns))
 	for i := 0; i < len(ret); i++ {
 		ret[i] = fmt.Sprintf("`%s`", index.columns[i])
@@ -66,13 +90,12 @@ func (index *sTableIndex) QuotedColumns() []string {
 // AddIndex adds a SQL index over multiple columns for a Table
 // param unique: indicates a unique index cols: name of columns
 func (ts *STableSpec) AddIndex(unique bool, cols ...string) bool {
-	for i := 0; i < len(ts.indexes); i++ {
-		if ts.indexes[i].IsIdentical(cols...) {
+	for i := 0; i < len(ts._indexes); i++ {
+		if ts._indexes[i].IsIdentical(cols...) {
 			return false
 		}
 	}
-	name := fmt.Sprintf("ix_%s_%s", ts.name, strings.Join(cols, "_"))
-	idx := sTableIndex{name: name, columns: cols, isUnique: unique}
-	ts.indexes = append(ts.indexes, idx)
+	idx := STableIndex{columns: cols, isUnique: unique, ts: ts}
+	ts._indexes = append(ts._indexes, idx)
 	return true
 }

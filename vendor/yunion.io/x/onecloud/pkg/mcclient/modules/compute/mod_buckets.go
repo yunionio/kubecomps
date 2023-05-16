@@ -20,14 +20,14 @@ import (
 	"net/http"
 	"strconv"
 
+	"yunion.io/x/cloudmux/pkg/cloudprovider"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/httputils"
 
 	api "yunion.io/x/onecloud/pkg/apis/compute"
-	"yunion.io/x/onecloud/pkg/cloudprovider"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	"yunion.io/x/onecloud/pkg/mcclient/modules"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 )
 
 type SBucketManager struct {

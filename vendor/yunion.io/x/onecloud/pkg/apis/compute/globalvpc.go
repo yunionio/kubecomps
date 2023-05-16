@@ -20,10 +20,14 @@ import (
 
 type GlobalVpcCreateInput struct {
 	apis.EnabledStatusInfrasResourceBaseCreateInput
+
+	// 目前仅支持谷歌云创建
+	CloudproviderResourceInput
 }
 
 type GlobalVpcDetails struct {
 	apis.EnabledStatusInfrasResourceBaseDetails
+	ManagedResourceInfo
 
 	SGlobalVpc
 
@@ -49,6 +53,7 @@ type GlobalVpcResourceListInput struct {
 	GlobalVpcResourceInput
 
 	// 以GlobalVpc的名称排序
+	// pattern:asc|desc
 	OrderByGlobalvpc string `json:"order_by_globalvpc"`
 }
 
@@ -58,4 +63,10 @@ type GlobalvpcUpdateInput struct {
 
 type GlobalVpcListInput struct {
 	apis.EnabledStatusInfrasResourceBaseListInput
+	apis.ExternalizedResourceBaseListInput
+
+	ManagedResourceListInput
+	// 以关联的vpc数量排序
+	// pattern:asc|desc
+	OrderByVpcCount string `json:"order_by_vpc_count"`
 }

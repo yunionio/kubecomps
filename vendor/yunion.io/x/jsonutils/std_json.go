@@ -18,14 +18,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+
+	"yunion.io/x/pkg/gotypes"
 )
 
-func tryStdUnmarshal(jo JSONObject, v reflect.Value, unmarshalFunc func(value reflect.Value) error) error {
+func tryStdUnmarshal(s *sJsonUnmarshalSession, jo JSONObject, v reflect.Value, unmarshalFunc func(s *sJsonUnmarshalSession, value reflect.Value) error) error {
 	u := IsImplementStdUnmarshaler(v)
 	if u != nil {
 		return u.UnmarshalJSON([]byte(jo.String()))
 	}
-	return unmarshalFunc(v)
+	return unmarshalFunc(s, v)
 }
 
 func IsImplementStdUnmarshaler(v reflect.Value) json.Unmarshaler {
@@ -39,7 +41,7 @@ func indirectStdUnmarshaler(v reflect.Value) json.Unmarshaler {
 	// If v is a named type and is addressable,
 	// start with its address, so that if the type has pointer methods,
 	// we find them
-	if v.Kind() != reflect.Pointer && v.Type().Name() != "" && v.CanAddr() {
+	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
 		haveAddr = true
 		v = v.Addr()
 	}
@@ -48,14 +50,14 @@ func indirectStdUnmarshaler(v reflect.Value) json.Unmarshaler {
 		// usefully addressable.
 		if v.Kind() == reflect.Interface && !v.IsNil() {
 			e := v.Elem()
-			if e.Kind() == reflect.Pointer && !e.IsNil() && e.Elem().Kind() == reflect.Pointer {
+			if e.Kind() == reflect.Ptr && !e.IsNil() && e.Elem().Kind() == reflect.Ptr {
 				haveAddr = false
 				v = e
 				continue
 			}
 		}
 
-		if v.Kind() != reflect.Pointer {
+		if v.Kind() != reflect.Ptr {
 			break
 		}
 
@@ -91,7 +93,7 @@ func IsImplementStdMarshaler(v reflect.Value) json.Marshaler {
 }
 
 func indirectStdMarshaler(v reflect.Value) json.Marshaler {
-	if v.Kind() == reflect.Pointer && v.IsNil() {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
 		return nil
 	}
 	if v.Type().NumMethod() > 0 && v.CanInterface() {
@@ -103,17 +105,19 @@ func indirectStdMarshaler(v reflect.Value) json.Marshaler {
 }
 
 func tryStdMarshal(v reflect.Value, marshalFunc func(v reflect.Value) JSONObject) JSONObject {
-	m := IsImplementStdMarshaler(v)
-	if m != nil {
-		data, err := m.MarshalJSON()
-		if err != nil {
-			panic(fmt.Sprintf("MarshalJSON of %q error: %v", v.String(), err))
+	if v.Type() != gotypes.TimeType {
+		m := IsImplementStdMarshaler(v)
+		if m != nil {
+			data, err := m.MarshalJSON()
+			if err != nil {
+				panic(fmt.Sprintf("MarshalJSON of %q error: %v", v.String(), err))
+			}
+			jo, err := Parse(data)
+			if err != nil {
+				panic(fmt.Sprintf("Parse data %q to json of %q error: %v", data, v.String(), err))
+			}
+			return jo
 		}
-		jo, err := Parse(data)
-		if err != nil {
-			panic(fmt.Sprintf("Parse data %q to json of %q error: %v", data, v.String(), err))
-		}
-		return jo
 	}
 	return marshalFunc(v)
 }

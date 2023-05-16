@@ -15,26 +15,38 @@
 package splitable
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"time"
 
+	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/reflectutils"
+	"yunion.io/x/pkg/util/timeutils"
 	"yunion.io/x/sqlchemy"
 )
 
-func (t *SSplitTableSpec) Insert(dt interface{}) error {
-	metas, err := t.GetTableMetas()
-	if err != nil {
-		return errors.Wrap(err, "GetTableMeta")
+func (t *SSplitTableSpec) getLastTableSpecWithLock(lastDate time.Time) (*sqlchemy.STableSpec, error) {
+	t.lastTableLock.Lock()
+	defer t.lastTableLock.Unlock()
+	now := time.Now()
+	if t.lastTableSpec != nil && !t.lastTableExpire.IsZero() && t.lastTableExpire.Before(now) {
+		return t.lastTableSpec, nil
 	}
-	var lastDate time.Time
-	vs := reflectutils.FetchAllStructFieldValueSet(reflect.Indirect(reflect.ValueOf(dt)))
-	if lastDateV, ok := vs.GetValue(t.dateField); !ok {
-		return errors.Wrap(errors.ErrInvalidStatus, "no dateField found")
-	} else {
-		lastDate = lastDateV.Interface().(time.Time)
+	lastTableSpec, err := t.getLastTableSpec(lastDate)
+	if err != nil {
+		return nil, errors.Wrap(err, "getLastTableSpec")
+	}
+	t.lastTableSpec = lastTableSpec
+	t.lastTableExpire = now.Add(time.Hour * lastTableSpecExpireHours)
+	return t.lastTableSpec, nil
+}
+
+func (t *SSplitTableSpec) getLastTableSpec(lastDate time.Time) (*sqlchemy.STableSpec, error) {
+	lastMeta, err := t.getTableLastMeta()
+	if err != nil && errors.Cause(err) != sql.ErrNoRows {
+		return nil, errors.Wrap(err, "GetTableMeta")
 	}
 
 	var lastRecIndex int64
@@ -42,40 +54,44 @@ func (t *SSplitTableSpec) Insert(dt interface{}) error {
 	var lastTableSpec *sqlchemy.STableSpec
 
 	newMeta := false
-	if len(metas) > 0 {
-		lastMeta := metas[len(metas)-1]
+	if lastMeta != nil {
 		if !lastMeta.StartDate.IsZero() && lastDate.Sub(lastMeta.StartDate) > t.maxDuration {
-			lastTable := t.GetTableSpec(lastMeta)
+			lastTable := t.GetTableSpec(*lastMeta)
 			ti := lastTable.Instance()
-			q := ti.Query(sqlchemy.MAX("last_index", ti.Field(t.indexField)), sqlchemy.MAX("last_date", ti.Field(t.dateField)))
+			q := ti.Query(sqlchemy.MAX("last_index", ti.Field(t.indexField)), sqlchemy.MAX("last_date", ti.Field(t.dateField)), sqlchemy.COUNT("total"))
 			r := q.Row()
-			err := r.Scan(&lastRecIndex, &lastRecDate)
+			var lastRecDateStr string
+			var total uint64
+			err := r.Scan(&lastRecIndex, &lastRecDateStr, &total)
 			if err != nil {
-				return errors.Wrap(err, "scan lastRecIndex and lastRecDate")
+				return nil, errors.Wrap(err, "scan lastRecIndex and lastRecDate")
 			}
+			log.Debugf("lastRecDateStr: %s", lastRecDateStr)
+			lastRecDate, _ = timeutils.ParseTimeStr(lastRecDateStr)
 			// seal last meta
-			_, err = t.metaSpec.Update(&lastMeta, func() error {
+			_, err = t.metaSpec.Update(lastMeta, func() error {
 				lastMeta.End = lastRecIndex
 				lastMeta.EndDate = lastRecDate
+				lastMeta.Count = total
 				return nil
 			})
 			if err != nil {
-				return errors.Wrap(err, "Update last meta")
+				return nil, errors.Wrap(err, "Update last meta")
 			}
 			newMeta = true
 		} else {
 			if lastMeta.StartDate.IsZero() {
 				indexCol := t.tableSpec.ColumnSpec(t.indexField)
-				_, err = t.metaSpec.Update(&lastMeta, func() error {
-					lastMeta.Start = indexCol.(*sqlchemy.SIntegerColumn).AutoIncrementOffset
+				_, err = t.metaSpec.Update(lastMeta, func() error {
+					lastMeta.Start = indexCol.AutoIncrementOffset()
 					lastMeta.StartDate = lastDate
 					return nil
 				})
 				if err != nil {
-					return errors.Wrap(err, "Update last meta")
+					return nil, errors.Wrap(err, "Update last meta")
 				}
 			}
-			lastTableSpec = t.GetTableSpec(lastMeta)
+			lastTableSpec = t.GetTableSpec(*lastMeta)
 		}
 	} else {
 		newMeta = true
@@ -83,8 +99,23 @@ func (t *SSplitTableSpec) Insert(dt interface{}) error {
 	if newMeta {
 		lastTableSpec, err = t.newTable(lastRecIndex, lastDate)
 		if err != nil {
-			return errors.Wrap(err, "newTable")
+			return nil, errors.Wrap(err, "newTable")
 		}
+	}
+	return lastTableSpec, nil
+}
+
+func (t *SSplitTableSpec) Insert(dt interface{}) error {
+	var lastDate time.Time
+	vs := reflectutils.FetchAllStructFieldValueSet(reflect.Indirect(reflect.ValueOf(dt)))
+	if lastDateV, ok := vs.GetValue(t.dateField); !ok {
+		return errors.Wrap(errors.ErrInvalidStatus, "no dateField found")
+	} else {
+		lastDate = lastDateV.Interface().(time.Time)
+	}
+	lastTableSpec, err := t.getLastTableSpecWithLock(lastDate)
+	if err != nil {
+		return errors.Wrap(err, "getLastTableSpec")
 	}
 	return lastTableSpec.Insert(dt)
 }
@@ -95,7 +126,8 @@ func (t *SSplitTableSpec) newTable(lastRecIndex int64, lastDate time.Time) (*sql
 		Table: fmt.Sprintf("%s_%d", t.tableName, lastDate.Unix()),
 	}
 	if lastRecIndex > 0 {
-		meta.Start = lastRecIndex + 1
+		// auto_increment offset should consider HA setup
+		meta.Start = lastRecIndex + 10000
 		meta.StartDate = lastDate
 	}
 	err := t.metaSpec.Insert(&meta)

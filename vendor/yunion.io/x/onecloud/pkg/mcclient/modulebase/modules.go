@@ -22,20 +22,20 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/printutils"
 
 	"yunion.io/x/onecloud/pkg/mcclient"
 )
 
 type IBaseManager interface {
 	Version() string
-	GetApiVersion() string
+	// GetApiVersion() string
 	GetKeyword() string
 	KeyString() string
 	ServiceType() string
 	EndpointType() string
 	GetColumns(session *mcclient.ClientSession) []string
-	List(session *mcclient.ClientSession, params jsonutils.JSONObject) (*ListResult, error)
-	SetApiVersion(string)
+	List(session *mcclient.ClientSession, params jsonutils.JSONObject) (*printutils.ListResult, error)
 }
 
 type ManagerContext struct {
@@ -63,8 +63,8 @@ type Manager interface {
 	   return:
 	   { "<resource_plural_keyword>": [ {object details}, {object details}, ...] }, limit: 20, offset: 20, total: 2000}
 	*/
-	ListInContext(session *mcclient.ClientSession, params jsonutils.JSONObject, ctx Manager, ctxid string) (*ListResult, error)
-	ListInContexts(session *mcclient.ClientSession, params jsonutils.JSONObject, ctxs []ManagerContext) (*ListResult, error)
+	ListInContext(session *mcclient.ClientSession, params jsonutils.JSONObject, ctx Manager, ctxid string) (*printutils.ListResult, error)
+	ListInContexts(session *mcclient.ClientSession, params jsonutils.JSONObject, ctxs []ManagerContext) (*printutils.ListResult, error)
 	/*
 	  GET <base_url>/<resource_plural_keyword>/<resource_id>
 	  e.g GET <base_url>/alarams/1
@@ -90,9 +90,9 @@ type Manager interface {
 	Head(session *mcclient.ClientSession, id string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	HeadInContext(session *mcclient.ClientSession, id string, params jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	HeadInContexts(session *mcclient.ClientSession, id string, params jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
-	BatchGet(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []SubmitResult
-	BatchGetInContext(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctx Manager, ctxid string) []SubmitResult
-	BatchGetInContexts(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctxs []ManagerContext) []SubmitResult
+	BatchGet(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []printutils.SubmitResult
+	BatchGetInContext(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchGetInContexts(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctxs []ManagerContext) []printutils.SubmitResult
 	GetSpecific(session *mcclient.ClientSession, id string, spec string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	GetSpecificInContext(session *mcclient.ClientSession, id string, spec string, params jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	GetSpecificInContexts(session *mcclient.ClientSession, id string, spec string, params jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
@@ -104,44 +104,44 @@ type Manager interface {
 	Create(session *mcclient.ClientSession, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	CreateInContext(session *mcclient.ClientSession, params jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	CreateInContexts(session *mcclient.ClientSession, params jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
-	BatchCreate(session *mcclient.ClientSession, params jsonutils.JSONObject, count int) []SubmitResult
-	BatchCreateInContext(session *mcclient.ClientSession, params jsonutils.JSONObject, count int, ctx Manager, ctxid string) []SubmitResult
-	BatchCreateInContexts(session *mcclient.ClientSession, params jsonutils.JSONObject, count int, ctxs []ManagerContext) []SubmitResult
+	BatchCreate(session *mcclient.ClientSession, params jsonutils.JSONObject, count int) []printutils.SubmitResult
+	BatchCreateInContext(session *mcclient.ClientSession, params jsonutils.JSONObject, count int, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchCreateInContexts(session *mcclient.ClientSession, params jsonutils.JSONObject, count int, ctxs []ManagerContext) []printutils.SubmitResult
 	Update(session *mcclient.ClientSession, id string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	Put(session *mcclient.ClientSession, id string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	PutSpecific(session *mcclient.ClientSession, id string, spec string, query jsonutils.JSONObject, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	PutInContext(session *mcclient.ClientSession, id string, params jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	PutInContexts(session *mcclient.ClientSession, id string, params jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
-	BatchUpdate(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []SubmitResult
-	BatchParamsUpdate(session *mcclient.ClientSession, idlist []string, params []jsonutils.JSONObject) []SubmitResult
-	BatchPut(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []SubmitResult
-	BatchPutInContext(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctx Manager, ctxid string) []SubmitResult
-	BatchPutInContexts(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctxs []ManagerContext) []SubmitResult
+	BatchUpdate(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []printutils.SubmitResult
+	BatchParamsUpdate(session *mcclient.ClientSession, idlist []string, params []jsonutils.JSONObject) []printutils.SubmitResult
+	BatchPut(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []printutils.SubmitResult
+	BatchPutInContext(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchPutInContexts(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctxs []ManagerContext) []printutils.SubmitResult
 	Patch(session *mcclient.ClientSession, id string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	PatchInContext(session *mcclient.ClientSession, id string, params jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	PatchInContexts(session *mcclient.ClientSession, id string, params jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
-	BatchPatch(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []SubmitResult
-	BatchPatchInContext(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctx Manager, ctxid string) []SubmitResult
-	BatchPatchInContexts(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctxs []ManagerContext) []SubmitResult
+	BatchPatch(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject) []printutils.SubmitResult
+	BatchPatchInContext(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchPatchInContexts(session *mcclient.ClientSession, idlist []string, params jsonutils.JSONObject, ctxs []ManagerContext) []printutils.SubmitResult
 	PerformAction(session *mcclient.ClientSession, id string, action string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	PerformClassAction(session *mcclient.ClientSession, action string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	PerformActionInContext(session *mcclient.ClientSession, id string, action string, params jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	PerformActionInContexts(session *mcclient.ClientSession, id string, action string, params jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
-	BatchPerformAction(session *mcclient.ClientSession, idlist []string, action string, params jsonutils.JSONObject) []SubmitResult
-	BatchPerformActionInContext(session *mcclient.ClientSession, idlist []string, action string, params jsonutils.JSONObject, ctx Manager, ctxid string) []SubmitResult
-	BatchPerformActionInContexts(session *mcclient.ClientSession, idlist []string, action string, params jsonutils.JSONObject, ctxs []ManagerContext) []SubmitResult
+	BatchPerformAction(session *mcclient.ClientSession, idlist []string, action string, params jsonutils.JSONObject) []printutils.SubmitResult
+	BatchPerformActionInContext(session *mcclient.ClientSession, idlist []string, action string, params jsonutils.JSONObject, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchPerformActionInContexts(session *mcclient.ClientSession, idlist []string, action string, params jsonutils.JSONObject, ctxs []ManagerContext) []printutils.SubmitResult
 	Delete(session *mcclient.ClientSession, id string, body jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	DeleteWithParam(session *mcclient.ClientSession, id string, query jsonutils.JSONObject, body jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	DeleteInContext(session *mcclient.ClientSession, id string, body jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	DeleteInContextWithParam(session *mcclient.ClientSession, id string, query jsonutils.JSONObject, body jsonutils.JSONObject, ctx Manager, ctxid string) (jsonutils.JSONObject, error)
 	DeleteInContexts(session *mcclient.ClientSession, id string, body jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
 	DeleteInContextsWithParam(session *mcclient.ClientSession, id string, query jsonutils.JSONObject, body jsonutils.JSONObject, ctxs []ManagerContext) (jsonutils.JSONObject, error)
-	BatchDelete(session *mcclient.ClientSession, idlist []string, body jsonutils.JSONObject) []SubmitResult
-	BatchDeleteWithParam(session *mcclient.ClientSession, idlist []string, query jsonutils.JSONObject, body jsonutils.JSONObject) []SubmitResult
-	BatchDeleteInContext(session *mcclient.ClientSession, idlist []string, body jsonutils.JSONObject, ctx Manager, ctxid string) []SubmitResult
-	BatchDeleteInContextWithParam(session *mcclient.ClientSession, idlist []string, query jsonutils.JSONObject, body jsonutils.JSONObject, ctx Manager, ctxid string) []SubmitResult
-	BatchDeleteInContexts(session *mcclient.ClientSession, idlist []string, body jsonutils.JSONObject, ctxs []ManagerContext) []SubmitResult
-	BatchDeleteInContextsWithParam(session *mcclient.ClientSession, idlist []string, query jsonutils.JSONObject, body jsonutils.JSONObject, ctxs []ManagerContext) []SubmitResult
+	BatchDelete(session *mcclient.ClientSession, idlist []string, body jsonutils.JSONObject) []printutils.SubmitResult
+	BatchDeleteWithParam(session *mcclient.ClientSession, idlist []string, query jsonutils.JSONObject, body jsonutils.JSONObject) []printutils.SubmitResult
+	BatchDeleteInContext(session *mcclient.ClientSession, idlist []string, body jsonutils.JSONObject, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchDeleteInContextWithParam(session *mcclient.ClientSession, idlist []string, query jsonutils.JSONObject, body jsonutils.JSONObject, ctx Manager, ctxid string) []printutils.SubmitResult
+	BatchDeleteInContexts(session *mcclient.ClientSession, idlist []string, body jsonutils.JSONObject, ctxs []ManagerContext) []printutils.SubmitResult
+	BatchDeleteInContextsWithParam(session *mcclient.ClientSession, idlist []string, query jsonutils.JSONObject, body jsonutils.JSONObject, ctxs []ManagerContext) []printutils.SubmitResult
 }
 
 type IResourceManager interface {
@@ -155,24 +155,24 @@ type JointManager interface {
 	MasterManager() Manager
 	SlaveManager() Manager
 	Get(s *mcclient.ClientSession, mid, sid string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
-	ListDescendent(s *mcclient.ClientSession, mid string, params jsonutils.JSONObject) (*ListResult, error)
-	ListDescendent2(s *mcclient.ClientSession, sid string, params jsonutils.JSONObject) (*ListResult, error)
-	ListAscendent(s *mcclient.ClientSession, mid string, params jsonutils.JSONObject) (*ListResult, error)
+	ListDescendent(s *mcclient.ClientSession, mid string, params jsonutils.JSONObject) (*printutils.ListResult, error)
+	ListDescendent2(s *mcclient.ClientSession, sid string, params jsonutils.JSONObject) (*printutils.ListResult, error)
+	ListAscendent(s *mcclient.ClientSession, mid string, params jsonutils.JSONObject) (*printutils.ListResult, error)
 	Attach(s *mcclient.ClientSession, mid, sid string, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
-	BatchAttach(s *mcclient.ClientSession, mid string, sids []string, params jsonutils.JSONObject) []SubmitResult
-	BatchAttach2(s *mcclient.ClientSession, mid string, sids []string, params jsonutils.JSONObject) []SubmitResult
+	BatchAttach(s *mcclient.ClientSession, mid string, sids []string, params jsonutils.JSONObject) []printutils.SubmitResult
+	BatchAttach2(s *mcclient.ClientSession, mid string, sids []string, params jsonutils.JSONObject) []printutils.SubmitResult
 	Detach(s *mcclient.ClientSession, mid, sid string, query jsonutils.JSONObject) (jsonutils.JSONObject, error)
-	BatchDetach(s *mcclient.ClientSession, mid string, sids []string) []SubmitResult
-	BatchDetach2(s *mcclient.ClientSession, mid string, sids []string) []SubmitResult
+	BatchDetach(s *mcclient.ClientSession, mid string, sids []string) []printutils.SubmitResult
+	BatchDetach2(s *mcclient.ClientSession, mid string, sids []string) []printutils.SubmitResult
 	Update(s *mcclient.ClientSession, mid, sid string, query jsonutils.JSONObject, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
-	BatchUpdate(s *mcclient.ClientSession, mid string, sids []string, query jsonutils.JSONObject, params jsonutils.JSONObject) []SubmitResult
+	BatchUpdate(s *mcclient.ClientSession, mid string, sids []string, query jsonutils.JSONObject, params jsonutils.JSONObject) []printutils.SubmitResult
 	Patch(s *mcclient.ClientSession, mid, sid string, query jsonutils.JSONObject, params jsonutils.JSONObject) (jsonutils.JSONObject, error)
-	BatchPatch(s *mcclient.ClientSession, mid string, sids []string, query jsonutils.JSONObject, params jsonutils.JSONObject) []SubmitResult
+	BatchPatch(s *mcclient.ClientSession, mid string, sids []string, query jsonutils.JSONObject, params jsonutils.JSONObject) []printutils.SubmitResult
 }
 
 var (
-	modules      map[string]map[string][]IBaseManager
-	jointModules map[string]map[string][]JointManager
+	modules      map[string][]IBaseManager
+	jointModules map[string][]JointManager
 )
 
 func _getJointKey(mod1 Manager, mod2 Manager) string {
@@ -190,16 +190,11 @@ func ensureModuleNotRegistered(mod, newMod IBaseManager) {
 	}
 }
 
-func Register(version string, mod IBaseManager) {
+func Register(mod IBaseManager) {
 	if modules == nil {
-		modules = make(map[string]map[string][]IBaseManager)
+		modules = make(map[string][]IBaseManager)
 	}
-	modtable, ok := modules[version]
-	if !ok {
-		modtable = make(map[string][]IBaseManager)
-		modules[version] = modtable
-	}
-	mods, ok := modtable[mod.KeyString()]
+	mods, ok := modules[mod.KeyString()]
 	if !ok {
 		mods = make([]IBaseManager, 0)
 	}
@@ -207,21 +202,16 @@ func Register(version string, mod IBaseManager) {
 		ensureModuleNotRegistered(mods[i], mod)
 	}
 	mods = append(mods, mod)
-	modules[version][mod.KeyString()] = mods
+	modules[mod.KeyString()] = mods
 	// modtable[mod.KeyString()] = append(mods, mod)
 }
 
-func RegisterJointModule(version string, mod IBaseManager) {
+func RegisterJointModule(mod IBaseManager) {
 	jointMod, ok := mod.(JointManager)
 	if ok { // also a joint manager
 		jointKey := _getJointKey(jointMod.MasterManager(), jointMod.SlaveManager())
 		// log.Printf("%s(%s) is also a joint module", mod.KeyString(), jointKey)
-		modtable, ok := jointModules[version]
-		if !ok {
-			modtable = make(map[string][]JointManager)
-			jointModules[version] = modtable
-		}
-		jointMods, ok := modtable[jointKey]
+		jointMods, ok := jointModules[jointKey]
 		if !ok {
 			jointMods = make([]JointManager, 0)
 		}
@@ -231,31 +221,25 @@ func RegisterJointModule(version string, mod IBaseManager) {
 			//}
 		}
 		// modtable[jointKey] = append(jointMods, jointMod)
-		jointModules[version][jointKey] = append(jointMods, jointMod)
+		jointModules[jointKey] = append(jointMods, jointMod)
 	}
 }
 
 func registerAllJointModules() {
 	if jointModules == nil {
-		jointModules = make(map[string]map[string][]JointManager)
-		for version := range modules {
-			for modname := range modules[version] {
-				for i := range modules[version][modname] {
-					RegisterJointModule(version, modules[version][modname][i])
-				}
+		jointModules = make(map[string][]JointManager)
+		for modname := range modules {
+			for i := range modules[modname] {
+				RegisterJointModule(modules[modname][i])
 			}
 		}
 	}
 }
 
 func _getModule(session *mcclient.ClientSession, name string) (IBaseManager, error) {
-	modtable, ok := modules[session.GetApiVersion()]
+	mods, ok := modules[name]
 	if !ok {
-		return nil, fmt.Errorf("No such version: %s", session.GetApiVersion())
-	}
-	mods, ok := modtable[name]
-	if !ok {
-		return nil, fmt.Errorf("No such module %s for version %s", name, session.GetApiVersion())
+		return nil, fmt.Errorf("No such module %s", name)
 	}
 
 	if len(mods) == 1 {
@@ -305,16 +289,12 @@ func GetJointModule(session *mcclient.ClientSession, name string) (JointManager,
 func GetJointModule2(session *mcclient.ClientSession, mod1 Manager, mod2 Manager) (JointManager, error) {
 	registerAllJointModules()
 	key := _getJointKey(mod1, mod2)
-	modtable, ok := jointModules[session.GetApiVersion()]
-	if !ok {
-		return nil, fmt.Errorf("No such version: %s", session.GetApiVersion())
-	}
-	mods, ok := modtable[key]
+	mods, ok := jointModules[key]
 	if !ok {
 		return nil, fmt.Errorf("No such joint module: %s", key)
 	}
 	for _, mod := range mods {
-		url, e := session.GetServiceVersionURL(mod.ServiceType(), mod.EndpointType(), mod.GetApiVersion())
+		url, e := session.GetServiceVersionURL(mod.ServiceType(), mod.EndpointType())
 		if e != nil {
 			return nil, e
 		}
@@ -326,28 +306,18 @@ func GetJointModule2(session *mcclient.ClientSession, mod1 Manager, mod2 Manager
 	return nil, fmt.Errorf("Version mismatch")
 }
 
-func GetRegisterdModules() (map[string][]string, map[string][]string) {
+func GetRegisterdModules() ([]string, []string) {
 	registerAllJointModules()
 
-	ret := make(map[string][]string)
-	for k, v := range modules {
-		ret[k] = make([]string, 0)
-		for m := range v {
-			ret[k] = append(ret[k], m)
-		}
+	ret := make([]string, 0)
+	for k := range modules {
+		ret = append(ret, k)
 	}
-	for k := range ret {
-		sort.Strings(ret[k])
+	sort.Strings(ret)
+	ret2 := make([]string, 0)
+	for k := range jointModules {
+		ret2 = append(ret2, k)
 	}
-	ret2 := make(map[string][]string)
-	for k, v := range jointModules {
-		ret2[k] = make([]string, 0)
-		for m := range v {
-			ret2[k] = append(ret2[k], m)
-		}
-	}
-	for k := range ret2 {
-		sort.Strings(ret2[k])
-	}
+	sort.Strings(ret2)
 	return ret, ret2
 }

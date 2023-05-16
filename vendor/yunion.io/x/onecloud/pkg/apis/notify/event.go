@@ -40,9 +40,26 @@ var (
 	ActionCreateBackupServer SAction = "add_backup_server"
 	ActionDelBackupServer    SAction = "delete_backup_server"
 
-	ActionSyncCreate SAction = "sync_create"
-	ActionSyncUpdate SAction = "sync_update"
-	ActionSyncDelete SAction = "sync_delete"
+	ActionSyncCreate        SAction = "sync_create"
+	ActionSyncUpdate        SAction = "sync_update"
+	ActionSyncDelete        SAction = "sync_delete"
+	ActionSyncAccountStatus SAction = "sync_account_status"
+
+	ActionOffline         SAction = "offline"
+	ActionSystemPanic     SAction = "panic"
+	ActionSystemException SAction = "exception"
+
+	ActionChecksumTest SAction = "checksum_test"
+
+	ActionLock SAction = "lock"
+
+	ActionExceedCount        SAction = "exceed_count"
+	ActionPasswordExpireSoon SAction = "password_expire_soon"
+	ActionWorkerBlock        SAction = "woker_block"
+	ActionNetOutOfSync       SAction = "net_out_of_sync"
+	ActionMysqlOutOfSync     SAction = "mysql_out_of_sync"
+	ActionServiceAbnormal    SAction = "service_abnormal"
+	ActionServerPanicked     SAction = "server_panicked"
 
 	ResultFailed  SResult = "failed"
 	ResultSucceed SResult = "succeed"

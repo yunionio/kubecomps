@@ -21,11 +21,13 @@ import (
 	"strings"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/httputils"
+	"yunion.io/x/pkg/util/printutils"
 
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	"yunion.io/x/onecloud/pkg/mcclient/modules"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 )
 
 type SkusManager struct {
@@ -45,16 +47,16 @@ type ElasticcacheSkusManager struct {
 }
 
 var (
-	CloudmetaSkus    SkusManager             // meta.yunion.io
+	// CloudmetaSkus    SkusManager             // meta.yunion.io
 	OfflineCloudmeta OfflineCloudmetaManager // aliyun offine sku&rate data
 	ServerSkus       ServerSkusManager       // region service: server sku manager
 	ElasticcacheSkus ElasticcacheSkusManager // region service: elasitc cache sku manager
 )
 
 func init() {
-	CloudmetaSkus = SkusManager{modules.NewCloudmetaManager("sku", "skus",
-		[]string{},
-		[]string{})}
+	// CloudmetaSkus = SkusManager{modules.NewCloudmetaManager("sku", "skus",
+	// 	[]string{},
+	//	[]string{})}
 
 	OfflineCloudmeta = OfflineCloudmetaManager{modules.NewOfflineCloudmetaManager("", "",
 		[]string{},
@@ -73,30 +75,52 @@ func init() {
 		[]string{},
 		[]string{})}
 
-	modules.Register(&CloudmetaSkus)
+	// modules.Register(&CloudmetaSkus)
 	modules.RegisterCompute(&ServerSkus)
 	modules.RegisterCompute(&ElasticcacheSkus)
 }
 
-func (self *SkusManager) GetSkus(s *mcclient.ClientSession, providerId, regionId, zoneId string, limit, offset int) (*modulebase.ListResult, error) {
+func (self *SkusManager) GetSkus(s *mcclient.ClientSession, providerId, regionId, zoneId string, limit, offset int) (*printutils.ListResult, error) {
 	p := strings.ToLower(providerId)
 	r := strings.ToLower(regionId)
 	z := strings.ToLower(zoneId)
 	url := fmt.Sprintf("/providers/%s/regions/%s/zones/%s/skus?limit=%d&offset=%d", p, r, z, limit, offset)
 	ret, err := modulebase.List(self.ResourceManager, s, url, self.KeywordPlural)
 	if err != nil {
-		return &modulebase.ListResult{}, err
+		return &printutils.ListResult{}, err
 	}
 
 	return ret, nil
 }
 
 func (self *OfflineCloudmetaManager) GetSkuSourcesMeta(s *mcclient.ClientSession, client *http.Client) (jsonutils.JSONObject, error) {
-	baseUrl, err := s.GetServiceVersionURL(self.ServiceType(), self.EndpointType(), self.GetApiVersion())
+	baseUrl, err := s.GetServiceVersionURL(self.ServiceType(), self.EndpointType())
 	if err != nil {
 		return nil, err
 	}
 	url := strings.TrimSuffix(baseUrl, "/") + "/sku.meta"
 	_, body, err := httputils.JSONRequest(client, context.TODO(), "GET", url, nil, nil, false)
 	return body, err
+}
+
+func (self *OfflineCloudmetaManager) GetSkuIndex(s *mcclient.ClientSession, client *http.Client, res string) (string, map[string]string, error) {
+	meta, err := self.GetSkuSourcesMeta(s, client)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "GetSkuSourcesMeta")
+	}
+	base, err := meta.GetString(res)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "get %s", res)
+	}
+	url := fmt.Sprintf("%s/index.json", base)
+	_, body, err := httputils.JSONRequest(client, context.TODO(), "GET", url, nil, nil, false)
+	if err != nil {
+		return "", map[string]string{}, errors.Wrapf(err, "request")
+	}
+	ret := map[string]string{}
+	err = body.Unmarshal(ret)
+	if err != nil {
+		return "", map[string]string{}, errors.Wrapf(err, "resp.Unmarshal")
+	}
+	return base, ret, nil
 }

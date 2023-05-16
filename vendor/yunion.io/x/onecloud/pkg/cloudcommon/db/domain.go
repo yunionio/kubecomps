@@ -20,16 +20,18 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/reflectutils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
+	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
+	"yunion.io/x/onecloud/pkg/util/tagutils"
 )
 
 type SDomainizedResourceBaseManager struct {
@@ -40,23 +42,47 @@ type SDomainizedResourceBase struct {
 	DomainId string `width:"64" charset:"ascii" default:"default" nullable:"false" index:"true" list:"user" json:"domain_id"`
 }
 
-func (manager *SDomainizedResourceBaseManager) NamespaceScope() rbacutils.TRbacScope {
+func (manager *SDomainizedResourceBaseManager) NamespaceScope() rbacscope.TRbacScope {
 	if consts.IsDomainizedNamespace() {
-		return rbacutils.ScopeDomain
+		return rbacscope.ScopeDomain
 	} else {
-		return rbacutils.ScopeSystem
+		return rbacscope.ScopeSystem
 	}
 }
 
-func (manager *SDomainizedResourceBaseManager) ResourceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeDomain
+func (manager *SDomainizedResourceBaseManager) ResourceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeDomain
 }
 
-func (manager *SDomainizedResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, owner mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SDomainizedResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	if owner != nil {
 		switch scope {
-		case rbacutils.ScopeProject, rbacutils.ScopeDomain:
+		case rbacscope.ScopeProject, rbacscope.ScopeDomain:
 			q = q.Equals("domain_id", owner.GetProjectDomainId())
+			if userCred != nil {
+				result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
+				if !result.ObjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ObjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+				}
+
+			}
+		case rbacscope.ScopeSystem:
+			if userCred != nil {
+				result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
+				if !result.DomainTags.IsEmpty() {
+					policyFilters := tagutils.STagFilters{}
+					policyFilters.AddFilters(result.DomainTags)
+					q = ObjectIdQueryWithTagFilters(q, "domain_id", "domain", policyFilters)
+				}
+				if !result.ObjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ObjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+				}
+
+			}
 		}
 	}
 	return q
@@ -108,13 +134,22 @@ func (manager *SDomainizedResourceBaseManager) ListItemFilter(
 	if len(query.ProjectDomainIds) > 0 {
 		// make sure ids are not utf8 string
 		idList := stringutils2.RemoveUtf8Strings(query.ProjectDomainIds)
-		tenants := TenantCacheManager.GetDomainQuery().SubQuery()
+		tenants := DefaultDomainQuery().SubQuery()
+		// tenants := TenantCacheManager.GetDomainQuery().SubQuery()
 		subq := tenants.Query(tenants.Field("id")).Filter(sqlchemy.OR(
 			sqlchemy.In(tenants.Field("id"), idList),
 			sqlchemy.In(tenants.Field("name"), query.ProjectDomainIds),
 		)).SubQuery()
 		q = q.In("domain_id", subq)
 	}
+	tagFilters := tagutils.STagFilters{}
+	if !query.DomainTags.IsEmpty() {
+		tagFilters.AddFilters(query.DomainTags)
+	}
+	if !query.NoDomainTags.IsEmpty() {
+		tagFilters.AddNoFilters(query.NoDomainTags)
+	}
+	q = ObjectIdQueryWithTagFilters(q, "domain_id", "domain", tagFilters)
 	return q, nil
 }
 

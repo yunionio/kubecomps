@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"yunion.io/x/jsonutils"
-	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/gotypes"
 	"yunion.io/x/pkg/tristate"
@@ -38,37 +38,21 @@ func getQuoteStringValue(dat interface{}) string {
 	case reflect.Float32, reflect.Float64:
 		return fmt.Sprintf("%f", value.Float())
 	}
-	return strconv.Quote(getStringValue(dat))
+	strVal := GetStringValue(dat)
+	strVal = strings.ReplaceAll(strVal, "'", "\\'")
+	return "'" + strVal + "'"
 }
 
-func getStringValue(dat interface{}) string {
-	value := reflect.ValueOf(dat)
-	switch value.Type() {
-	case tristate.TriStateType:
-		return dat.(tristate.TriState).String()
-	case gotypes.TimeType:
-		tm, ok := dat.(time.Time)
-		if !ok {
-			log.Errorf("Fail to convert to time.Time %s", value)
-		} else {
-			return timeutils.MysqlTime(tm)
-		}
-	/*case jsonutils.JSONStringType, jsonutils.JSONIntType, jsonutils.JSONFloatType, jsonutils.JSONBoolType,
-		jsonutils.JSONDictType, jsonutils.JSONArrayType:
-	json, ok := value.Interface().(jsonutils.JSONObject)
-	if !ok {
-		log.Errorf("fail to convert to JSONObject", value)
-	}else {
-		return json.String()
-	}*/
-	case gotypes.Uint8SliceType:
-		rawBytes, ok := value.Interface().([]byte)
-		if !ok {
-			log.Errorf("Fail to convert to bytes %s", value)
-		} else {
-			return string(rawBytes)
-		}
+func GetStringValue(dat interface{}) string {
+	switch g := dat.(type) {
+	case tristate.TriState:
+		return g.String()
+	case time.Time:
+		return timeutils.MysqlTime(g)
+	case []byte:
+		return string(g)
 	}
+	value := reflect.Indirect(reflect.ValueOf(dat))
 	switch value.Kind() {
 	case reflect.Bool:
 		if value.Bool() {
@@ -87,9 +71,9 @@ func getStringValue(dat interface{}) string {
 	serializable, ok := value.Interface().(gotypes.ISerializable)
 	if ok {
 		return serializable.String()
+	} else {
+		return jsonutils.Marshal(value.Interface()).String()
 	}
-	log.Errorf("cannot convert %v to string", value)
-	return ""
 }
 
 func setValueBySQLString(value reflect.Value, val string) error {
@@ -98,10 +82,10 @@ func setValueBySQLString(value reflect.Value, val string) error {
 	}
 	switch value.Type() {
 	case tristate.TriStateType:
-		if val == "0" {
-			value.Set(tristate.TriStateFalseValue)
-		} else if val == "1" {
+		if val == "1" {
 			value.Set(tristate.TriStateTrueValue)
+		} else if val == "0" {
+			value.Set(tristate.TriStateFalseValue)
 		} else {
 			value.Set(tristate.TriStateNoneValue)
 		}
@@ -149,12 +133,52 @@ func setValueBySQLString(value reflect.Value, val string) error {
 		value.SetString(val)
 		return nil
 	case reflect.Slice:
-		elemValue := reflect.New(value.Type().Elem()).Elem()
-		err := setValueBySQLString(elemValue, val)
+		jsonV, err := jsonutils.ParseString(val)
 		if err != nil {
-			return errors.Wrap(err, "reflect.Slice")
+			return errors.Wrapf(err, "jsonutils.ParseString %s", val)
 		}
-		value.Set(reflect.Append(value, elemValue))
+		if jsonV == jsonutils.JSONNull {
+			return nil
+		}
+		jsonA, err := jsonV.GetArray()
+		if err != nil {
+			return errors.Wrap(err, "jsonV.GetArray")
+		}
+		sliceValue := reflect.MakeSlice(value.Type(), 0, len(jsonA))
+		value.Set(sliceValue)
+		for i := range jsonA {
+			elemValue := reflect.New(value.Type().Elem()).Elem()
+			jsonStr, _ := jsonA[i].GetString()
+			err := setValueBySQLString(elemValue, jsonStr)
+			if err != nil {
+				return errors.Wrapf(err, "TestSetValueBySQLString %s", jsonA[i].String())
+			}
+			value.Set(reflect.Append(value, elemValue))
+		}
+		return nil
+	case reflect.Map:
+		jsonV, err := jsonutils.ParseString(val)
+		if err != nil {
+			return errors.Wrapf(err, "jsonutils.ParseString %s", val)
+		}
+		if jsonV == jsonutils.JSONNull {
+			return nil
+		}
+		jsonM, err := jsonV.GetMap()
+		if err != nil {
+			return errors.Wrapf(err, "jsonV.GetMap val %s json %s", val, jsonV)
+		}
+		mapValue := reflect.MakeMap(value.Type())
+		value.Set(mapValue)
+		for k, jsonV := range jsonM {
+			elemValue := reflect.New(value.Type().Elem()).Elem()
+			jsonStr, _ := jsonV.GetString()
+			err := setValueBySQLString(elemValue, jsonStr)
+			if err != nil {
+				return errors.Wrapf(err, "TestSetValueBySQLString %s", jsonV.String())
+			}
+			value.SetMapIndex(reflect.ValueOf(k), elemValue)
+		}
 		return nil
 	default:
 		if valueType := value.Type(); valueType.Implements(gotypes.ISerializableType) {
@@ -170,7 +194,21 @@ func setValueBySQLString(value reflect.Value, val string) error {
 			}
 			return setValueBySQLString(value.Elem(), val)
 		} else {
-			return errors.Wrapf(ErrNotSupported, "not supported type: %s", valueType)
+			jsonV, err := jsonutils.ParseString(val)
+			if err != nil {
+				return errors.Wrapf(err, "%s not a json string: %s", val, err)
+			}
+			if jsonV == jsonutils.JSONNull {
+				return nil
+			}
+			newVal := reflect.New(value.Type())
+			err = jsonV.Unmarshal(newVal.Interface())
+			if err != nil {
+				return errors.Wrap(err, "Unmarshal fail")
+			}
+			value.Set(reflect.Indirect(newVal))
+			return nil
+			// return errors.Wrapf(ErrNotSupported, "not supported type: %s", valueType)
 		}
 	}
 }

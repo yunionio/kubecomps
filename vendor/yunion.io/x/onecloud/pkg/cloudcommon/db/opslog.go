@@ -19,15 +19,16 @@ import (
 	"database/sql"
 	"fmt"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/reflectutils"
 	"yunion.io/x/pkg/util/stringutils"
+	"yunion.io/x/pkg/util/timeutils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
@@ -35,23 +36,21 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
 type SOpsLogManager struct {
-	SModelBaseManager
+	SLogBaseManager
 }
 
 type SOpsLog struct {
-	SModelBase
+	SLogBase
 
-	Id      int64  `primary:"true" auto_increment:"true" list:"user"`
 	ObjType string `width:"40" charset:"ascii" nullable:"false" list:"user" create:"required"`
 	ObjId   string `width:"128" charset:"ascii" nullable:"false" list:"user" create:"required" index:"true"`
 	ObjName string `width:"128" charset:"utf8" nullable:"false" list:"user" create:"required"`
 	Action  string `width:"32" charset:"utf8" nullable:"false" list:"user" create:"required"`
-	Notes   string `charset:"utf8" list:"user" create:"required"`
+	Notes   string `charset:"utf8" list:"user" create:"optional"`
 
 	ProjectId string `name:"tenant_id" width:"128" charset:"ascii" list:"user" create:"optional" index:"true"`
 	Project   string `name:"tenant" width:"128" charset:"utf8" list:"user" create:"optional"`
@@ -63,9 +62,9 @@ type SOpsLog struct {
 	User     string `width:"128" charset:"utf8" list:"user" create:"required"`
 	DomainId string `width:"128" charset:"ascii" list:"user" create:"optional"`
 	Domain   string `width:"128" charset:"utf8" list:"user" create:"optional"`
-	Roles    string `width:"64" charset:"ascii" list:"user" create:"optional"`
+	Roles    string `width:"64" charset:"utf8" list:"user" create:"optional"`
 
-	OpsTime time.Time `nullable:"false" list:"user"`
+	OpsTime time.Time `nullable:"false" list:"user" clickhouse_ttl:"6m"`
 
 	OwnerDomainId  string `name:"owner_domain_id" default:"default" width:"128" charset:"ascii" list:"user" create:"optional"`
 	OwnerProjectId string `name:"owner_tenant_id" width:"128" charset:"ascii" list:"user" create:"optional"`
@@ -77,21 +76,21 @@ var _ IModelManager = (*SOpsLogManager)(nil)
 var _ IModel = (*SOpsLog)(nil)
 
 var opslogQueryWorkerMan *appsrv.SWorkerManager
+var opslogWriteWorkerMan *appsrv.SWorkerManager
 
-func init() {
-	OpsLog = &SOpsLogManager{NewModelBaseManagerWithSplitable(
-		SOpsLog{},
-		"opslog_tbl",
-		"event",
-		"events",
-		"id",
-		"ops_time",
-		consts.SplitableMaxDuration(),
-		consts.SplitableMaxKeepSegments(),
-	)}
+func NewOpsLogManager(opslog interface{}, tblName string, keyword, keywordPlural string, timeField string, clickhouse bool) SOpsLogManager {
+	return SOpsLogManager{
+		SLogBaseManager: NewLogBaseManager(opslog, tblName, keyword, keywordPlural, timeField, clickhouse),
+	}
+}
+
+func InitOpsLog() {
+	tmp := NewOpsLogManager(SOpsLog{}, "opslog_tbl", "event", "events", "ops_time", consts.OpsLogWithClickhouse)
+	OpsLog = &tmp
 	OpsLog.SetVirtualObject(OpsLog)
 
-	opslogQueryWorkerMan = appsrv.NewWorkerManager("opslog_query_worker", 2, 1024, true)
+	opslogQueryWorkerMan = appsrv.NewWorkerManager("opslog_query_worker", 2, 512, true)
+	opslogWriteWorkerMan = appsrv.NewWorkerManager("opslog_write_worker", 1, 2048, true)
 }
 
 func (manager *SOpsLogManager) CustomizeHandlerInfo(info *appsrv.SHandlerInfo) {
@@ -101,10 +100,6 @@ func (manager *SOpsLogManager) CustomizeHandlerInfo(info *appsrv.SHandlerInfo) {
 	case "list":
 		info.SetProcessTimeout(time.Minute * 15).SetWorkerManager(opslogQueryWorkerMan)
 	}
-}
-
-func (opslog *SOpsLog) GetId() string {
-	return fmt.Sprintf("%d", opslog.Id)
 }
 
 func (opslog *SOpsLog) GetName() string {
@@ -166,17 +161,29 @@ func (manager *SOpsLogManager) LogEvent(model IModel, action string, notes inter
 		ObjName: objName,
 		Action:  action,
 		Notes:   stringutils.Interface2String(notes),
-
-		ProjectId:       userCred.GetProjectId(),
-		Project:         userCred.GetProjectName(),
-		ProjectDomainId: userCred.GetProjectDomainId(),
-		ProjectDomain:   userCred.GetProjectDomain(),
-
-		UserId:   userCred.GetUserId(),
-		User:     userCred.GetUserName(),
-		DomainId: userCred.GetDomainId(),
-		Domain:   userCred.GetDomainName(),
-		Roles:    strings.Join(userCred.GetRoles(), ","),
+	}
+	if userCred == nil {
+		log.Warningf("Log event with empty userCred: objType=%s objId=%s objName=%s action=%s", model.Keyword(), objId, objName, action)
+		const unknown = "unknown"
+		opslog.ProjectId = unknown
+		opslog.Project = unknown
+		opslog.ProjectDomainId = unknown
+		opslog.ProjectDomain = unknown
+		opslog.UserId = unknown
+		opslog.User = unknown
+		opslog.DomainId = unknown
+		opslog.Domain = unknown
+		opslog.Roles = unknown
+	} else {
+		opslog.ProjectId = userCred.GetProjectId()
+		opslog.Project = userCred.GetProjectName()
+		opslog.ProjectDomainId = userCred.GetProjectDomainId()
+		opslog.ProjectDomain = userCred.GetProjectDomain()
+		opslog.UserId = userCred.GetUserId()
+		opslog.User = userCred.GetUserName()
+		opslog.DomainId = userCred.GetDomainId()
+		opslog.Domain = userCred.GetDomainName()
+		opslog.Roles = strings.Join(userCred.GetRoles(), ",")
 	}
 	opslog.SetModelManager(OpsLog, opslog)
 
@@ -188,10 +195,18 @@ func (manager *SOpsLogManager) LogEvent(model IModel, action string, notes inter
 		}
 	}
 
-	err := manager.TableSpec().Insert(context.Background(), opslog)
+	opslogWriteWorkerMan.Run(opslog, nil, nil)
+}
+
+func (opslog *SOpsLog) Run() {
+	err := OpsLog.TableSpec().Insert(context.Background(), opslog)
 	if err != nil {
 		log.Errorf("fail to insert opslog: %s", err)
 	}
+}
+
+func (opslog *SOpsLog) Dump() string {
+	return fmt.Sprintf("[%s] %s %s", timeutils.CompactTime(opslog.OpsTime), opslog.Action, opslog.Notes)
 }
 
 func combineNotes(ctx context.Context, m2 IModel, notes jsonutils.JSONObject) *jsonutils.JSONDict {
@@ -250,20 +265,6 @@ func (manager *SOpsLogManager) ListItemFilter(
 	userCred mcclient.TokenCredential,
 	input apis.OpsLogListInput,
 ) (*sqlchemy.SQuery, error) {
-	for idx, projectId := range input.OwnerProjectIds {
-		projObj, err := DefaultProjectFetcher(ctx, projectId)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return nil, httperrors.NewResourceNotFoundError2("project", projectId)
-			} else {
-				return nil, httperrors.NewGeneralError(err)
-			}
-		}
-		input.OwnerProjectIds[idx] = projObj.GetId()
-	}
-	if len(input.OwnerProjectIds) > 0 {
-		q = q.Filter(sqlchemy.In(q.Field("owner_tenant_id"), input.OwnerProjectIds))
-	}
 	for idx, domainId := range input.OwnerDomainIds {
 		domainObj, err := DefaultDomainFetcher(ctx, domainId)
 		if err != nil {
@@ -277,6 +278,24 @@ func (manager *SOpsLogManager) ListItemFilter(
 	}
 	if len(input.OwnerDomainIds) > 0 {
 		q = q.Filter(sqlchemy.In(q.Field("owner_domain_id"), input.OwnerDomainIds))
+	}
+	for idx, projectId := range input.OwnerProjectIds {
+		domainId := ""
+		if len(input.OwnerDomainIds) == 1 {
+			domainId = input.OwnerDomainIds[0]
+		}
+		projObj, err := DefaultProjectFetcher(ctx, projectId, domainId)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, httperrors.NewResourceNotFoundError2("project", projectId)
+			} else {
+				return nil, httperrors.NewGeneralError(err)
+			}
+		}
+		input.OwnerProjectIds[idx] = projObj.GetId()
+	}
+	if len(input.OwnerProjectIds) > 0 {
+		q = q.Filter(sqlchemy.In(q.Field("owner_tenant_id"), input.OwnerProjectIds))
 	}
 	if len(input.ObjTypes) > 0 {
 		if len(input.ObjTypes) == 1 {
@@ -343,58 +362,35 @@ func (manager *SOpsLogManager) LogSyncUpdate(m IModel, uds sqlchemy.UpdateDiffs,
 	}
 }
 
-func (manager *SOpsLogManager) AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return true
-}
-
-func (manager *SOpsLogManager) AllowCreateItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return false
-}
-
-func (self *SOpsLog) AllowGetDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAllowGet(rbacutils.ScopeSystem, userCred, self) || ((userCred.GetProjectDomainId() == self.OwnerDomainId || userCred.GetProjectDomainId() == self.ProjectDomainId) && IsAllowGet(rbacutils.ScopeDomain, userCred, self)) || userCred.GetProjectId() == self.ProjectId || userCred.GetProjectId() == self.OwnerProjectId
-}
-
-func (self *SOpsLog) AllowUpdateItem(ctx context.Context, userCred mcclient.TokenCredential) bool {
-	return false
-}
-
-func (self *SOpsLog) AllowDeleteItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return false
-}
-
-func (self *SOpsLog) ValidateDeleteCondition(ctx context.Context, info jsonutils.JSONObject) error {
-	return httperrors.NewForbiddenError("not allow to delete log")
-}
-
-func (self *SOpsLogManager) FilterById(q *sqlchemy.SQuery, idStr string) *sqlchemy.SQuery {
-	id, _ := strconv.Atoi(idStr)
-	return q.Equals("id", id)
-}
-
-func (self *SOpsLogManager) FilterByNotId(q *sqlchemy.SQuery, idStr string) *sqlchemy.SQuery {
-	id, _ := strconv.Atoi(idStr)
-	return q.NotEquals("id", id)
-}
-
-func (self *SOpsLogManager) FilterByName(q *sqlchemy.SQuery, name string) *sqlchemy.SQuery {
-	return q
-}
-
-func (self *SOpsLogManager) FilterByOwner(q *sqlchemy.SQuery, ownerId mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (self *SOpsLogManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	if ownerId != nil {
 		switch scope {
-		case rbacutils.ScopeUser:
+		case rbacscope.ScopeUser:
 			if len(ownerId.GetUserId()) > 0 {
+				/*
+				 * 默认只能查看本人发起的操作
+				 */
 				q = q.Filter(sqlchemy.Equals(q.Field("user_id"), ownerId.GetUserId()))
 			}
-		case rbacutils.ScopeProject:
+		case rbacscope.ScopeProject:
 			if len(ownerId.GetProjectId()) > 0 {
-				q = q.Filter(sqlchemy.Equals(q.Field("tenant_id"), ownerId.GetProjectId()))
+				/*
+				 * 项目视图可以查看本项目人员发起的操作，或者对本项目资源实施的操作, QIU Jian
+				 */
+				q = q.Filter(sqlchemy.OR(
+					sqlchemy.Equals(q.Field("tenant_id"), ownerId.GetProjectId()),
+					sqlchemy.Equals(q.Field("owner_tenant_id"), ownerId.GetProjectId()),
+				))
 			}
-		case rbacutils.ScopeDomain:
+		case rbacscope.ScopeDomain:
 			if len(ownerId.GetProjectDomainId()) > 0 {
-				q = q.Filter(sqlchemy.Equals(q.Field("project_domain_id"), ownerId.GetProjectDomainId()))
+				/*
+				 * 域视图可以查看本域人员发起的操作，或者对本域资源实施的操作, QIU Jian
+				 */
+				q = q.Filter(sqlchemy.OR(
+					sqlchemy.Equals(q.Field("project_domain_id"), ownerId.GetProjectDomainId()),
+					sqlchemy.Equals(q.Field("owner_domain_id"), ownerId.GetProjectDomainId()),
+				))
 			}
 		default:
 			// systemScope, no filter
@@ -421,16 +417,8 @@ func (self *SOpsLog) IsSharable(reqCred mcclient.IIdentityProvider) bool {
 	return false
 }
 
-func (manager *SOpsLogManager) ResourceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeUser
-}
-
-func (manager *SOpsLogManager) GetPagingConfig() *SPagingConfig {
-	return &SPagingConfig{
-		Order:        sqlchemy.SQL_ORDER_DESC,
-		MarkerFields: []string{"id"},
-		DefaultLimit: 20,
-	}
+func (manager *SOpsLogManager) ResourceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeUser
 }
 
 func (manager *SOpsLogManager) FetchOwnerId(ctx context.Context, data jsonutils.JSONObject) (mcclient.IIdentityProvider, error) {
@@ -469,6 +457,11 @@ func (log *SOpsLog) CustomizeCreate(ctx context.Context,
 	log.ProjectDomain = ownerId.GetProjectDomain()
 	log.ProjectDomainId = ownerId.GetProjectDomainId()
 	return log.SModelBase.CustomizeCreate(ctx, userCred, ownerId, query, data)
+}
+
+// override
+func (log *SOpsLog) GetRecordTime() time.Time {
+	return log.OpsTime
 }
 
 func (manager *SOpsLogManager) FetchCustomizeColumns(

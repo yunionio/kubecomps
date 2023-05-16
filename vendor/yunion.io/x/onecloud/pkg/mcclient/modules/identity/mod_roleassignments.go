@@ -19,6 +19,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/onecloud/pkg/httperrors"
@@ -116,9 +117,10 @@ type sGroupRole struct {
 }
 
 type sProjectGroupRole struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
-	Domain struct {
+	Id       string            `json:"id"`
+	Name     string            `json:"name"`
+	Metadata map[string]string `json:"metadata"`
+	Domain   struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"domain"`
@@ -345,9 +347,11 @@ func (this *RoleAssignmentManagerV3) GetProjectRole(s *mcclient.ClientSession, i
 
 		var groupById, groupByName, groupByDomainId, groupByDomainName string
 
+		metadatas := map[string]string{}
 		if groupBy == "project" {
 			groupById, _ = roleAssign.GetString("scope", "project", "id")
 			groupByName, _ = roleAssign.GetString("scope", "project", "name")
+			roleAssign.Unmarshal(&metadatas, "scope", "project", "metadata")
 			groupByDomainId, _ = roleAssign.GetString("scope", "project", "domain", "id")
 			groupByDomainName, _ = roleAssign.GetString("scope", "project", "domain", "name")
 		} else if groupBy == "user" {
@@ -376,8 +380,9 @@ func (this *RoleAssignmentManagerV3) GetProjectRole(s *mcclient.ClientSession, i
 		if lineIdx < 0 {
 			lineIdx = len(lines)
 			pgr := sProjectGroupRole{
-				Id:   groupById,
-				Name: groupByName,
+				Id:       groupById,
+				Name:     groupByName,
+				Metadata: metadatas,
 			}
 			pgr.Domain.Id = groupByDomainId
 			pgr.Domain.Name = groupByDomainName
@@ -394,6 +399,42 @@ func (this *RoleAssignmentManagerV3) GetProjectRole(s *mcclient.ClientSession, i
 	data.Add(lineJson, "data")
 	data.Add(jsonutils.NewInt(int64(len(lines))), "total")
 	return data, nil
+}
+
+func (man *RoleAssignmentManagerV3) GetUserIdsByRolesInScope(s *mcclient.ClientSession, roleIds []string, roleScope rbacscope.TRbacScope, scopeId string) ([]string, error) {
+	query := jsonutils.NewDict()
+	query.Set("roles", jsonutils.Marshal(roleIds))
+	query.Set("effective", jsonutils.JSONTrue)
+	switch roleScope {
+	case rbacscope.ScopeSystem:
+	case rbacscope.ScopeDomain:
+		if scopeId == "" {
+			return nil, errors.Errorf("need projectDomainId")
+		}
+		query.Set("project_domain_id", jsonutils.NewString(scopeId))
+	case rbacscope.ScopeProject:
+		if scopeId == "" {
+			return nil, errors.Errorf("need projectId")
+		}
+		query.Add(jsonutils.NewString(scopeId), "scope", "project", "id")
+	}
+	ret, err := man.List(s, query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "list RoleAssignments with query %s", query.String())
+	}
+	users := make([]string, 0)
+	for i := range ret.Data {
+		ras := ret.Data[i]
+		user, err := ras.Get("user")
+		if err == nil {
+			id, err := user.GetString("id")
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to get user.id from result of RoleAssignments.List")
+			}
+			users = append(users, id)
+		}
+	}
+	return users, nil
 }
 
 func init() {
