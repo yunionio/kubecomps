@@ -1640,7 +1640,10 @@ yunion.io/x/s3cli
 # yunion.io/x/sqlchemy v1.1.2-0.20230512065832-5323af46107e
 ## explicit; go 1.17
 yunion.io/x/sqlchemy
+yunion.io/x/sqlchemy/backends
 yunion.io/x/sqlchemy/backends/clickhouse
+yunion.io/x/sqlchemy/backends/mysql
+yunion.io/x/sqlchemy/backends/sqlite
 # yunion.io/x/structarg v0.0.0-20220312084958-9c6c79c7d1c6
 ## explicit; go 1.12
 yunion.io/x/structarg

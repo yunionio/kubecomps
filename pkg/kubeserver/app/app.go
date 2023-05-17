@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "yunion.io/x/sqlchemy/backends"
 
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/cloudcommon"
