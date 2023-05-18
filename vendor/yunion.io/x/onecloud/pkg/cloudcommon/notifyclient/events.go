@@ -56,12 +56,17 @@ var (
 	ActionCreateBackupServer = api.ActionCreateBackupServer
 	ActionDelBackupServer    = api.ActionDelBackupServer
 	ActionSyncStatus         = api.ActionSyncStatus
+	ActionNetOutOfSync       = api.ActionNetOutOfSync
+	ActionMysqlOutOfSync     = api.ActionMysqlOutOfSync
+	ActionServiceAbnormal    = api.ActionServiceAbnormal
+	ActionServerPanicked     = api.ActionServerPanicked
 
 	ActionPendingDelete = api.ActionPendingDelete
 
-	ActionSyncCreate = api.ActionSyncCreate
-	ActionSyncUpdate = api.ActionSyncUpdate
-	ActionSyncDelete = api.ActionSyncDelete
+	ActionSyncCreate        = api.ActionSyncCreate
+	ActionSyncUpdate        = api.ActionSyncUpdate
+	ActionSyncDelete        = api.ActionSyncDelete
+	ActionSyncAccountStatus = api.ActionSyncAccountStatus
 )
 
 type SEvent struct {

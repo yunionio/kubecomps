@@ -14,14 +14,24 @@
 
 package compute
 
-import "yunion.io/x/onecloud/pkg/apis"
+import (
+	"yunion.io/x/cloudmux/pkg/apis/compute"
+
+	"yunion.io/x/onecloud/pkg/apis"
+)
 
 const (
-	EXTERNAL_PROJECT_STATUS_AVAILABLE   = "available"   // 可用
-	EXTERNAL_PROJECT_STATUS_UNAVAILABLE = "unavailable" // 不可用
-	EXTERNAL_PROJECT_STATUS_CREATING    = "creating"    // 创建中
-	EXTERNAL_PROJECT_STATUS_DELETING    = "deleting"    // 删除中
-	EXTERNAL_PROJECT_STATUS_UNKNOWN     = "unknown"     // 未知
+	EXTERNAL_PROJECT_STATUS_AVAILABLE   = compute.EXTERNAL_PROJECT_STATUS_AVAILABLE   // 可用
+	EXTERNAL_PROJECT_STATUS_UNAVAILABLE = compute.EXTERNAL_PROJECT_STATUS_UNAVAILABLE // 不可用
+	EXTERNAL_PROJECT_STATUS_CREATING    = compute.EXTERNAL_PROJECT_STATUS_CREATING    // 创建中
+	EXTERNAL_PROJECT_STATUS_DELETING    = compute.EXTERNAL_PROJECT_STATUS_DELETING    // 删除中
+	EXTERNAL_PROJECT_STATUS_UNKNOWN     = compute.EXTERNAL_PROJECT_STATUS_UNKNOWN     // 未知
+)
+
+var (
+	MANGER_EXTERNAL_PROJECT_PROVIDERS = []string{
+		CLOUD_PROVIDER_AZURE,
+	}
 )
 
 type ExternalProjectDetails struct {
@@ -32,5 +42,16 @@ type ExternalProjectDetails struct {
 }
 
 type ExternalProjectChangeProjectInput struct {
+	apis.DomainizedResourceInput
 	apis.ProjectizedResourceInput
+}
+
+type ExternalProjectCreateInput struct {
+	apis.VirtualResourceCreateInput
+
+	CloudaccountId string `json:"cloudaccount_id"`
+	ManagerId      string `json:"manager_id"`
+
+	// swagger:ignore
+	ExternalId string `json:"external_id"`
 }

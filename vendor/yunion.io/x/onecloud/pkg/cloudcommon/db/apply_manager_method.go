@@ -18,10 +18,10 @@ import (
 	"context"
 
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -66,17 +66,20 @@ func ApplyQueryDistinctExtraField(
 }
 
 type FilterByOwnerProvider interface {
-	FilterByOwner(q *sqlchemy.SQuery, owner mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery
+	Keyword() string
+	KeywordPlural() string
+	FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery
 }
 
 func ApplyFilterByOwner(
 	q *sqlchemy.SQuery,
+	userCred mcclient.TokenCredential,
 	owner mcclient.IIdentityProvider,
-	scope rbacutils.TRbacScope,
+	scope rbacscope.TRbacScope,
 	managers ...FilterByOwnerProvider,
 ) *sqlchemy.SQuery {
 	for _, manager := range managers {
-		q = manager.FilterByOwner(q, owner, scope)
+		q = manager.FilterByOwner(q, manager, userCred, owner, scope)
 	}
 	return q
 }

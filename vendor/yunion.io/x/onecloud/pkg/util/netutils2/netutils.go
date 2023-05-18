@@ -23,7 +23,6 @@ import (
 	"strings"
 	"unicode"
 
-	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/netutils"
@@ -34,7 +33,8 @@ import (
 )
 
 var PSEUDO_VIP = "169.254.169.231"
-var MASKS = []string{"0", "128", "192", "224", "240", "248", "252", "254", "255"}
+
+// var MASKS = []string{"0", "128", "192", "224", "240", "248", "252", "254", "255"}
 
 var PRIVATE_PREFIXES = []string{
 	"10.0.0.0/8",
@@ -43,16 +43,7 @@ var PRIVATE_PREFIXES = []string{
 }
 
 func GetFreePort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return 0, err
-	}
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
+	return netutils.GetFreePort()
 }
 
 func IsTcpPortUsed(addr string, port int) bool {
@@ -135,73 +126,8 @@ func GetMainNicFromDeployApi(nics []*types.SServerNic) (*types.SServerNic, error
 	return nil, errors.Wrap(errors.ErrInvalidStatus, "no valid nic")
 }
 
-func GetMainNic(nics []jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	var mainIp netutils.IPV4Addr
-	var mainNic jsonutils.JSONObject
-	for _, n := range nics {
-		if n.Contains("gateway") {
-			ip, _ := n.GetString("ip")
-			ipInt, err := netutils.NewIPV4Addr(ip)
-			if err != nil {
-				return nil, err
-			}
-			if mainIp == 0 {
-				mainIp = ipInt
-				mainNic = n
-			} else if !netutils.IsPrivate(ipInt) && netutils.IsPrivate(mainIp) {
-				mainIp = ipInt
-				mainNic = n
-			}
-		}
-	}
-	if mainNic != nil {
-		return mainNic, nil
-	}
-	for _, n := range nics {
-		ip, _ := n.GetString("ip")
-		ipInt, err := netutils.NewIPV4Addr(ip)
-		if err != nil {
-			return nil, errors.Wrapf(err, "netutils.NewIPV4Addr %s", ip)
-		}
-		if mainIp == 0 {
-			mainIp = ipInt
-			mainNic = n
-		} else if !netutils.IsPrivate(ipInt) && netutils.IsPrivate(mainIp) {
-			mainIp = ipInt
-			mainNic = n
-		}
-	}
-	if mainNic != nil {
-		return mainNic, nil
-	}
-	return nil, errors.Wrap(errors.ErrInvalidStatus, "no valid nic")
-}
-
 func Netlen2Mask(netmasklen int) string {
-	var mask = ""
-	var segCnt = 0
-	for netmasklen > 0 {
-		var m string
-		if netmasklen > 8 {
-			m = MASKS[8]
-			netmasklen -= 8
-		} else {
-			m = MASKS[netmasklen]
-			netmasklen = 0
-		}
-		if mask != "" {
-			mask += "."
-		}
-		mask += m
-		segCnt += 1
-	}
-	for i := 0; i < (4 - segCnt); i++ {
-		if mask != "" {
-			mask += "."
-		}
-		mask += "0"
-	}
-	return mask
+	return netutils.Netlen2Mask(netmasklen)
 }
 
 func addRoute(routes *[][]string, net, gw string) {
@@ -346,12 +272,20 @@ func (n *SNetInterface) fetchConfig(expectIp string) {
 
 }
 
-func (n *SNetInterface) DisableGso() {
+// https://kris.io/2015/10/01/kvm-network-performance-tso-and-gso-turn-it-off/
+// General speaking, it is recommended to turn of GSO
+// however, this will degrade host network performance
+func (n *SNetInterface) SetupGso(on bool) {
+	onoff := "off"
+	if on {
+		onoff = "on"
+	}
 	procutils.NewCommand(
 		"ethtool", "-K", n.name,
-		"tso", "off", "gso", "off",
-		"gro", "off", "tx", "off",
-		"rx", "off", "sg", "off").Run()
+		"tso", onoff, "gso", onoff,
+		"ufo", onoff, "lro", onoff,
+		"gro", onoff, "tx", onoff,
+		"rx", onoff, "sg", onoff).Run()
 }
 
 func (n *SNetInterface) IsSecretInterface() bool {

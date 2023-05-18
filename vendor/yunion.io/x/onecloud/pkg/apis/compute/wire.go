@@ -17,11 +17,14 @@ package compute
 import "yunion.io/x/onecloud/pkg/apis"
 
 type WireCreateInput struct {
-	apis.InfrasResourceBaseCreateInput
+	apis.StatusInfrasResourceBaseCreateInput
 
 	// 带宽大小,单位: Mbps
 	// default: 0
 	Bandwidth int `json:"bandwidth"`
+
+	// Deprecated
+	Bw int `json:"bw" yunion-deprecated-by:"bandwidth"`
 
 	// mtu
 	// minimum: 0
@@ -34,19 +37,35 @@ type WireCreateInput struct {
 	ZoneResourceInput
 }
 
-type WireDetails struct {
-	apis.InfrasResourceBaseDetails
-	VpcResourceInfo
-	ZoneResourceInfoBase
-
-	SWire
-
+type WireUsage struct {
 	// IP子网数量
 	// example: 1
 	Networks int `json:"networks"`
 	// Host数量
 	// example: 1
 	HostCount int `json:"host_count"`
+}
+
+type WireDetails struct {
+	apis.StatusInfrasResourceBaseDetails
+	VpcResourceInfo
+	ZoneResourceInfoBase
+
+	SWire
+
+	WireUsage
+}
+
+func (self WireDetails) GetMetricTags() map[string]string {
+	ret := map[string]string{
+		"id":             self.Id,
+		"wire_name":      self.Name,
+		"brand":          self.Brand,
+		"domain_id":      self.DomainId,
+		"project_domain": self.ProjectDomain,
+		"external_id":    self.ExternalId,
+	}
+	return ret
 }
 
 type WireResourceInfoBase struct {
@@ -81,7 +100,7 @@ type WireUpdateInput struct {
 }
 
 type WireListInput struct {
-	apis.InfrasResourceBaseListInput
+	apis.StatusInfrasResourceBaseListInput
 	apis.ExternalizedResourceBaseListInput
 
 	VpcFilterListInput
@@ -92,6 +111,10 @@ type WireListInput struct {
 
 	Bandwidth *int   `json:"bandwidth"`
 	HostType  string `json:"host_type"`
+
+	// 按子网数量排序
+	// pattern:asc|desc
+	OrderByNetworkCount string `json:"order_by_network_count"`
 }
 
 type WireMergeInput struct {
@@ -114,4 +137,7 @@ type WireMergeFromInput struct {
 }
 
 type WireMergeNetworkInput struct {
+}
+
+type WireTopologyInput struct {
 }

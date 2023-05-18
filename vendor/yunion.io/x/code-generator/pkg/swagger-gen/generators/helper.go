@@ -200,6 +200,7 @@ func (f *paramterFactory) Create() *parameter {
 	query := f.method.Params(3)
 	body := f.method.Params(4)
 	p := f.newParameter()
+	p.bodyWithCount = true
 	if err := isValidType(body); err == nil {
 		p.body = body
 	} else {
@@ -327,12 +328,13 @@ func (f *paramterFactory) GetProperty() *parameter {
 }
 
 type parameter struct {
-	singular    string
-	plural      string
-	operationId string
-	withId      bool
-	query       *types.Type
-	body        *types.Type
+	singular      string
+	plural        string
+	operationId   string
+	withId        bool
+	query         *types.Type
+	body          *types.Type
+	bodyWithCount bool
 
 	paths map[string]string
 
@@ -413,7 +415,12 @@ func (r parameter) do(sw *generator.SnippetWriter, h *snippetWriter) {
 		if r.singular != "" {
 			sw.Do("Body struct {", nil)
 			sw.Do(fmt.Sprintf("Input $.type|raw$ `json:\"%s\"`\n", r.singular), args)
-			sw.Do("} `json:\"body\"`", nil)
+			if r.bodyWithCount {
+				sw.Do("// default: 1\n", nil)
+				sw.Do(fmt.Sprintf("// The create count of %s\n", r.singular), nil)
+				sw.Do("Count int `json:\"count\"`\n", nil)
+			}
+			sw.Do("} `json:\"body\"`\n", nil)
 			//sw.Do(fmt.Sprintf("Body $.type|raw$ `json:\"%s\"`\n", r.singular), args)
 		} else {
 			sw.Do("Body $.type|raw$ `json:\"body\"`", args)

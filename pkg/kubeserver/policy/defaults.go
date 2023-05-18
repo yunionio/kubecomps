@@ -3,6 +3,7 @@ package policy
 import (
 	common_policy "yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/util/rbacutils"
+	"yunion.io/x/pkg/util/rbacscope"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
 )
@@ -20,7 +21,7 @@ var (
 	preDefinedDefaultPolicies = []rbacutils.SRbacPolicy{
 		{
 			Auth:  true,
-			Scope: rbacutils.ScopeDomain,
+			Scope: rbacscope.ScopeDomain,
 			Rules: []rbacutils.SRbacRule{
 				{
 					Service: constants.ServiceType,

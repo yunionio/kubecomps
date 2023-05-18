@@ -14,7 +14,11 @@
 
 package notify
 
-import "yunion.io/x/onecloud/pkg/apis"
+import (
+	"yunion.io/x/pkg/errors"
+
+	"yunion.io/x/onecloud/pkg/apis"
+)
 
 const (
 	SERVICE_TYPE    = apis.SERVICE_TYPE_NOTIFY
@@ -30,6 +34,8 @@ const (
 	DINGTALK_ROBOT = "dingtalk-robot"
 	WORKWX_ROBOT   = "workwx-robot"
 	WEBHOOK        = "webhook"
+	WEBHOOK_ROBOT  = "webhook-robot"
+	WEBSOCKET      = "websocket"
 
 	ROBOT = "robot"
 
@@ -86,36 +92,51 @@ const (
 
 	TOPIC_TYPE_RESOURCE          = "resource"
 	TOPIC_TYPE_AUTOMATED_PROCESS = "automated_process"
+	TOPIC_TYPE_SECURITY          = "security"
 
-	TOPIC_RESOURCE_SERVER                  = "server"
-	TOPIC_RESOURCE_SCALINGGROUP            = "scalinggroup"
-	TOPIC_RESOURCE_SCALINGPOLICY           = "scalingpolicy"
-	TOPIC_RESOURCE_IMAGE                   = "image"
-	TOPIC_RESOURCE_DISK                    = "disk"
-	TOPIC_RESOURCE_SNAPSHOT                = "snapshot"
-	TOPIC_RESOURCE_INSTANCESNAPSHOT        = "instance_snapshot"
-	TOPIC_RESOURCE_SNAPSHOTPOLICY          = "snapshotpolicy"
-	TOPIC_RESOURCE_NETWORK                 = "network"
-	TOPIC_RESOURCE_EIP                     = "eip"
-	TOPIC_RESOURCE_SECGROUP                = "secgroup"
-	TOPIC_RESOURCE_LOADBALANCER            = "loadbalancer"
-	TOPIC_RESOURCE_LOADBALANCERACL         = "loadbalanceracl"
-	TOPIC_RESOURCE_LOADBALANCERCERTIFICATE = "loadbalancercertificate"
-	TOPIC_RESOURCE_BUCKET                  = "bucket"
-	TOPIC_RESOURCE_DBINSTANCE              = "dbinstance"
-	TOPIC_RESOURCE_ELASTICCACHE            = "elasticcache"
-	TOPIC_RESOURCE_SCHEDULEDTASK           = "scheduledtask"
-	TOPIC_RESOURCE_BAREMETAL               = "baremetal"
-	TOPIC_RESOURCE_VPC                     = "vpc"
-	TOPIC_RESOURCE_DNSZONE                 = "dns_zone"
-	TOPIC_RESOURCE_NATGATEWAY              = "natgateway"
-	TOPIC_RESOURCE_WEBAPP                  = "webapp"
-	TOPIC_RESOURCE_CDNDOMAIN               = "cdn_domain"
-	TOPIC_RESOURCE_FILESYSTEM              = "file_system"
-	TOPIC_RESOURCE_WAF                     = "waf_instance"
-	TOPIC_RESOURCE_KAFKA                   = "kafka"
-	TOPIC_RESOURCE_ELASTICSEARCH           = "elastic_search"
-	TOPIC_RESOURCE_MONGODB                 = "mongodb"
+	TOPIC_RESOURCE_SERVER                   = "server"
+	TOPIC_RESOURCE_SCALINGGROUP             = "scalinggroup"
+	TOPIC_RESOURCE_SCALINGPOLICY            = "scalingpolicy"
+	TOPIC_RESOURCE_IMAGE                    = "image"
+	TOPIC_RESOURCE_DISK                     = "disk"
+	TOPIC_RESOURCE_SNAPSHOT                 = "snapshot"
+	TOPIC_RESOURCE_INSTANCESNAPSHOT         = "instance_snapshot"
+	TOPIC_RESOURCE_SNAPSHOTPOLICY           = "snapshotpolicy"
+	TOPIC_RESOURCE_NETWORK                  = "network"
+	TOPIC_RESOURCE_EIP                      = "eip"
+	TOPIC_RESOURCE_SECGROUP                 = "secgroup"
+	TOPIC_RESOURCE_LOADBALANCER             = "loadbalancer"
+	TOPIC_RESOURCE_LOADBALANCERACL          = "loadbalanceracl"
+	TOPIC_RESOURCE_LOADBALANCERCERTIFICATE  = "loadbalancercertificate"
+	TOPIC_RESOURCE_BUCKET                   = "bucket"
+	TOPIC_RESOURCE_DBINSTANCE               = "dbinstance"
+	TOPIC_RESOURCE_ELASTICCACHE             = "elasticcache"
+	TOPIC_RESOURCE_SCHEDULEDTASK            = "scheduledtask"
+	TOPIC_RESOURCE_BAREMETAL                = "baremetal"
+	TOPIC_RESOURCE_VPC                      = "vpc"
+	TOPIC_RESOURCE_DNSZONE                  = "dns_zone"
+	TOPIC_RESOURCE_NATGATEWAY               = "natgateway"
+	TOPIC_RESOURCE_WEBAPP                   = "webapp"
+	TOPIC_RESOURCE_CDNDOMAIN                = "cdn_domain"
+	TOPIC_RESOURCE_FILESYSTEM               = "file_system"
+	TOPIC_RESOURCE_WAF                      = "waf_instance"
+	TOPIC_RESOURCE_KAFKA                    = "kafka"
+	TOPIC_RESOURCE_ELASTICSEARCH            = "elastic_search"
+	TOPIC_RESOURCE_MONGODB                  = "mongodb"
+	TOPIC_RESOURCE_DNSRECORDSET             = "dns_recordset"
+	TOPIC_RESOURCE_LOADBALANCERLISTENER     = "loadbalancerlistener"
+	TOPIC_RESOURCE_LOADBALANCERBACKEDNGROUP = "loadbalancerbackendgroup"
+	TOPIC_RESOURCE_HOST                     = "host"
+	TOPIC_RESOURCE_TASK                     = "task"
+	TOPIC_RESOURCE_DB_TABLE_RECORD          = "db_table_record"
+	TOPIC_RESOURCE_CLOUDPODS_COMPONENT      = "cloudpods_component"
+	TOPIC_RESOURCE_USER                     = "user"
+	TOPIC_RESOURCE_ACTION_LOG               = "action_log"
+	TOPIC_RESOURCE_ACCOUNT_STATUS           = "account"
+	TOPIC_RESOURCE_WORKER                   = "worker"
+	TOPIC_RESOURCE_NET                      = "net"
+	TOPIC_RESOURCE_SERVICE                  = "service"
+	TOPIC_RESOURCE_VM_INTEGRITY_CHECK       = "vm_integrity"
 
 	SUBSCRIBER_TYPE_ROLE     = "role"
 	SUBSCRIBER_TYPE_ROBOT    = "robot"
@@ -124,4 +145,9 @@ const (
 	SUBSCRIBER_SCOPE_SYSTEM  = "system"
 	SUBSCRIBER_SCOPE_DOMAIN  = "domain"
 	SUBSCRIBER_SCOPE_PROJECT = "project"
+)
+
+var (
+	ErrNoSuchMobile     = errors.Error("no such mobile")
+	ErrIncompleteConfig = errors.Error("incomplete config")
 )

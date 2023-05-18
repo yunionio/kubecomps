@@ -123,11 +123,27 @@ type HostListInput struct {
 	// 虚拟机所在的二层网络
 	ServerIdForNetwork string `json:"server_id_for_network"`
 	// 宿主机 cpu 架构
-	CpuArchitecture string `json:"cpu_architecture"`
+	CpuArchitecture []string `json:"cpu_architecture"`
+	OsArch          string   `json:"os_arch"`
 
 	// 按虚拟机数量排序
 	// enum: asc,desc
 	OrderByServerCount string `json:"order_by_server_count"`
+	// 按存储大小排序
+	// enmu: asc,desc
+	OrderByStorage string `json:"order_by_storage"`
+
+	// 按存储超分率排序
+	// enmu: asc,desc
+	OrderByStorageCommitRate string `json:"order_by_storage_commit_rate"`
+
+	// 按cpu超分率排序
+	// enmu: asc,desc
+	OrderByCpuCommitRate string `json:"order_by_cpu_commit_rate"`
+
+	// 按内存超分率排序
+	// enmu: asc,desc
+	OrderByMemCommitRate string `json:"order_by_mem_commit_rate"`
 }
 
 type HostDetails struct {
@@ -153,13 +169,22 @@ type HostDetails struct {
 	MemCommit int `json:"mem_commit"`
 	// 云主机数量
 	// example: 10
-	Guests int `json:"guests"`
+	Guests int `json:"guests,allowempty"`
 	// 非系统云主机数量
 	// example: 0
-	NonsystemGuests int `json:"nonsystem_guests"`
-	// 运行中云主机数量
+	NonsystemGuests int `json:"nonsystem_guests,allowempty"`
+	// 运行状态云主机数量
 	// example: 2
-	RunningGuests int `json:"running_guests"`
+	RunningGuests int `json:"running_guests,allowempty"`
+	// 关机状态云主机数量
+	// example: 2
+	ReadyGuests int `json:"ready_guests,allowempty"`
+	// 其他状态云主机数量
+	// example: 2
+	OtherGuests int `json:"other_guests,allowempty"`
+	// 回收站中云主机数量
+	// example: 2
+	PendingDeletedGuests int `json:"pending_deleted_guests,allowempty"`
 	// CPU超分率
 	CpuCommitRate float64 `json:"cpu_commit_rate"`
 	// 内存超分率
@@ -167,7 +192,7 @@ type HostDetails struct {
 	// CPU超售比
 	CpuCommitBound float32 `json:"cpu_commit_bound"`
 	// 内存超售比
-	MemCommitBound float32 `json:"mem_commint_bound"`
+	MemCommitBound float32 `json:"mem_commit_bound"`
 	// 存储大小
 	Storage int64 `json:"storage"`
 	// 已使用存储大小
@@ -188,8 +213,9 @@ type HostDetails struct {
 	CanPrepare        bool                `json:"can_prepare"`
 	PrepareFailReason string              `json:"prepare_fail_reason"`
 	// 允许开启宿主机健康检查
-	AllowHealthCheck      bool `json:"allow_health_check"`
-	AutoMigrateOnHostDown bool `json:"auto_migrate_on_host_down"`
+	AllowHealthCheck          bool `json:"allow_health_check"`
+	AutoMigrateOnHostDown     bool `json:"auto_migrate_on_host_down"`
+	AutoMigrateOnHostShutdown bool `json:"auto_migrate_on_host_shutdown"`
 
 	// reserved resource for isolated device
 	ReservedResourceForGpu IsolatedDeviceReservedResourceInput `json:"reserved_resource_for_gpu"`
@@ -200,6 +226,35 @@ type HostDetails struct {
 	SysWarn string `json:"sys_warn"`
 	// host init error info
 	SysError string `json:"sys_error"`
+}
+
+func (self HostDetails) GetMetricTags() map[string]string {
+	ret := map[string]string{
+		"id":             self.Id,
+		"host_id":        self.Id,
+		"host_ip":        self.AccessIp,
+		"host":           self.Name,
+		"zone":           self.Zone,
+		"zone_id":        self.ZoneId,
+		"zone_ext_id":    self.ZoneExtId,
+		"status":         self.Status,
+		"cloudregion":    self.Cloudregion,
+		"cloudregion_id": self.CloudregionId,
+		"region_ext_id":  self.RegionExtId,
+		"brand":          self.Brand,
+		"domain_id":      self.DomainId,
+		"project_domain": self.ProjectDomain,
+		"account":        self.Account,
+		"res_type":       "host",
+		"account_id":     self.AccountId,
+		"external_id":    self.ExternalId,
+	}
+	return ret
+}
+
+func (self HostDetails) GetMetricPairs() map[string]string {
+	ret := map[string]string{}
+	return ret
 }
 
 type HostResourceInfo struct {
@@ -218,6 +273,9 @@ type HostResourceInfo struct {
 
 	// 宿主机序列号
 	HostSN string `json:"host_sn"`
+
+	// 宿主是否启用
+	HostEnabled bool `json:"host_enabled"`
 
 	// 宿主机状态
 	HostStatus string `json:"host_status"`
@@ -311,6 +369,8 @@ type HostSizeAttributes struct {
 	MemReserved string `json:"mem_reserved"`
 	// 内存超分比
 	MemCmtbound *float32 `json:"mem_cmtbound"`
+	// 页大小
+	PageSizeKB *int `json:"page_size_kb"`
 
 	// 存储大小,单位Mb
 	StorageSize *int `json:"storage_size"`
@@ -347,6 +407,7 @@ type HostCreateInput struct {
 	apis.EnabledStatusInfrasResourceBaseCreateInput
 
 	ZoneResourceInput
+	HostnameInput
 
 	HostAccessAttributes
 	HostSizeAttributes
@@ -354,6 +415,9 @@ type HostCreateInput struct {
 
 	// 新建带IPMI信息的物理机时不进行IPMI信息探测
 	NoProbe *bool `json:"no_probe"`
+
+	// 物理机不带 BMC 控制器
+	NoBMC bool `json:"no_bmc"`
 
 	// host uuid
 	Uuid string `json:"uuid"`
@@ -396,6 +460,7 @@ type HostUpdateInput struct {
 	HostAccessAttributes
 	HostSizeAttributes
 	HostIpmiAttributes
+	HostnameInput
 
 	// IPMI info
 	IpmiInfo jsonutils.JSONObject `json:"ipmi_info"`
@@ -428,4 +493,37 @@ type HostUpdateInput struct {
 
 	// 主机启动模式, 可能值位PXE和ISO
 	BootMode string `json:"boot_mode"`
+}
+
+type HostOfflineInput struct {
+	UpdateHealthStatus *bool `json:"update_health_status"`
+	Reason             string
+}
+
+type SHostStorageStat struct {
+	StorageId string `json:"storage_id"`
+
+	CapacityMb           int64 `json:"capacity_mb"`
+	ActualCapacityUsedMb int64 `json:"actual_capacity_used_mb"`
+}
+
+type SHostPingInput struct {
+	WithData bool `json:"with_data"`
+
+	MemoryUsedMb int `json:"memory_used_mb"`
+
+	RootPartitionUsedCapacityMb int `json:"root_partition_used_capacity_mb"`
+
+	StorageStats []SHostStorageStat `json:"storage_stats"`
+}
+
+type HostReserveCpusInput struct {
+	Cpus                    string
+	Mems                    string
+	DisableSchedLoadBalance *bool `json:"disable_sched_load_balance"`
+}
+
+type HostAutoMigrateInput struct {
+	AutoMigrateOnHostDown     string `json:"auto_migrate_on_host_down"`
+	AutoMigrateOnHostShutdown string `json:"auto_migrate_on_host_shutdown"`
 }

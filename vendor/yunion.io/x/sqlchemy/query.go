@@ -15,88 +15,15 @@
 package sqlchemy
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/reflectutils"
 )
-
-// IQuery is an interface that reprsents a SQL query, e.g.
-// SELECT ... FROM ... WHERE ...
-type IQuery interface {
-	// queryString
-	String(fields ...IQueryField) string
-
-	// fields in the select clause
-	QueryFields() []IQueryField
-
-	// variables in statement
-	Variables() []interface{}
-
-	// convert this SQL to a subquery
-	SubQuery() *SSubQuery
-
-	// reference to a field by name
-	Field(name string) IQueryField
-}
-
-// IQuerySource is an interface that represents a data source of a SQL query. the source can be a table or a subquery
-// e.g. SELECT ... FROM (SELECT * FROM tbl) AS A
-type IQuerySource interface {
-	// string in select ... from (expresson here)
-	Expression() string
-
-	// alias in select ... from (express) as alias
-	Alias() string
-
-	// variables in statement
-	Variables() []interface{}
-
-	// reference to a field by name, optionally giving an alias name
-	Field(id string, alias ...string) IQueryField
-
-	// return all the fields that this source provides
-	Fields() []IQueryField
-}
-
-// IQueryField is an interface that represents a select field in a SQL query
-type IQueryField interface {
-	// the string after select
-	Expression() string
-
-	// the name of thie field
-	Name() string
-
-	// the reference string in where clause
-	Reference() string
-
-	// give this field an alias name
-	Label(label string) IQueryField
-
-	// return variables
-	Variables() []interface{}
-}
-
-// Expression implementation of STable for IQuerySource
-func (tbl *STable) Expression() string {
-	return tbl.spec.Expression()
-}
-
-// Alias implementation of STable for IQuerySource
-func (tbl *STable) Alias() string {
-	return tbl.alias
-}
-
-// Variables implementation of STable for IQuerySource
-func (tbl *STable) Variables() []interface{} {
-	return []interface{}{}
-}
 
 // QueryJoinType is the Join type of SQL query, namely, innerjoin, leftjoin and rightjoin
 type QueryJoinType string
@@ -132,141 +59,49 @@ type SQuery struct {
 	where    ICondition
 	groupBy  []IQueryField
 	orderBy  []sQueryOrder
-	having   ICondition
-	limit    int
-	offset   int
+	// having   ICondition
+	limit  int
+	offset int
 
 	fieldCache map[string]IQueryField
 
 	snapshot string
+
+	db *SDatabase
 }
 
-// SSubQuery represents a subquery. A subquery is a query used as a query source
-// SSubQuery should implementation IQuerySource
-// At the same time, a subquery can be used in condition. e.g. IN condition
-type SSubQuery struct {
-	query IQuery
-	alias string
-
-	referedFields map[string]IQueryField
+// IsGroupBy returns wether the query contains group by clauses
+func (tq *SQuery) IsGroupBy() bool {
+	return len(tq.groupBy) > 0
 }
 
-// SSubQueryField represents a field of subquery, which implements IQueryField
-type SSubQueryField struct {
-	field IQueryField
-	query *SSubQuery
-	alias string
-}
-
-// Expression implementation of SSubQueryField for IQueryField
-func (sqf *SSubQueryField) Expression() string {
-	if len(sqf.alias) > 0 {
-		return fmt.Sprintf("`%s`.`%s` AS `%s`", sqf.query.alias, sqf.field.Name(), sqf.alias)
+func (tq *SQuery) HasField(f IQueryField) bool {
+	if len(tq.fields) == 0 {
+		return false
 	}
-	return fmt.Sprintf("`%s`.`%s`", sqf.query.alias, sqf.field.Name())
-}
-
-// Name implementation of SSubQueryField for IQueryField
-func (sqf *SSubQueryField) Name() string {
-	if len(sqf.alias) > 0 {
-		return sqf.alias
-	}
-	return sqf.field.Name()
-}
-
-// Reference implementation of SSubQueryField for IQueryField
-func (sqf *SSubQueryField) Reference() string {
-	return fmt.Sprintf("`%s`.`%s`", sqf.query.alias, sqf.Name())
-}
-
-// Label implementation of SSubQueryField for IQueryField
-func (sqf *SSubQueryField) Label(label string) IQueryField {
-	if len(label) > 0 && label != sqf.field.Name() {
-		sqf.alias = label
-	}
-	return sqf
-}
-
-// Variables implementation of SSubQueryField for IQueryField
-func (sqf *SSubQueryField) Variables() []interface{} {
-	return nil
-}
-
-// Expression implementation of SSubQuery for IQuerySource
-func (sq *SSubQuery) Expression() string {
-	fields := make([]IQueryField, 0)
-	for k := range sq.referedFields {
-		fields = append(fields, sq.referedFields[k])
-	}
-	// Make sure the order of the fields
-	sort.Slice(fields, func(i, j int) bool {
-		return fields[i].Name() < fields[j].Name()
-	})
-	return fmt.Sprintf("(%s)", sq.query.String(fields...))
-}
-
-// Alias implementation of SSubQuery for IQuerySource
-func (sq *SSubQuery) Alias() string {
-	return sq.alias
-}
-
-// Variables implementation of SSubQuery for IQuerySource
-func (sq *SSubQuery) Variables() []interface{} {
-	return sq.query.Variables()
-}
-
-func (sq *SSubQuery) findField(id string) IQueryField {
-	if sq.referedFields == nil {
-		sq.referedFields = make(map[string]IQueryField)
-	}
-	if _, ok := sq.referedFields[id]; ok {
-		return sq.referedFields[id]
-	}
-	queryFields := sq.query.QueryFields()
-	for i := range queryFields {
-		if queryFields[i].Name() == id {
-			sq.referedFields[id] = sq.query.Field(queryFields[i].Name())
-			return sq.referedFields[id]
+	for i := range tq.fields {
+		fi := tq.fields[i]
+		// log.Debugf("field at %d: %s", i, fi.Name())
+		if fi.Name() == f.Name() {
+			return true
 		}
 	}
-	return nil
-}
-
-// Field implementation of SSubQuery for IQuerySource
-func (sq *SSubQuery) Field(id string, alias ...string) IQueryField {
-	f := sq.findField(id)
-	if f == nil {
-		return nil
-	}
-	sqf := SSubQueryField{query: sq, field: f}
-	if len(alias) > 0 {
-		sqf.Label(alias[0])
-	}
-	return &sqf
-}
-
-// Fields implementation of SSubQuery for IQuerySource
-func (sq *SSubQuery) Fields() []IQueryField {
-	ret := make([]IQueryField, 0)
-	for _, f := range sq.query.QueryFields() {
-		sqf := SSubQueryField{query: sq, field: f}
-		ret = append(ret, &sqf)
-	}
-	return ret
-}
-
-// DoQuery returns a SQuery instance that query specified fields from a query source
-func DoQuery(from IQuerySource, f ...IQueryField) *SQuery {
-	// if len(f) == 0 {
-	// 	f = from.Fields()
-	// }
-	tq := SQuery{fields: f, from: from}
-	return &tq
+	return false
 }
 
 // AppendField appends query field to a query
 func (tq *SQuery) AppendField(f ...IQueryField) *SQuery {
-	tq.fields = append(tq.fields, f...)
+	// log.Debugf("AppendField tq has fields %d", len(tq.fields))
+	for i := range f {
+		if !tq.HasField(f[i]) {
+			tq.fields = append(tq.fields, f[i])
+		}
+	}
+	return tq
+}
+
+func (tq *SQuery) ResetFields() *SQuery {
+	tq.fields = nil
 	return tq
 }
 
@@ -382,77 +217,6 @@ func (tq *SQuery) String(fields ...IQueryField) string {
 	return sql
 }
 
-func queryString(tq *SQuery, tmpFields ...IQueryField) string {
-	if len(tq.rawSql) > 0 {
-		return tq.rawSql
-	}
-
-	var buf bytes.Buffer
-	buf.WriteString("SELECT ")
-	if tq.distinct {
-		buf.WriteString("DISTINCT ")
-	}
-	fields := tq.fields
-	if len(fields) == 0 {
-		fields = tmpFields
-	}
-	if len(fields) == 0 {
-		fields = tq.QueryFields()
-		for i := range fields {
-			tq.from.Field(fields[i].Name())
-		}
-	}
-	for i := range fields {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(fields[i].Expression())
-	}
-	buf.WriteString(" FROM ")
-	buf.WriteString(fmt.Sprintf("%s AS `%s`", tq.from.Expression(), tq.from.Alias()))
-	for _, join := range tq.joins {
-		buf.WriteByte(' ')
-		buf.WriteString(string(join.jointype))
-		buf.WriteByte(' ')
-		buf.WriteString(fmt.Sprintf("%s AS `%s`", join.from.Expression(), join.from.Alias()))
-		buf.WriteString(" ON ")
-		buf.WriteString(join.condition.WhereClause())
-	}
-	if tq.where != nil {
-		buf.WriteString(" WHERE ")
-		buf.WriteString(tq.where.WhereClause())
-	}
-	if tq.groupBy != nil && len(tq.groupBy) > 0 {
-		buf.WriteString(" GROUP BY ")
-		for i, f := range tq.groupBy {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(f.Reference())
-		}
-	}
-	if tq.having != nil {
-		buf.WriteString(" HAVING ")
-		buf.WriteString(tq.having.WhereClause())
-	}
-	if tq.orderBy != nil && len(tq.orderBy) > 0 {
-		buf.WriteString(" ORDER BY ")
-		for i, f := range tq.orderBy {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(fmt.Sprintf("%s %s", f.field.Reference(), f.order))
-		}
-	}
-	if tq.limit > 0 {
-		buf.WriteString(fmt.Sprintf(" LIMIT %d", tq.limit))
-	}
-	if tq.offset > 0 {
-		buf.WriteString(fmt.Sprintf(" OFFSET %d", tq.offset))
-	}
-	return buf.String()
-}
-
 // Join of SQuery joins query with another IQuerySource on specified condition
 func (tq *SQuery) Join(from IQuerySource, on ICondition) *SQuery {
 	return tq._join(from, on, INNERJOIN)
@@ -473,6 +237,9 @@ func (tq *SQuery) RightJoin(from IQuerySource, on ICondition) *SQuery {
 }*/
 
 func (tq *SQuery) _join(from IQuerySource, on ICondition, joinType QueryJoinType) *SQuery {
+	if from.database() != tq.db {
+		panic(fmt.Sprintf("Cannot join across databases %s!=%s", tq.db.name, from.database().name))
+	}
 	if tq.joins == nil {
 		tq.joins = make([]sQueryJoin, 0)
 	}
@@ -504,10 +271,10 @@ func (tq *SQuery) Variables() []interface{} {
 		fromvars = tq.where.Variables()
 		vars = append(vars, fromvars...)
 	}
-	if tq.having != nil {
+	/*if tq.having != nil {
 		fromvars = tq.having.Variables()
 		vars = append(vars, fromvars...)
-	}
+	}*/
 	return vars
 }
 
@@ -523,6 +290,10 @@ func (tq *SQuery) SubQuery() *SSubQuery {
 	return &sq
 }
 
+func (tq *SQuery) database() *SDatabase {
+	return tq.db
+}
+
 // Row of SQuery returns an instance of  sql.Row for native data fetching
 func (tq *SQuery) Row() *sql.Row {
 	sqlstr := tq.String()
@@ -530,7 +301,13 @@ func (tq *SQuery) Row() *sql.Row {
 	if DEBUG_SQLCHEMY {
 		sqlDebug(sqlstr, vars)
 	}
-	return _db.QueryRow(sqlstr, vars...)
+	if tq.db == nil {
+		panic("tq.db")
+	}
+	if tq.db.db == nil {
+		panic("tq.db.db")
+	}
+	return tq.db.db.QueryRow(sqlstr, vars...)
 }
 
 // Rows of SQuery returns an instance of sql.Rows for native data fetching
@@ -540,7 +317,7 @@ func (tq *SQuery) Rows() (*sql.Rows, error) {
 	if DEBUG_SQLCHEMY {
 		sqlDebug(sqlstr, vars)
 	}
-	return _db.Query(sqlstr, vars...)
+	return tq.db.db.Query(sqlstr, vars...)
 }
 
 // Count of SQuery returns the count of a query
@@ -551,7 +328,7 @@ func (tq *SQuery) Count() int {
 	return cnt
 }
 
-func (tq *SQuery) countQuery() *SQuery {
+func (tq *SQuery) CountQuery() *SQuery {
 	tq2 := *tq
 	tq2.limit = 0
 	tq2.offset = 0
@@ -560,13 +337,14 @@ func (tq *SQuery) countQuery() *SQuery {
 			COUNT("count"),
 		},
 		from: tq2.SubQuery(),
+		db:   tq.database(),
 	}
 	return cq
 }
 
 // CountWithError of SQuery returns the row count of a query
 func (tq *SQuery) CountWithError() (int, error) {
-	cq := tq.countQuery()
+	cq := tq.CountQuery()
 	count := 0
 	err := cq.Row().Scan(&count)
 	if err == nil {
@@ -655,7 +433,7 @@ func rowScan2StringMap(fields []string, row IRowScanner) (map[string]string, err
 		} else {
 			value := rawValue.Interface()
 			// log.Infof("%s %s", value, reflect.TypeOf(value))
-			results[f] = getStringValue(value)
+			results[f] = GetStringValue(value)
 		}
 	}
 	return results, nil

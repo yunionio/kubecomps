@@ -12,8 +12,8 @@ import (
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
@@ -27,7 +27,7 @@ func AddUsageHandler(prefix string, app *appsrv.Application) {
 func ReportUsage(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	_, query, _ := appsrv.FetchEnv(ctx, w, r)
 	userCred := auth.FetchUserCredential(ctx, policy.FilterPolicyCredential)
-	ownerId, scope, err := db.FetchUsageOwnerScope(ctx, userCred, query)
+	ownerId, scope, err, _ := db.FetchUsageOwnerScope(ctx, userCred, query)
 	if err != nil {
 		httperrors.GeneralServerError(ctx, w, err)
 		return
@@ -50,9 +50,9 @@ func ReportUsage(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 // +onecloud:swagger-gen-resp-index=0
 
 // report k8s cluster usages
-func DoReportUsage(ctx context.Context, scope rbacutils.TRbacScope, ownerId mcclient.IIdentityProvider, query *jsonutils.JSONDict) (*api.GlobalUsage, error) {
+func DoReportUsage(ctx context.Context, scope rbacscope.TRbacScope, ownerId mcclient.IIdentityProvider, query *jsonutils.JSONDict) (*api.GlobalUsage, error) {
 	usage := new(api.GlobalUsage)
-	getUsage := func(scope rbacutils.TRbacScope) (*api.UsageResult, error) {
+	getUsage := func(scope rbacscope.TRbacScope) (*api.UsageResult, error) {
 		isSystem := jsonutils.QueryBoolean(query, "is_system", false)
 		clsUsage, err := models.ClusterManager.Usage(scope, ownerId, isSystem)
 		if err != nil {
@@ -63,7 +63,7 @@ func DoReportUsage(ctx context.Context, scope rbacutils.TRbacScope, ownerId mccl
 		return ret, nil
 	}
 	// system all usage
-	if scope == rbacutils.ScopeSystem {
+	if scope == rbacscope.ScopeSystem {
 		adminUsage, err := getUsage(scope)
 		if err != nil {
 			return nil, err
@@ -71,7 +71,7 @@ func DoReportUsage(ctx context.Context, scope rbacutils.TRbacScope, ownerId mccl
 		usage.AllUsage = adminUsage
 	}
 	// domain usage
-	if scope.HigherThan(rbacutils.ScopeDomain) {
+	if scope.HigherThan(rbacscope.ScopeDomain) {
 		domainUsage, err := getUsage(scope)
 		if err != nil {
 			return nil, err
@@ -79,7 +79,7 @@ func DoReportUsage(ctx context.Context, scope rbacutils.TRbacScope, ownerId mccl
 		usage.DomainUsage = domainUsage
 	}
 	// project usage
-	if scope.HigherEqual(rbacutils.ScopeProject) {
+	if scope.HigherEqual(rbacscope.ScopeProject) {
 		projectUsage, err := getUsage(scope)
 		if err != nil {
 			return nil, err

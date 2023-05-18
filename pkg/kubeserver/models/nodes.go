@@ -335,7 +335,7 @@ func (m *SNodeManager) Usage(clusters []sClusterUsage) (*api.NodeUsage, error) {
 }
 
 func (node *SNode) AllowPerformCordon(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return db.IsDomainAllowPerform(userCred, node, "cordon")
+	return db.IsDomainAllowPerform(ctx, userCred, node, "cordon")
 }
 
 func (node *SNode) PerformCordon(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -343,7 +343,7 @@ func (node *SNode) PerformCordon(ctx context.Context, userCred mcclient.TokenCre
 }
 
 func (node *SNode) AllowPerformUncordon(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return db.IsDomainAllowPerform(userCred, node, "uncordon")
+	return db.IsDomainAllowPerform(ctx, userCred, node, "uncordon")
 }
 
 func (node *SNode) PerformUncordon(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {

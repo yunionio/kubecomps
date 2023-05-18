@@ -17,9 +17,10 @@ package identity
 import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 
 	"yunion.io/x/onecloud/pkg/apis"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
+	"yunion.io/x/onecloud/pkg/util/tagutils"
 )
 
 type IdentityBaseResourceCreateInput struct {
@@ -156,8 +157,14 @@ type ProjectListInput struct {
 	UserFilterListInput
 	GroupFilterListInput
 
+	// filter projects by Identity Provider
+	IdpId string `json:"idp_id"`
+
 	// 过滤出指定用户或者组可以加入的项目
 	Jointable *bool `json:"jointable"`
+
+	// project tags filter imposed by policy
+	PolicyProjectTags tagutils.TTagSetList `json:"policy_project_tags"`
 }
 
 type DomainListInput struct {
@@ -170,6 +177,9 @@ type DomainListInput struct {
 
 	// 按IDP_ENTITY_ID过滤
 	IdpEntityId string `json:"idp_entity_id"`
+
+	// domain tags filter imposed by policy
+	PolicyDomainTags tagutils.TTagSetList `json:"policy_domain_tags"`
 }
 
 type UserListInput struct {
@@ -178,6 +188,11 @@ type UserListInput struct {
 	GroupFilterListInput
 	ProjectFilterListInput
 	RoleFilterListInput
+
+	// 角色生效所在的域
+	RoleAssignmentDomainId string `json:"role_assignment_domain_id"`
+	// 角色生效所在的项目
+	RoleAssignmentProjectId string `json:"role_assignment_project_id"`
 
 	// email
 	Email string `json:"email"`
@@ -410,6 +425,15 @@ type IdentityProviderUpdateInput struct {
 	IconUri string `json:"icon_uri"`
 }
 
+type PolicyTagInput struct {
+	// 匹配的资源标签
+	ObjectTags tagutils.TTagSet `json:"object_tags"`
+	// 匹配的项目标签
+	ProjectTags tagutils.TTagSet `json:"project_tags"`
+	// 匹配的域标签
+	DomainTags tagutils.TTagSet `json:"domain_tags"`
+}
+
 type PolicyUpdateInput struct {
 	EnabledIdentityBaseUpdateInput
 
@@ -421,11 +445,22 @@ type PolicyUpdateInput struct {
 	Blob jsonutils.JSONObject `json:"blob"`
 
 	// 生效范围，project|domain|system
-	Scope rbacutils.TRbacScope `json:"scope"`
+	Scope rbacscope.TRbacScope `json:"scope"`
 
 	// 是否为系统权限
 	IsSystem *bool `json:"is_system"`
+
+	PolicyTagInput
+
+	// Policy tag更新策略，可能的值为：add|remove|remove，默认为add
+	TagUpdatePolicy string `json:"tag_update_policy"`
 }
+
+const (
+	TAG_UPDATE_POLICY_ADD     = "add"
+	TAG_UPDATE_POLICY_REMOVE  = "remove"
+	TAG_UPDATE_POLICY_REPLACE = "replace"
+)
 
 type ProjectUpdateInput struct {
 	IdentityBaseUpdateInput
@@ -465,7 +500,7 @@ type UserCreateInput struct {
 
 	Email string `json:"email"`
 
-	Mobile string `json:"mobule"`
+	Mobile string `json:"mobile"`
 
 	Displayname string `json:"displayname"`
 
@@ -512,10 +547,17 @@ type PolicyCreateInput struct {
 	Blob jsonutils.JSONObject `json:"blob"`
 
 	// 生效范围，project|domain|system
-	Scope rbacutils.TRbacScope `json:"scope"`
+	Scope rbacscope.TRbacScope `json:"scope"`
 
 	// 是否为系统权限
 	IsSystem *bool `json:"is_system"`
+
+	// 匹配的资源标签
+	ResourceTags tagutils.TTagSet `json:"resource_tags"`
+	// 匹配的项目标签
+	ProjectTags tagutils.TTagSet `json:"project_tags"`
+	// 匹配的域标签
+	DomainTags tagutils.TTagSet `json:"domain_tags"`
 }
 
 type RoleCreateInput struct {
@@ -546,3 +588,7 @@ type UserLinkIdpInput struct {
 }
 
 type UserUnlinkIdpInput UserLinkIdpInput
+
+type SProjectSetAdminInput struct {
+	UserId string
+}

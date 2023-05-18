@@ -22,6 +22,7 @@ import (
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/onecloud/pkg/apis"
+	identity_api "yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/cloudcommon/syncman"
 	"yunion.io/x/onecloud/pkg/mcclient"
@@ -60,9 +61,9 @@ func (manager *SInformerSyncManager) OnServiceCatalogChange(catalog mcclient.ISe
 	if manager.done {
 		return
 	}
-	url, _ := catalog.GetServiceURL(apis.SERVICE_TYPE_ETCD, consts.GetRegion(), "", "internal")
+	url, _ := mcclient.CatalogGetServiceURL(catalog, apis.SERVICE_TYPE_ETCD, consts.GetRegion(), "", identity_api.EndpointInterfaceInternal)
 	if len(url) == 0 {
-		log.Debugf("[%s] OnServiceCatalogChange: no etcd url found, retry", manager.Name())
+		log.Debugf("[%s] OnServiceCatalogChange: no etcd internal url found, retry", manager.Name())
 		return
 	}
 	err := manager.startWatcher()
@@ -81,7 +82,7 @@ func (manager *SInformerSyncManager) StartWatching(resMan informer.IResourceMana
 func (manager *SInformerSyncManager) startWatcher() error {
 	log.Infof("[%s] Start resource informer watcher for %s", manager.Name(), manager.resourceManager.GetKeyword())
 	ctx := context.Background()
-	s := auth.GetAdminSession(ctx, consts.GetRegion(), "v1")
+	s := auth.GetAdminSession(ctx, consts.GetRegion())
 	informer.NewWatchManagerBySessionBg(s, func(watchMan *informer.SWatchManager) error {
 		if err := watchMan.For(manager.resourceManager).AddEventHandler(ctx, manager); err != nil {
 			return errors.Wrapf(err, "watch resource %s", manager.resourceManager.GetKeyword())

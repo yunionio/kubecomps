@@ -17,16 +17,18 @@ package compute
 import (
 	"time"
 
+	"yunion.io/x/cloudmux/pkg/multicloud/esxi/vcenter"
+	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/util/fileutils"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/apis/billing"
 	"yunion.io/x/onecloud/pkg/httperrors"
-	"yunion.io/x/onecloud/pkg/multicloud/esxi/vcenter"
 )
 
 type DiskCreateInput struct {
 	apis.VirtualResourceCreateInput
+	apis.EncryptedResourceCreateInput
 
 	*DiskConfig
 
@@ -141,6 +143,9 @@ type DiskListInput struct {
 
 	FsFormat string `json:"fs_format"`
 
+	OrderByServer string `json:"order_by_server" choices:"asc|desc"`
+
+	OrderByGuestCount string `json:"order_by_guest_count" choices:"asc|desc"`
 	// 镜像
 	ImageId string `json:"image_id"`
 	// swagger:ignore
@@ -181,9 +186,18 @@ type DiskFilterListInput struct {
 }
 
 type SimpleGuest struct {
-	Name   string `json:"name"`
-	Id     string `json:"id"`
+	// 主机名称
+	Name string `json:"name"`
+	// 主机ID
+	Id string `json:"id"`
+	// 主机状态
 	Status string `json:"status"`
+	// 磁盘序号
+	Index int `json:"index"`
+	// 磁盘驱动
+	Driver string `json:"driver"`
+	// 缓存模式
+	CacheMode string `json:"cache_mode"`
 }
 
 type SimpleSnapshotPolicy struct {
@@ -196,6 +210,7 @@ type SimpleSnapshotPolicy struct {
 type DiskDetails struct {
 	apis.VirtualResourceDetails
 	StorageResourceInfo
+	apis.EncryptedResourceDetails
 
 	SDisk
 
@@ -272,18 +287,36 @@ type DiskAllocateInput struct {
 	DiskSizeMb    int
 	ImageId       string
 	FsFormat      string
-	Encryption    bool
 	Rebuild       bool
 	BackingDiskId string
 	SnapshotId    string
+
+	BackupId string
+	Backup   *DiskAllocateFromBackupInput
 
 	SnapshotUrl        string
 	SnapshotOutOfChain bool
 	Protocol           string
 	SrcDiskId          string
 	SrcPool            string
+	ExistingPath       string
 
 	// vmware
 	HostIp    string
 	Datastore vcenter.SVCenterAccessInfo
+
+	// encryption
+	Encryption  bool
+	EncryptInfo apis.SEncryptInfo
+}
+
+type DiskAllocateFromBackupInput struct {
+	BackupId                string
+	BackupStorageId         string
+	BackupStorageAccessInfo *jsonutils.JSONDict
+}
+
+type DiskDeleteInput struct {
+	SkipRecycle      *bool
+	EsxiFlatFilePath string
 }

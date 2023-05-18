@@ -17,19 +17,19 @@ package sqlchemy
 // Filter method filters a SQL query with given ICondition
 // equivalent to add a clause in where conditions
 func (tq *SQuery) Filter(cond ICondition) *SQuery {
-	if tq.groupBy != nil && len(tq.groupBy) > 0 {
+	/*if tq.groupBy != nil && len(tq.groupBy) > 0 {
 		if tq.having == nil {
 			tq.having = cond
 		} else {
 			tq.having = AND(tq.having, cond)
 		}
+	} else {*/
+	if tq.where == nil {
+		tq.where = cond
 	} else {
-		if tq.where == nil {
-			tq.where = cond
-		} else {
-			tq.where = AND(tq.where, cond)
-		}
+		tq.where = AND(tq.where, cond)
 	}
+	//}
 	return tq
 }
 
@@ -81,8 +81,8 @@ func (tq *SQuery) In(f string, v interface{}) *SQuery {
 
 // NotIn filters query with a not in condition
 func (tq *SQuery) NotIn(f string, v interface{}) *SQuery {
-	cond := In(tq.Field(f), v)
-	return tq.Filter(NOT(cond))
+	cond := NotIn(tq.Field(f), v)
+	return tq.Filter(cond)
 }
 
 // Between filters query with a between condition

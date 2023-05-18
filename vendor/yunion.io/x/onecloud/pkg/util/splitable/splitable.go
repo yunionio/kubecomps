@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	"yunion.io/x/pkg/errors"
@@ -33,7 +34,15 @@ type SSplitTableSpec struct {
 	metaSpec    *sqlchemy.STableSpec
 	maxDuration time.Duration
 	maxSegments int
+
+	lastTableSpec   *sqlchemy.STableSpec
+	lastTableLock   *sync.Mutex
+	lastTableExpire time.Time
 }
+
+const (
+	lastTableSpecExpireHours = 1 // 1 hour
+)
 
 func (t *SSplitTableSpec) DataType() reflect.Type {
 	return t.tableSpec.DataType()
@@ -47,12 +56,20 @@ func (t *SSplitTableSpec) Name() string {
 	return t.tableName
 }
 
+func (t *SSplitTableSpec) Database() *sqlchemy.SDatabase {
+	return t.metaSpec.Database()
+}
+
 func (t *SSplitTableSpec) Columns() []sqlchemy.IColumnSpec {
 	return t.tableSpec.Columns()
 }
 
 func (t *SSplitTableSpec) PrimaryColumns() []sqlchemy.IColumnSpec {
 	return t.tableSpec.PrimaryColumns()
+}
+
+func (t *SSplitTableSpec) Indexes() []sqlchemy.STableIndex {
+	return t.tableSpec.Indexes()
 }
 
 func (t *SSplitTableSpec) Expression() string {
@@ -81,19 +98,7 @@ func (t *SSplitTableSpec) DropForeignKeySQL() []string {
 }
 
 func (t *SSplitTableSpec) AddIndex(unique bool, cols ...string) bool {
-	metas, err := t.GetTableMetas()
-	if err != nil {
-		return false
-	}
-	var ret bool
-	for _, meta := range metas {
-		ts := t.GetTableSpec(meta)
-		if !ts.AddIndex(unique, cols...) {
-			ret = false
-			break
-		}
-	}
-	return ret
+	return t.tableSpec.AddIndex(unique, cols...)
 }
 
 func (t *SSplitTableSpec) Fetch(dt interface{}) error {
@@ -116,29 +121,46 @@ func (t *SSplitTableSpec) Fetch(dt interface{}) error {
 	return sql.ErrNoRows
 }
 
-func NewSplitTableSpec(s interface{}, name string, indexField string, dateField string, maxDuration time.Duration, maxSegments int) (*SSplitTableSpec, error) {
-	spec := sqlchemy.NewTableSpecFromStruct(s, name)
-	indexCol := spec.ColumnSpec(indexField)
+func (t *SSplitTableSpec) Drop() error {
+	metas, err := t.GetTableMetas()
+	if err != nil {
+		return errors.Wrap(err, "GetTableMetas")
+	}
+	for _, meta := range metas {
+		ts := t.GetTableSpec(meta)
+		err := ts.Drop()
+		if err != nil {
+			return errors.Wrapf(err, "Drop %s", meta.Table)
+		}
+	}
+	err = t.metaSpec.Drop()
+	if err != nil {
+		return errors.Wrap(err, "Drop Meta")
+	}
+	return nil
+}
+
+func NewSplitTableSpec(s interface{}, name string, indexField string, dateField string, maxDuration time.Duration, maxSegments int, dbName sqlchemy.DBName) (*SSplitTableSpec, error) {
+	spec := sqlchemy.NewTableSpecFromStructWithDBName(s, name, dbName)
+	/*indexCol := spec.ColumnSpec(indexField)
 	if indexCol == nil {
 		return nil, errors.Wrapf(errors.ErrNotFound, "indexField %s not found", indexField)
 	}
 	if !indexCol.IsPrimary() {
 		return nil, errors.Wrapf(errors.ErrInvalidStatus, "indexField %s not primary", indexField)
 	}
-	if intCol, ok := indexCol.(*sqlchemy.SIntegerColumn); !ok {
-		return nil, errors.Wrapf(errors.ErrInvalidStatus, "indexField %s not integer", indexField)
-	} else if !intCol.IsAutoIncrement {
+	if !indexCol.IsAutoIncrement() {
 		return nil, errors.Wrapf(errors.ErrInvalidStatus, "indexField %s not auto_increment", indexField)
 	}
 	dateCol := spec.ColumnSpec(dateField)
 	if dateCol == nil {
 		return nil, errors.Wrapf(errors.ErrNotFound, "dateField %s not found", dateField)
 	}
-	if _, ok := dateCol.(*sqlchemy.SDateTimeColumn); !ok {
+	if !dateCol.IsDateTime() {
 		return nil, errors.Wrapf(errors.ErrInvalidStatus, "dateField %s not datetime column", dateField)
-	}
+	}*/
 
-	metaSpec := sqlchemy.NewTableSpecFromStruct(&STableMetadata{}, fmt.Sprintf("%s_metadata", name))
+	metaSpec := sqlchemy.NewTableSpecFromStructWithDBName(&STableMetadata{}, fmt.Sprintf("%s_metadata", name), dbName)
 
 	sts := &SSplitTableSpec{
 		indexField:  indexField,
@@ -148,7 +170,11 @@ func NewSplitTableSpec(s interface{}, name string, indexField string, dateField 
 		metaSpec:    metaSpec,
 		maxDuration: maxDuration,
 		maxSegments: maxSegments,
+
+		lastTableLock: &sync.Mutex{},
 	}
+
+	registerSplitable(sts)
 
 	return sts, nil
 }
