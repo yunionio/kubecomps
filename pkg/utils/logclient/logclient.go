@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"yunion.io/x/onecloud/pkg/cloudcommon"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/util/logclient"
@@ -77,7 +76,7 @@ func logRecord(obj db.IModel, eventAction TEventAction, iNotes interface{}, user
 }
 
 // LogWithStartable log record with start time
-func LogWithStartable(task cloudcommon.IStartable, obj db.IModel, eventAction TEventAction, iNotes interface{}, userCred mcclient.TokenCredential, isSuccess bool) {
+func LogWithStartable(task logclient.IStartable, obj db.IModel, eventAction TEventAction, iNotes interface{}, userCred mcclient.TokenCredential, isSuccess bool) {
 	logRecord(obj, eventAction, iNotes, userCred, isSuccess,
 		func(obj db.IModel, logAction string, iNotes interface{}, userCred mcclient.TokenCredential, isSuccess bool) {
 			logclient.AddActionLogWithStartable(task, obj, logAction, iNotes, userCred, isSuccess)

@@ -21,16 +21,18 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/reflectutils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	identityapi "yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
+	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
+	"yunion.io/x/onecloud/pkg/util/tagutils"
 )
 
 type SProjectizedResourceBaseManager struct {
@@ -49,25 +51,60 @@ func (model *SProjectizedResourceBase) GetOwnerId() mcclient.IIdentityProvider {
 	return &owner
 }
 
-func (manager *SProjectizedResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, owner mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SProjectizedResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	if owner != nil {
 		switch scope {
-		case rbacutils.ScopeProject:
+		case rbacscope.ScopeProject:
 			q = q.Equals("tenant_id", owner.GetProjectId())
-		case rbacutils.ScopeDomain:
+			if userCred != nil {
+				result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
+				if !result.ObjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ObjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+				}
+			}
+		case rbacscope.ScopeDomain:
 			q = q.Equals("domain_id", owner.GetProjectDomainId())
+			if userCred != nil {
+				result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
+				if !result.ProjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ProjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "tenant_id", "project", policyTagFilters)
+				}
+				if !result.ObjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ObjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+				}
+			}
+		case rbacscope.ScopeSystem:
+			if userCred != nil {
+				result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
+				if !result.DomainTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.DomainTags)
+					q = ObjectIdQueryWithTagFilters(q, "domain_id", "domain", policyTagFilters)
+				}
+				if !result.ProjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ProjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "tenant_id", "project", policyTagFilters)
+				}
+				if !result.ObjectTags.IsEmpty() {
+					policyTagFilters := tagutils.STagFilters{}
+					policyTagFilters.AddFilters(result.ObjectTags)
+					q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+				}
+			}
 		}
-		/*if len(owner.GetProjectId()) > 0 {
-			q = q.Equals("tenant_id", owner.GetProjectId())
-		} else if len(owner.GetProjectDomainId()) > 0 {
-			q = q.Equals("domain_id", owner.GetProjectDomainId())
-		}*/
 	}
 	return q
 }
 
-func (manager *SProjectizedResourceBaseManager) ResourceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeProject
+func (manager *SProjectizedResourceBaseManager) ResourceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeProject
 }
 
 func (manager *SProjectizedResourceBaseManager) FetchOwnerId(ctx context.Context, data jsonutils.JSONObject) (mcclient.IIdentityProvider, error) {
@@ -110,6 +147,14 @@ func (manager *SProjectizedResourceBaseManager) ListItemFilter(
 		)).SubQuery()
 		q = q.In("tenant_id", subq)
 	}
+	tagFilters := tagutils.STagFilters{}
+	if !query.ProjectTags.IsEmpty() {
+		tagFilters.AddFilters(query.ProjectTags)
+	}
+	if !query.NoProjectTags.IsEmpty() {
+		tagFilters.AddNoFilters(query.NoProjectTags)
+	}
+	q = ObjectIdQueryWithTagFilters(q, "tenant_id", "project", tagFilters)
 	return q, nil
 }
 
@@ -164,6 +209,10 @@ func (manager *SProjectizedResourceBaseManager) FetchCustomizeColumns(
 			}
 		}
 	}
+	domainRows := manager.SDomainizedResourceBaseManager.FetchCustomizeColumns(ctx, userCred, query, objs, fields, isList)
+	for i := range ret {
+		ret[i].DomainizedResourceInfo = domainRows[i]
+	}
 	return ret
 }
 
@@ -194,7 +243,7 @@ func fetchProjects(ctx context.Context, projectIds []string, isDomain bool) map[
 			if isDomain {
 				t, _ = TenantCacheManager.fetchDomainFromKeystone(ctx, pid)
 			} else {
-				t, _ = TenantCacheManager.fetchTenantFromKeystone(ctx, pid)
+				t, _ = TenantCacheManager.fetchTenantFromKeystone(ctx, pid, "")
 			}
 			if t != nil {
 				ret[t.Id] = *t
@@ -204,17 +253,17 @@ func fetchProjects(ctx context.Context, projectIds []string, isDomain bool) map[
 	return ret
 }
 
-func ValidateProjectizedResourceInput(ctx context.Context, input apis.ProjectizedResourceInput) (*STenant, apis.ProjectizedResourceInput, error) {
-	tenant, err := DefaultProjectFetcher(ctx, input.ProjectId)
+func ValidateProjectizedResourceInput(ctx context.Context, input apis.ProjectizedResourceCreateInput) (*STenant, apis.ProjectizedResourceInput, error) {
+	tenant, err := DefaultProjectFetcher(ctx, input.ProjectId, input.ProjectDomainId)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
-			return nil, input, httperrors.NewResourceNotFoundError2("project", input.ProjectId)
+			return nil, input.ProjectizedResourceInput, httperrors.NewResourceNotFoundError2("project", input.ProjectId)
 		} else {
-			return nil, input, errors.Wrap(err, "TenantCacheManager.FetchTenantByIdOrName")
+			return nil, input.ProjectizedResourceInput, errors.Wrap(err, "TenantCacheManager.FetchTenantByIdOrName")
 		}
 	}
 	input.ProjectId = tenant.GetId()
-	return tenant, input, nil
+	return tenant, input.ProjectizedResourceInput, nil
 }
 
 func (manager *SProjectizedResourceBaseManager) ListItemExportKeys(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, keys stringutils2.SSortedStrings) (*sqlchemy.SQuery, error) {

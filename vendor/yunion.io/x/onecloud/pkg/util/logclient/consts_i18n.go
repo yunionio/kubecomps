@@ -104,6 +104,14 @@ func init() {
 		EN("Guest Detach Isolated Device").
 		CN("卸载透传设备"),
 	)
+	t.Set(ACT_SET_EXPIRED_TIME, i18n.NewTableEntry().
+		EN("Set Resource Expire Time").
+		CN("到期释放"),
+	)
+	t.Set(ACT_VM_SYNC_ISOLATED_DEVICE, i18n.NewTableEntry().
+		EN("Guest Sync Isolated Device").
+		CN("同步透传设备"),
+	)
 	t.Set(ACT_MERGE, i18n.NewTableEntry().
 		EN("Merge").
 		CN("合并"),
@@ -348,6 +356,10 @@ func init() {
 		EN("Attach Network").
 		CN("绑定网卡"),
 	)
+	t.Set(ACT_DETACH_NETWORK, i18n.NewTableEntry().
+		EN("Detach Network").
+		CN("解绑网卡"),
+	)
 	t.Set(ACT_VM_CONVERT, i18n.NewTableEntry().
 		EN("Vm Convert").
 		CN("虚拟机转换Hypervisor"),
@@ -388,6 +400,11 @@ func init() {
 	t.Set(ACT_AUTHENTICATE, i18n.NewTableEntry().
 		EN("Authenticate").
 		CN("认证登录"),
+	)
+
+	t.Set(ACT_LOGOUT, i18n.NewTableEntry().
+		EN("Logout").
+		CN("退出登录"),
 	)
 
 	t.Set(ACT_HEALTH_CHECK, i18n.NewTableEntry().
@@ -642,6 +659,7 @@ func init() {
 		EN("Freeze").
 		CN("解冻资源"),
 	)
+
 	t.Set(ACT_DETACH_ALERTRESOURCE, i18n.NewTableEntry().
 		EN("Detach AlertResource").
 		CN("取消关联报警资源"),
@@ -703,10 +721,11 @@ func init() {
 		EN("Notify").
 		CN("通知服务"),
 	)
-	s.Set(apis.SERVICE_TYPE_SUGGESTION, i18n.NewTableEntry().
+	/*s.Set(apis.SERVICE_TYPE_SUGGESTION, i18n.NewTableEntry().
 		EN("Suggestion").
 		CN("优化建议"),
 	)
+	*/
 	s.Set(apis.SERVICE_TYPE_METER, i18n.NewTableEntry().
 		EN("Suggestion").
 		CN("计费服务"),
@@ -1301,5 +1320,70 @@ func init() {
 	o.Set(ACT_DETACH_MONITOR_RESOURCE_JOINT, i18n.NewTableEntry().
 		EN("Update Monitor Resource joint").
 		CN("解绑监控资源关联报警策略"),
+	)
+
+	o.Set(ACT_RECOVERY, i18n.NewTableEntry().
+		EN("Recover backup").
+		CN("备份恢复"),
+	)
+
+	o.Set(ACT_PACK, i18n.NewTableEntry().
+		EN("Package VM").
+		CN("导出主机"),
+	)
+
+	o.Set(ACT_UNPACK, i18n.NewTableEntry().
+		EN("Unpackage VM").
+		CN("导入主机"),
+	)
+
+	o.Set(ACT_ENCRYPTION, i18n.NewTableEntry().
+		EN("Encryption").
+		CN("加密"),
+	)
+
+	o.Set(ACT_CONSOLE, i18n.NewTableEntry().
+		EN("Console").
+		CN("控制台"),
+	)
+
+	o.Set(ACT_WEBSSH, i18n.NewTableEntry().
+		EN("WebSSH").
+		CN("WebSSH"),
+	)
+
+	o.Set(ACT_CLOUDACCOUNT_SYNC_NETWORK, i18n.NewTableEntry().
+		EN("Probe Network").
+		CN("探测网络配置"),
+	)
+
+	o.Set(ACT_EXPORT, i18n.NewTableEntry().
+		EN("Export").
+		CN("导出"),
+	)
+
+	o.Set(ACT_CANCEL, i18n.NewTableEntry().
+		EN("Cancel").
+		CN("取消"),
+	)
+
+	o.Set(ACT_START, i18n.NewTableEntry().
+		EN("Start").
+		CN("开始"),
+	)
+
+	o.Set(ACT_DONE, i18n.NewTableEntry().
+		EN("Done").
+		CN("完成"),
+	)
+
+	o.Set(ACT_ASSOCIATE, i18n.NewTableEntry().
+		EN("Associate").
+		CN("关联"),
+	)
+
+	o.Set(ACT_DISSOCIATE, i18n.NewTableEntry().
+		EN("Dissociate").
+		CN("解除关联"),
 	)
 }

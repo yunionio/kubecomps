@@ -32,6 +32,12 @@ type InstanceGroupListInput struct {
 
 	// 调度策略
 	SchedStrategy string `json:"sched_strategy"`
+	// 按ip地址排序
+	// pattern:asc|desc
+	OrderByVips string `json:"order_by_vips"`
+	// 按关联的虚拟机数量排序
+	// pattern:asc|desc
+	OrderByGuestCount string `json:"order_by_guest_count"`
 }
 
 type InstanceGroupDetail struct {
@@ -42,6 +48,18 @@ type InstanceGroupDetail struct {
 
 	// 云主机数量
 	GuestCount int `json:"guest_count"`
+
+	// VIP
+	Vips []string `json:"vips"`
+
+	// EIP of VIP
+	VipEip string `json:"vip_eip"`
+
+	// Attached NetworkId
+	NetworkId string `json:"network_id"`
+
+	// Attached Network
+	Network string `json:"network"`
 }
 
 type GroupResourceInput struct {

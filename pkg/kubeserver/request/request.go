@@ -8,7 +8,7 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/httputils"
+	"yunion.io/x/pkg/util/httputils"
 )
 
 func Get(endpoint string, token string, url string, header http.Header, body jsonutils.JSONObject) (jsonutils.JSONObject, error) {

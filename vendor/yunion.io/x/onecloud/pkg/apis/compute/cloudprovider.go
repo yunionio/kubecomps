@@ -15,11 +15,11 @@
 package compute
 
 import (
+	"yunion.io/x/cloudmux/pkg/cloudprovider"
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	proxyapi "yunion.io/x/onecloud/pkg/apis/cloudcommon/proxy"
-	"yunion.io/x/onecloud/pkg/cloudprovider"
 )
 
 type ManagedResourceInfo struct {
@@ -138,7 +138,12 @@ type CloudproviderDetails struct {
 	// 子订阅品牌信息
 	Brand string `json:"brand"`
 
+	ReadOnly bool `json:"read_only"`
+
 	ProjectMappingResourceInfo
+
+	// 上次同步耗时
+	LastSyncCost string
 }
 
 // 云订阅输入参数
@@ -275,4 +280,12 @@ type CloudproviderGetCannedAclOutput struct {
 	BucketCannedAcls []string `json:"bucket_canned_acls"`
 	// Object支持的预置ACL列表
 	ObjectCannedAcls []string `json:"object_canned_acls"`
+}
+
+type CloudproviderSync struct {
+	// 指定区域启用或禁用同步
+	// default: false
+	Enabled bool `json:"enabled"`
+	// 指定区域信息
+	CloudregionIds []string `json:"cloudregion_ids"`
 }

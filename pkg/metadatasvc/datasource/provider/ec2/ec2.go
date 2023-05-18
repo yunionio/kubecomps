@@ -6,8 +6,8 @@ import (
 	"net"
 
 	"yunion.io/x/jsonutils"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/httputils"
 
 	"yunion.io/x/kubecomps/pkg/metadatasvc/datasource"
 	"yunion.io/x/kubecomps/pkg/metadatasvc/datasource/provider"

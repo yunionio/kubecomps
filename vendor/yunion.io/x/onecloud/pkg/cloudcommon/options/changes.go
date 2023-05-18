@@ -35,9 +35,6 @@ func OnBaseOptionsChange(oOpts, nOpts interface{}) bool {
 	if oldOpts.TimeZone != newOpts.TimeZone {
 		changed = true
 	}
-	if oldOpts.EnableRbac != newOpts.EnableRbac {
-		changed = true
-	}
 	if oldOpts.NonDefaultDomainProjects != newOpts.NonDefaultDomainProjects {
 		consts.SetNonDefaultDomainProjects(newOpts.NonDefaultDomainProjects)
 		changed = true
@@ -52,6 +49,15 @@ func OnBaseOptionsChange(oOpts, nOpts interface{}) bool {
 	}
 	if oldOpts.EnableQuotaCheck != newOpts.EnableQuotaCheck {
 		consts.SetEnableQuotaCheck(newOpts.EnableQuotaCheck)
+	}
+	if oldOpts.LogLevel != newOpts.LogLevel {
+		log.SetLogLevelByString(log.Logger(), newOpts.LogLevel)
+	}
+	if oldOpts.LogWithTimeZone != newOpts.LogWithTimeZone || oldOpts.LogTimestampFormat != newOpts.LogTimestampFormat {
+		log.Logger().Formatter = &log.TextFormatter{
+			TimeZone:        newOpts.LogWithTimeZone,
+			TimestampFormat: newOpts.LogTimestampFormat,
+		}
 	}
 	if oldOpts.ApiServer != newOpts.ApiServer {
 		log.Debugf("api_server changed from %s to %s", oldOpts.ApiServer, newOpts.ApiServer)

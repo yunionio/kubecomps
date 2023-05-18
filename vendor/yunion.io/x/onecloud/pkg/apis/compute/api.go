@@ -62,11 +62,15 @@ type NetworkConfig struct {
 
 	// 驱动方式
 	// 若指定镜像的网络驱动方式，此参数会被覆盖
-	Driver   string `json:"driver"`
-	BwLimit  int    `json:"bw_limit"`
-	Vip      bool   `json:"vip"`
-	Reserved bool   `json:"reserved"`
-	NetType  string `json:"net_type"`
+	Driver    string `json:"driver"`
+	BwLimit   int    `json:"bw_limit"`
+	Vip       bool   `json:"vip"`
+	Reserved  bool   `json:"reserved"`
+	NetType   string `json:"net_type"`
+	NumQueues int    `json:"num_queues"`
+
+	// sriov nic
+	SriovDevice *IsolatedDeviceConfig `json:"sriov_device"`
 
 	RequireDesignatedIP bool `json:"require_designated_ip"`
 
@@ -96,16 +100,22 @@ type DiskConfig struct {
 
 	// 挂载到虚拟机的磁盘顺序, -1代表不挂载任何虚拟机
 	// default: -1
-	Index int `json:"index"`
+	Index     int   `json:"index"`
+	BootIndex *int8 `json:"boot_index"`
 
 	// 镜像ID,通过镜像创建磁盘,创建虚拟机时第一块磁盘需要指定此参数
 	// required: false
 	ImageId string `json:"image_id"`
 
+	// 镜像加密key ID
+	ImageEncryptKeyId string `json:"image_encrypt_key_id"`
+
 	// 快照ID,通过快照创建磁盘,此参数必须加上 'snapshot-' 前缀
 	// example: snapshot-3140cecb-ccc4-4865-abae-3a5ba8c69d9b
 	// requried: false
 	SnapshotId string `json:"snapshot_id"`
+
+	BackupId string `json:"backup_id"`
 
 	// 磁盘类型
 	// enum: sys, data, swap
@@ -150,42 +160,42 @@ type DiskConfig struct {
 	//
 	//
 	//
-	//| 平台			|  存储类型				|	中文		|	数据盘		|	系统盘			|	可否扩容	|	可否单独创建	|	扩容步长	|	说明	|
-	//|	----			|	----				|	----		|	-----		|	-----			|	-------		|	-----------		|	-------		|	-----	|
-	//|	Esxi			|local					|本地盘			|1-500GB		|30~500GB			|	是			|	否				|	1G			|			|
-	//|	Esxi			|nas					|NAS盘			|30-3072GB		|30~500GB			|	是			|	否				|	1G			|			|
-	//|	Esxi			|vsan					|VSAN盘			|30-3072GB		|30~500GB			|	是			|	否				|	1G			|			|
-	//|	KVM				|local					|本地盘盘		|1-500GB		|30~500GB			|	是			|	否				|	1G			|			|
-	//|	KVM				|rbd					|云硬盘			|1-3072GB		|30~500GB			|	是			|	是				|	1G			|			|
-	//|	Azure			|standard_lrs			|标准 HDD		|1-4095GB		|30~4095GB			|	是			|	是				|	1G			|			|
-	//|	Azure			|standardssd_lrs		|标准 SSD		|1-4095GB		|30~4095GB			|	是			|	是				|	1G			|			|
-	//|	Azure			|premium_lrs			|高级SSD		|1-4095GB		|30~4095GB			|	是			|	是				|	1G			|			|
-	//|	AWS				|gp2					|通用型SSD		|1-16384GB		|20~16384GB			|	是			|	是				|	1G			|			|
-	//|	AWS				|io1					|预配置 IOPS SSD|4-16384GB		|20-16384GB			|	是			|	是				|	1G			|			|
-	//|	AWS				|st1					|吞吐优化HDD	|500-16384GB	|不支持				|	是			|	是				|	1G			|			|
-	//|	AWS				|sc1					|Cold HDD		|500-16384GB	|不支持				|	是			|	是				|	1G			|			|
-	//|	AWS				|standard				|磁介质			|1-1024GB		|20-1024GB			|	是			|	是				|	1G			|			|
-	//|	腾讯云			|cloud_ssd				|SSD云硬盘		|10-16000GB		|50~500GB			|	是			|	是				|	10G			|			|
-	//|	腾讯云			|cloud_basic			|普通云硬盘		|10-16000GB		|50~500GB			|	是			|	是				|	10G			|			|
-	//|	腾讯云			|cloud_preium			|高性能云硬盘	|10-16000GB		|50~1024GB			|	是			|	是				|	10G			|			|
-	//|	腾讯云			|local_basic			|普通本地盘		|10-1600GB		|不支持				|	否			|	否				|				|			|
-	//|	腾讯云			|local_ssd				|SSD本地盘		|10-7000GB		|部分区域套餐支持	|	否			|	否				|				|			|
-	//|	腾讯云			|local_pro				|HDD本地盘		|跟随套餐		|部分区域套餐支持	|	否			|	否				|				|			|
-	//|	华为云或天翼云	|SSD					|超高IO云硬盘	|10-32768GB		|40~1024GB			|	是			|	是				|	1G			|			|
-	//|	华为云或天翼云	|SAS					|高IO云硬盘		|10-32768GB		|40~1024GB			|	是			|	是				|	1G			|			|
-	//|	华为云或天翼云	|SATA					|普通IO云硬盘	|10-32768GB		|40~1024GB			|	是			|	是				|	1G			|			|
-	//|	OpenStack		|nova					|nova			|不支持			|30-500GB			|	否			|	否				|				|			|
-	//|	OpenStack		|自定义					|...			|无限制			|无限制				|	是			|	是				|	1G			|			|
-	//|	Ucloud			|CLOUD_NORMAL			|普通云盘		|20-8000GB		|不支持				|	是			|	是				|	1G			|			|
-	//|	Ucloud			|CLOUD_SSD				|SSD云盘		|20-4000GB		|20-500GB			|	是			|	是				|	1G			|			|
-	//|	Ucloud			|LOCAL_NORMAL			|普通本地盘		|				|					|	是			|	是				|	1G			|			|
-	//|	Ucloud			|LOCAL_SSD				|SSD本地盘		|				|					|	是			|	是				|	1G			|			|
-	//|	Ucloud			|EXCLUSIVE_LOCAL_DISK	|独享本地盘		|				|					|	是			|	是				|	1G			|			|
-	//|	ZStack			|localstorage			|本地盘			|				|					|	是			|	是				|	1G			|			|
-	//|	ZStack			|ceph					|云硬盘			|				|					|	是			|	是				|	1G			|			|
-	//|	Google			|local-ssd				|本地SSD暂存盘	|375GB			|不支持				|	否			|	否				|				|	跟随实例创建，一次最多添加8个		|
-	//|	Google			|pd-standard			|标准永久性磁盘	|10-65536GB		|10-65536GB			|	是			|	是				|	1G			|			|
-	//|	Google			|pd-ssd					|SSD永久性磁盘	|10-65536GB		|10-65536GB			|	是			|	是				|	1G			|			|
+	//  | 平台           |  存储类型             |    中文        |    数据盘     |    系统盘          |    可否扩容      |    可否单独创建      |    扩容步长      |    说明    |
+	//  |----            |    ----               |    ----        |    -----      |    -----           |    -------       |    -----------       |    -------       |    -----   |
+	//  |Esxi            |local                  |本地盘          |1-500GB        |30~500GB            |    是            |    否                |    1G            |            |
+	//  |Esxi            |nas                    |NAS盘           |30-3072GB      |30~500GB            |    是            |    否                |    1G            |            |
+	//  |Esxi            |vsan                   |VSAN盘          |30-3072GB      |30~500GB            |    是            |    否                |    1G            |            |
+	//  |KVM             |local                  |本地盘盘        |1-500GB        |30~500GB            |    是            |    否                |    1G            |            |
+	//  |KVM             |rbd                    |云硬盘          |1-3072GB       |30~500GB            |    是            |    是                |    1G            |            |
+	//  |Azure           |standard_lrs           |标准 HDD        |1-4095GB       |30~4095GB           |    是            |    是                |    1G            |            |
+	//  |Azure           |standardssd_lrs        |标准 SSD        |1-4095GB       |30~4095GB           |    是            |    是                |    1G            |            |
+	//  |Azure           |premium_lrs            |高级SSD         |1-4095GB       |30~4095GB           |    是            |    是                |    1G            |            |
+	//  |AWS             |gp2                    |通用型SSD       |1-16384GB      |20~16384GB          |    是            |    是                |    1G            |            |
+	//  |AWS             |io1                    |预配置 IOPS SSD |4-16384GB      |20-16384GB          |    是            |    是                |    1G            |            |
+	//  |AWS             |st1                    |吞吐优化HDD     |500-16384GB    |不支持              |    是            |    是                |    1G            |            |
+	//  |AWS             |sc1                    |Cold HDD        |500-16384GB    |不支持              |    是            |    是                |    1G            |            |
+	//  |AWS             |standard               |磁介质          |1-1024GB       |20-1024GB           |    是            |    是                |    1G            |            |
+	//  |腾讯云          |cloud_ssd              |SSD云硬盘       |10-16000GB     |50~500GB            |    是            |    是                |    10G           |            |
+	//  |腾讯云          |cloud_basic            |普通云硬盘      |10-16000GB     |50~500GB            |    是            |    是                |    10G           |            |
+	//  |腾讯云          |cloud_preium           |高性能云硬盘    |10-16000GB     |50~1024GB           |    是            |    是                |    10G           |            |
+	//  |腾讯云          |local_basic            |普通本地盘      |10-1600GB      |不支持              |    否            |    否                |                  |            |
+	//  |腾讯云          |local_ssd              |SSD本地盘       |10-7000GB      |部分区域套餐支持    |    否            |    否                |                  |            |
+	//  |腾讯云          |local_pro              |HDD本地盘       |跟随套餐       |部分区域套餐支持    |    否            |    否                |                  |            |
+	//  |华为云或天翼云  |SSD                    |超高IO云硬盘    |10-32768GB     |40~1024GB           |    是            |    是                |    1G            |            |
+	//  |华为云或天翼云  |SAS                    |高IO云硬盘      |10-32768GB     |40~1024GB           |    是            |    是                |    1G            |            |
+	//  |华为云或天翼云  |SATA                   |普通IO云硬盘    |10-32768GB     |40~1024GB           |    是            |    是                |    1G            |            |
+	//  |OpenStack       |nova                   |nova            |不支持         |30-500GB            |    否            |    否                |                  |            |
+	//  |OpenStack       |自定义                 |...             |无限制         |无限制              |    是            |    是                |    1G            |            |
+	//  |Ucloud          |CLOUD_NORMAL           |普通云盘        |20-8000GB      |不支持              |    是            |    是                |    1G            |            |
+	//  |Ucloud          |CLOUD_SSD              |SSD云盘         |20-4000GB      |20-500GB            |    是            |    是                |    1G            |            |
+	//  |Ucloud          |LOCAL_NORMAL           |普通本地盘      |               |                    |    是            |    是                |    1G            |            |
+	//  |Ucloud          |LOCAL_SSD              |SSD本地盘       |               |                    |    是            |    是                |    1G            |            |
+	//  |Ucloud          |EXCLUSIVE_LOCAL_DISK   |独享本地盘      |               |                    |    是            |    是                |    1G            |            |
+	//  |ZStack          |localstorage           |本地盘          |               |                    |    是            |    是                |    1G            |            |
+	//  |ZStack          |ceph                   |云硬盘          |               |                    |    是            |    是                |    1G            |            |
+	//  |Google          |local-ssd              |本地SSD暂存盘   |375GB          |不支持              |    否            |    否                |                  |    跟随实例创建，一次最多添加8个        |
+	//  |Google          |pd-standard            |标准永久性磁盘  |10-65536GB     |10-65536GB          |    是            |    是                |    1G            |            |
+	//  |Google          |pd-ssd                 |SSD永久性磁盘   |10-65536GB     |10-65536GB          |    是            |    是                |    1G            |            |
 	Backend string `json:"backend"`
 
 	//介质类型
@@ -206,14 +216,23 @@ type DiskConfig struct {
 
 	//swagger:ignore
 	DiskId string `json:"disk_id"`
+
+	//swagger:ignore
+	ExistingPath string `json:"existing_path"`
+
+	// NVNe device
+	NVMEDevice *IsolatedDeviceConfig `json:"nvme_device"`
 }
 
 type IsolatedDeviceConfig struct {
-	Index   int    `json:"index"`
-	Id      string `json:"id"`
-	DevType string `json:"dev_type"`
-	Model   string `json:"model"`
-	Vendor  string `json:"vendor"`
+	Index        int    `json:"index"`
+	Id           string `json:"id"`
+	DevType      string `json:"dev_type"`
+	Model        string `json:"model"`
+	Vendor       string `json:"vendor"`
+	NetworkIndex *int8  `json:"network_index"`
+	WireId       string `json:"wire_id"`
+	DiskIndex    *int8  `json:"disk_index"`
 }
 
 type BaremetalDiskConfig struct {
@@ -258,21 +277,21 @@ type ServerConfigs struct {
 	//
 	//
 	//
-	// |hypervisor	|	技术或平台	|
-	// |-------		|	----------	|
-	// |kvm			|	本地私有云	|
-	// |esxi		|	VMWare		|
-	// |baremetal	|	裸金属		|
-	// |aliyun		|	阿里云		|
-	// |aws			|	亚马逊		|
-	// |qcloud		|	腾讯云		|
-	// |azure		|	微软云		|
-	// |huawei		|	华为云		|
-	// |openstack	|	OpenStack	|
-	// |ucloud		|	Ucloud		|
-	// |zstack		|	ZStack		|
-	// |google		|	谷歌云		|
-	// |ctyun		|	天翼云		|
+	// |hypervisor    |    技术或平台    |
+	// |-------        |    ----------    |
+	// |kvm            |    本地私有云    |
+	// |esxi        |    VMWare        |
+	// |baremetal    |    裸金属        |
+	// |aliyun        |    阿里云        |
+	// |aws            |    亚马逊        |
+	// |qcloud        |    腾讯云        |
+	// |azure        |    微软云        |
+	// |huawei        |    华为云        |
+	// |openstack    |    OpenStack    |
+	// |ucloud        |    Ucloud        |
+	// |zstack        |    ZStack        |
+	// |google        |    谷歌云        |
+	// |ctyun        |    天翼云        |
 	// default: kvm
 	Hypervisor string `json:"hypervisor"`
 
@@ -297,6 +316,7 @@ type ServerConfigs struct {
 	// required: false
 	Backup bool `json:"backup"`
 
+	// swagger:ignore
 	// 创建虚拟机数量
 	// default: 1
 	Count int `json:"count"`
@@ -348,19 +368,29 @@ type DeployConfig struct {
 type ServerCreateInput struct {
 	apis.VirtualResourceCreateInput
 	DeletePreventableCreateInput
+	HostnameInput
 
 	*ServerConfigs
 
+	apis.EncryptedResourceCreateInput
+
 	// 虚拟机内存大小,单位Mb,若未指定instance_type,此参数为必传项
-	VmemSize int `json:"vmem_size"`
+	VmemSize       int  `json:"vmem_size"`
+	EnableMemclean bool `json:"enable_memclean"`
 
 	// 虚拟机Cpu大小,若未指定instance_type,此参数为必传项
 	// default: 1
 	VcpuCount int `json:"vcpu_count"`
 
 	// 用户自定义启动脚本
+	// 部分平台只支持 #cloud-config yaml 格式(由于部分平台密码依赖cloud-init注入密码信息,所以不支持特殊类型的user data)
+	// 支持特殊user data平台: Aliyun, Qcloud, Azure, Apsara, Ucloud
 	// required: false
 	UserData string `json:"user_data"`
+
+	// swagger: ignore
+	// 创建测试数据，不实际创建资源
+	FakeCreate bool `json:"fake_create"`
 
 	// swagger:ignore
 	// Deprecated
@@ -381,7 +411,8 @@ type ServerCreateInput struct {
 
 	// 使用ISO光盘启动, 仅KVM平台支持
 	// required: false
-	Cdrom string `json:"cdrom"`
+	Cdrom          string `json:"cdrom"`
+	CdromBootIndex *int8  `json:"cdrom_boot_index"`
 
 	// enum: cirros, vmware, qxl, std
 	// default: std
@@ -425,26 +456,27 @@ type ServerCreateInput struct {
 	// 创建后自动启动
 	// 部分云创建后会自动启动例如: 腾讯云, AWS, OpenStack, ZStack, Ucloud, Huawei, Azure, 天翼云
 	// default: false
-	AutoStart     bool            `json:"auto_start"`
-	DeployConfigs []*DeployConfig `json:"deploy_configs"`
+	AutoStart      bool            `json:"auto_start"`
+	DeployConfigs  []*DeployConfig `json:"deploy_configs"`
+	DeployTelegraf bool            `json:"deploy_telegraf"`
 
 	// 包年包月时长
 	//
 	//
-	// |平台				|是否支持	|
-	// |----				|-------	|
-	// |KVM					|否			|
-	// |ESxi				|否			|
-	// |OpenStack			|否			|
-	// |ZStack				|否			|
-	// |Google				|否			|
-	// |Azure				|否			|
-	// |AWS					|否			|
-	// |腾讯云				|是			|
-	// |Aliyun				|是			|
-	// |Ucloud				|是			|
-	// |Huawei				|是			|
-	// |天翼云				|是			|
+	// |平台                |是否支持    |
+	// |----                |-------    |
+	// |KVM                    |否            |
+	// |ESxi                |否            |
+	// |OpenStack            |否            |
+	// |ZStack                |否            |
+	// |Google                |否            |
+	// |Azure                |否            |
+	// |AWS                    |否            |
+	// |腾讯云                |是            |
+	// |Aliyun                |是            |
+	// |Ucloud                |是            |
+	// |Huawei                |是            |
+	// |天翼云                |是            |
 	Duration string `json:"duration"`
 
 	// 是否自动续费
@@ -475,24 +507,29 @@ type ServerCreateInput struct {
 	// 私有云不支持此参数
 	//
 	//
-	// |平台				|支持范围	|
-	// |----				|-------	|
-	// |腾讯云				|按量计费1-100, 包年包月1-200 |
+	// |平台                |支持范围    |
+	// |----                |-------    |
+	// |腾讯云                |按量计费1-100, 包年包月1-200 |
 	PublicIpBw int `json:"public_ip_bw,omitzero"`
 	// 公网IP计费类型
 	// 默认按流量计费
 	//
 	//
-	// |类别					|说明	|
-	// |----					|-------	|
-	// |traffic					|按流量计费|
-	// |bandwidth				|按带宽计费|
+	// |类别                    |说明    |
+	// |----                    |-------    |
+	// |traffic                    |按流量计费|
+	// |bandwidth                |按带宽计费|
 	PublicIpChargeType string `json:"public_ip_charge_type,omitempty"`
 
 	// 使用主机快照创建虚拟机, 主机快照不会重置密码及秘钥信息
 	// 使用主机快照创建的虚拟机将沿用之前的密码秘钥及安全组信息
 	// required: false
 	InstanceSnapshotId string `json:"instance_snapshot_id,omitempty"`
+
+	// 使用主机备份创建虚拟机, 主机快照不会重置密码及秘钥信息
+	// 使用主机备份创建的虚拟机将沿用之前的密码秘钥及安全组信息
+	// required: false
+	InstanceBackupId string `json:"instance_backup_id,omitempty"`
 
 	// 安全组Id, 此参数会和secgroups参数合并
 	SecgroupId string `json:"secgrp_id"`
@@ -555,14 +592,24 @@ type GuestBatchMigrateRequest struct {
 	PreferHostId string `json:"prefer_host_id"`
 	// Deprecated
 	// swagger:ignore
-	PreferHost string `json:"prefer_host" yunion-deprecated-by:"prefer_host_id"`
+	PreferHost      string `json:"prefer_host" yunion-deprecated-by:"prefer_host_id"`
+	SkipCpuCheck    bool   `json:"skip_cpu_check"`
+	SkipKernelCheck bool   `json:"skip_kernel_check"`
+	EnableTLS       *bool  `json:"enable_tls"`
+	MaxBandwidthMb  *int64 `json:"max_bandwidth_mb"`
+	QuciklyFinish   *bool  `json:"quickly_finish"`
 }
 
 type GuestBatchMigrateParams struct {
-	Id          string
-	LiveMigrate bool
-	RescueMode  bool
-	OldStatus   string
+	Id              string
+	LiveMigrate     bool
+	SkipCpuCheck    bool
+	SkipKernelCheck bool
+	EnableTLS       *bool
+	RescueMode      bool
+	OldStatus       string
+	MaxBandwidthMb  *int64
+	QuciklyFinish   *bool
 }
 
 type HostLoginInfo struct {

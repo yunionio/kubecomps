@@ -19,7 +19,9 @@ import (
 	"strings"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/stringutils"
 	"yunion.io/x/sqlchemy"
 
@@ -28,8 +30,9 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
+	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
+	"yunion.io/x/onecloud/pkg/util/tagutils"
 )
 
 type UUIDGenerator func() string
@@ -42,7 +45,7 @@ type SStandaloneAnonResourceBase struct {
 	SResourceBase
 
 	// 资源UUID
-	Id string `width:"128" charset:"ascii" primary:"true" list:"user" json:"id"`
+	Id string `width:"128" charset:"ascii" primary:"true" list:"user" create:"optional" json:"id"`
 
 	// 资源描述信息
 	Description string `width:"256" charset:"utf8" get:"user" list:"user" update:"user" create:"optional" json:"description"`
@@ -74,28 +77,12 @@ func NewStandaloneAnonResourceBaseManager(
 	}
 }
 
+func (manager *SStandaloneAnonResourceBaseManager) CreateByInsertOrUpdate() bool {
+	return false
+}
+
 func (manager *SStandaloneAnonResourceBaseManager) IsStandaloneManager() bool {
 	return true
-}
-
-func (self *SStandaloneAnonResourceBaseManager) AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAdminAllowList(userCred, self)
-}
-
-func (self *SStandaloneAnonResourceBaseManager) AllowCreateItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return IsAdminAllowCreate(userCred, self)
-}
-
-func (self *SStandaloneAnonResourceBase) AllowGetDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAdminAllowGet(userCred, self)
-}
-
-func (self *SStandaloneAnonResourceBase) AllowUpdateItem(ctx context.Context, userCred mcclient.TokenCredential) bool {
-	return IsAdminAllowUpdate(userCred, self)
-}
-
-func (self *SStandaloneAnonResourceBase) AllowDeleteItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return IsAdminAllowDelete(userCred, self)
 }
 
 func (manager *SStandaloneAnonResourceBaseManager) GetIStandaloneModelManager() IStandaloneModelManager {
@@ -114,20 +101,27 @@ func (manager *SStandaloneAnonResourceBaseManager) FilterByNotId(q *sqlchemy.SQu
 	return q.NotEquals("id", idStr)
 }
 
-func (manager *SStandaloneAnonResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SStandaloneAnonResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
+	if userCred != nil {
+		result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
+		if !result.ObjectTags.IsEmpty() {
+			policyTagFilters := tagutils.STagFilters{}
+			policyTagFilters.AddFilters(result.ObjectTags)
+			q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+		}
+	}
+	return q
+}
+
+func (manager *SStandaloneAnonResourceBaseManager) FilterByHiddenSystemAttributes(q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query jsonutils.JSONObject, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	q = manager.SResourceBaseManager.FilterByHiddenSystemAttributes(q, userCred, query, scope)
 	showEmulated := jsonutils.QueryBoolean(query, "show_emulated", false)
 	if showEmulated {
 		var isAllow bool
-		if consts.IsRbacEnabled() {
-			allowScope := policy.PolicyManager.AllowScope(userCred, consts.GetServiceType(), manager.KeywordPlural(), policy.PolicyActionList, "show_emulated")
-			if !scope.HigherThan(allowScope) {
-				isAllow = true
-			}
-		} else {
-			if userCred.HasSystemAdminPrivilege() {
-				isAllow = true
-			}
+		// TODO, add tagfilter
+		allowScope, _ := policy.PolicyManager.AllowScope(userCred, consts.GetServiceType(), manager.KeywordPlural(), policy.PolicyActionList, "show_emulated")
+		if !scope.HigherThan(allowScope) {
+			isAllow = true
 		}
 		if !isAllow {
 			showEmulated = false
@@ -197,7 +191,7 @@ func (model *SStandaloneAnonResourceBase) StandaloneModelManager() IStandaloneMo
 	return model.GetModelManager().(IStandaloneModelManager)
 }
 
-func (model *SStandaloneAnonResourceBase) GetId() string {
+func (model SStandaloneAnonResourceBase) GetId() string {
 	return model.Id
 }
 
@@ -224,12 +218,12 @@ func (model *SStandaloneAnonResourceBase) GetShortDescV2(ctx context.Context) *a
 /*
  * userCred: optional
  */
-func (model *SStandaloneAnonResourceBase) GetMetadata(key string, userCred mcclient.TokenCredential) string {
-	return Metadata.GetStringValue(model, key, userCred)
+func (model *SStandaloneAnonResourceBase) GetMetadata(ctx context.Context, key string, userCred mcclient.TokenCredential) string {
+	return Metadata.GetStringValue(ctx, model, key, userCred)
 }
 
-func (model *SStandaloneAnonResourceBase) GetMetadataJson(key string, userCred mcclient.TokenCredential) jsonutils.JSONObject {
-	return Metadata.GetJsonValue(model, key, userCred)
+func (model *SStandaloneAnonResourceBase) GetMetadataJson(ctx context.Context, key string, userCred mcclient.TokenCredential) jsonutils.JSONObject {
+	return Metadata.GetJsonValue(ctx, model, key, userCred)
 }
 
 func isUserMetadata(key string) bool {
@@ -297,6 +291,130 @@ func (model *SStandaloneAnonResourceBase) SetCloudMetadataAll(ctx context.Contex
 	return Metadata.SetAll(ctx, model, userTags, userCred, USER_TAG_PREFIX)
 }
 
+func (model *SStandaloneAnonResourceBase) SetClassMetadataValues(ctx context.Context, dictstore map[string]interface{}, userCred mcclient.TokenCredential) error {
+	err := Metadata.SetValuesWithLog(ctx, model, dictstore, userCred)
+	if err != nil {
+		return errors.Wrap(err, "SetValuesWithLog")
+	}
+	return nil
+}
+
+func (model *SStandaloneAnonResourceBase) SetClassMetadataAll(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential) error {
+	afterCheck := make(map[string]interface{}, len(dictstore))
+	for k, v := range dictstore {
+		if !strings.HasPrefix(k, CLASS_TAG_PREFIX) {
+			afterCheck[CLASS_TAG_PREFIX+k] = v
+		} else {
+			afterCheck[k] = v
+		}
+	}
+	err := Metadata.SetAll(ctx, model, afterCheck, userCred, CLASS_TAG_PREFIX)
+	if err != nil {
+		return errors.Wrap(err, "SetAll")
+	}
+	return nil
+}
+
+func (model *SStandaloneAnonResourceBase) InheritTo(ctx context.Context, dest IClassMetadataSetter) error {
+	return InheritFromTo(ctx, model, dest)
+}
+
+type IClassMetadataSetter interface {
+	// a setter should first be a owner
+	IClassMetadataOwner
+
+	SetClassMetadataAll(context.Context, map[string]string, mcclient.TokenCredential) error
+}
+
+func InheritFromTo(ctx context.Context, src IClassMetadataOwner, dest IClassMetadataSetter) error {
+	metadata, err := src.GetAllClassMetadata()
+	if err != nil {
+		return errors.Wrap(err, "GetAllClassMetadata")
+	}
+	if len(metadata) == 0 {
+		return nil
+	}
+	curMeta, err := dest.GetAllClassMetadata()
+	if err != nil {
+		return errors.Wrap(err, "GetAllClassMetadata dest")
+	}
+	if len(curMeta) > 0 {
+		// check conflict
+		for k, v := range curMeta {
+			if sv, ok := metadata[k]; ok {
+				if sv != v {
+					// duplicate value for identical key
+					return errors.Wrapf(httperrors.ErrConflict, "destination has another value for class key %s", k)
+				}
+			} else {
+				// no such class key
+				return errors.Wrapf(httperrors.ErrConflict, "destination has extra class key %s", k)
+			}
+		}
+	}
+	userCred := auth.AdminCredential()
+	return dest.SetClassMetadataAll(ctx, metadata, userCred)
+}
+
+type IClassMetadataOwner interface {
+	GetAllClassMetadata() (map[string]string, error)
+}
+
+type AllMetadataOwner map[string]string
+
+func (w AllMetadataOwner) GetAllClassMetadata() (map[string]string, error) {
+	ret := make(map[string]string)
+	for k, v := range w {
+		if strings.HasPrefix(k, CLASS_TAG_PREFIX) {
+			ret[k[len(CLASS_TAG_PREFIX):]] = v
+		}
+	}
+	return ret, nil
+}
+
+type ClassMetadataOwner map[string]string
+
+func (w ClassMetadataOwner) GetAllClassMetadata() (map[string]string, error) {
+	return w, nil
+}
+
+func IsInSameClass(ctx context.Context, cmo1, cmo2 IClassMetadataOwner) (bool, error) {
+	pureTags, err := cmo1.GetAllClassMetadata()
+	if err != nil {
+		return false, errors.Wrap(err, "GetAllPureMetadata")
+	}
+	pureTagsP, err := cmo2.GetAllClassMetadata()
+	if err != nil {
+		return false, errors.Wrap(err, "GetAllPureMetadata")
+	}
+	if len(pureTags) != len(pureTagsP) {
+		return false, nil
+	}
+	for k, v := range pureTags {
+		if vp, ok := pureTagsP[k]; !ok || vp != v {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func RequireSameClass(ctx context.Context, cmo1, cmo2 IClassMetadataOwner) error {
+	same, err := IsInSameClass(ctx, cmo1, cmo2)
+	if err != nil {
+		return errors.Wrap(err, "IsInSameClass")
+	}
+	if !same {
+		tag1, _ := cmo1.GetAllClassMetadata()
+		tag2, _ := cmo2.GetAllClassMetadata()
+		return errors.Wrapf(httperrors.ErrConflict, "inconsist class metadata: %s %s", tag1, tag2)
+	}
+	return nil
+}
+
+func (model *SStandaloneAnonResourceBase) IsInSameClass(ctx context.Context, pModel *SStandaloneAnonResourceBase) (bool, error) {
+	return IsInSameClass(ctx, model, pModel)
+}
+
 func (model *SStandaloneAnonResourceBase) SetSysCloudMetadataAll(ctx context.Context, dictstore map[string]interface{}, userCred mcclient.TokenCredential) error {
 	err := Metadata.SetAll(ctx, model, dictstore, userCred, SYS_CLOUD_TAG_PREFIX)
 	if err != nil {
@@ -321,12 +439,12 @@ func (model *SStandaloneAnonResourceBase) RemoveAllMetadata(ctx context.Context,
 	return nil
 }
 
-func (model *SStandaloneAnonResourceBase) GetAllMetadata(userCred mcclient.TokenCredential) (map[string]string, error) {
-	return Metadata.GetAll(model, nil, "", userCred)
+func (model *SStandaloneAnonResourceBase) GetAllMetadata(ctx context.Context, userCred mcclient.TokenCredential) (map[string]string, error) {
+	return Metadata.GetAll(ctx, model, nil, "", userCred)
 }
 
 func (model *SStandaloneAnonResourceBase) GetAllUserMetadata() (map[string]string, error) {
-	meta, err := Metadata.GetAll(model, nil, USER_TAG_PREFIX, nil)
+	meta, err := Metadata.GetAll(nil, model, nil, USER_TAG_PREFIX, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Metadata.GetAll")
 	}
@@ -338,7 +456,7 @@ func (model *SStandaloneAnonResourceBase) GetAllUserMetadata() (map[string]strin
 }
 
 func (model *SStandaloneAnonResourceBase) GetAllCloudMetadata() (map[string]string, error) {
-	meta, err := Metadata.GetAll(model, nil, CLOUD_TAG_PREFIX, nil)
+	meta, err := Metadata.GetAll(nil, model, nil, CLOUD_TAG_PREFIX, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Metadata.GetAll")
 	}
@@ -349,13 +467,21 @@ func (model *SStandaloneAnonResourceBase) GetAllCloudMetadata() (map[string]stri
 	return ret, nil
 }
 
-func (model *SStandaloneAnonResourceBase) AllowGetDetailsMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAllowGetSpec(rbacutils.ScopeSystem, userCred, model, "metadata")
+func (model *SStandaloneAnonResourceBase) GetAllClassMetadata() (map[string]string, error) {
+	meta, err := Metadata.GetAll(nil, model, nil, CLASS_TAG_PREFIX, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "Metadata.GetAll")
+	}
+	ret := make(map[string]string)
+	for k, v := range meta {
+		ret[k[len(CLASS_TAG_PREFIX):]] = v
+	}
+	return ret, nil
 }
 
 // 获取资源标签（元数据）
 func (model *SStandaloneAnonResourceBase) GetDetailsMetadata(ctx context.Context, userCred mcclient.TokenCredential, input apis.GetMetadataInput) (apis.GetMetadataOutput, error) {
-	val, err := Metadata.GetAll(model, input.Field, input.Prefix, userCred)
+	val, err := Metadata.GetAll(ctx, model, input.Field, input.Prefix, userCred)
 	if err != nil {
 		return nil, errors.Wrap(err, "Metadata.GetAll")
 	}
@@ -370,16 +496,12 @@ func (model *SStandaloneAnonResourceBase) GetDetailsMetadata(ctx context.Context
 	return val, nil
 }
 
-func (model *SStandaloneAnonResourceBase) AllowPerformMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return IsAllowPerform(rbacutils.ScopeSystem, userCred, model, "metadata")
-}
-
 // +onecloud:swagger-gen-ignore
 func (model *SStandaloneAnonResourceBase) PerformMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformMetadataInput) (jsonutils.JSONObject, error) {
 	dictStore := make(map[string]interface{})
 	for k, v := range input {
 		// 已双下滑线开头的metadata是系统内置，普通用户不可添加，只能查看
-		if strings.HasPrefix(k, SYS_TAG_PREFIX) && (userCred == nil || !IsAllowPerform(rbacutils.ScopeSystem, userCred, model, "metadata")) {
+		if strings.HasPrefix(k, SYS_TAG_PREFIX) && (userCred == nil || !IsAllowPerform(ctx, rbacscope.ScopeSystem, userCred, model, "metadata")) {
 			return nil, httperrors.NewForbiddenError("not allow to set system key, please remove the underscore at the beginning")
 		}
 		dictStore[k] = v
@@ -389,10 +511,6 @@ func (model *SStandaloneAnonResourceBase) PerformMetadata(ctx context.Context, u
 		return nil, errors.Wrap(err, "SetAllMetadata")
 	}
 	return nil, nil
-}
-
-func (model *SStandaloneAnonResourceBase) AllowPerformUserMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return IsAllowPerform(rbacutils.ScopeSystem, userCred, model, "user-metadata")
 }
 
 // 更新资源的用户标签
@@ -407,10 +525,6 @@ func (model *SStandaloneAnonResourceBase) PerformUserMetadata(ctx context.Contex
 		return nil, errors.Wrap(err, "SetUserMetadataValues")
 	}
 	return nil, nil
-}
-
-func (model *SStandaloneAnonResourceBase) AllowPerformSetUserMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return IsAllowPerform(rbacutils.ScopeSystem, userCred, model, "set-user-metadata")
 }
 
 // 全量替换资源的所有用户标签
@@ -432,6 +546,48 @@ func (model *SStandaloneAnonResourceBase) PerformSetUserMetadata(ctx context.Con
 	return nil, nil
 }
 
+// 更新资源的 class 标签
+func (model *SStandaloneAnonResourceBase) PerformClassMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformClassMetadataInput) (jsonutils.JSONObject, error) {
+	dictStore := make(map[string]interface{})
+	for k, v := range input {
+		dictStore[CLASS_TAG_PREFIX+k] = v
+	}
+	err := model.SetUserMetadataValues(ctx, dictStore, userCred)
+	if err != nil {
+		return nil, errors.Wrap(err, "SetUserMetadataValues")
+	}
+	return nil, nil
+}
+
+// 全量替换资源的所有 class 标签
+func (model *SStandaloneAnonResourceBase) PerformSetClassMetadata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformSetClassMetadataInput) (jsonutils.JSONObject, error) {
+	dictStore := make(map[string]string)
+	for k, v := range input {
+		if len(k) > 64-len(CLASS_TAG_PREFIX) {
+			return nil, httperrors.NewInputParameterError("input key too long > %d", 64-len(CLASS_TAG_PREFIX))
+		}
+		if len(v) > 65535 {
+			return nil, httperrors.NewInputParameterError("input value too long > %d", 65535)
+		}
+		dictStore[k] = v
+	}
+	err := model.SetClassMetadataAll(ctx, dictStore, userCred)
+	if err != nil {
+		return nil, errors.Wrap(err, "SetUserMetadataAll")
+	}
+	return nil, nil
+}
+
+func (model *SStandaloneAnonResourceBase) GetDetailsClassMetadata(ctx context.Context, userCred mcclient.TokenCredential, input apis.GetClassMetadataInput) (apis.GetClassMetadataOutput, error) {
+	return model.GetAllClassMetadata()
+}
+
+type sPolicyTags struct {
+	PolicyObjectTags  tagutils.TTagSetList `json:"policy_object_tags"`
+	PolicyProjectTags tagutils.TTagSetList `json:"policy_project_tags"`
+	PolicyDomainTags  tagutils.TTagSetList `json:"policy_domain_tags"`
+}
+
 func (model *SStandaloneAnonResourceBase) PostUpdate(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) {
 	model.SResourceBase.PostUpdate(ctx, userCred, query, data)
 
@@ -440,6 +596,8 @@ func (model *SStandaloneAnonResourceBase) PostUpdate(ctx context.Context, userCr
 	if err == nil {
 		model.PerformMetadata(ctx, userCred, nil, meta)
 	}
+
+	model.applyPolicyTags(ctx, userCred, data)
 }
 
 func (model *SStandaloneAnonResourceBase) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
@@ -450,18 +608,23 @@ func (model *SStandaloneAnonResourceBase) PostCreate(ctx context.Context, userCr
 	if err == nil {
 		model.PerformMetadata(ctx, userCred, nil, meta)
 	}
+
+	model.applyPolicyTags(ctx, userCred, data)
 }
 
-func (model *SStandaloneAnonResourceBase) PostDelete(ctx context.Context, userCred mcclient.TokenCredential) {
-	if model.Deleted {
-		model.RemoveAllMetadata(ctx, userCred)
+func (model *SStandaloneAnonResourceBase) applyPolicyTags(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) {
+	tags := sPolicyTags{}
+	data.Unmarshal(&tags)
+	log.Debugf("applyPolicyTags: %s", jsonutils.Marshal(tags))
+	if len(tags.PolicyObjectTags) > 0 {
+		model.PerformMetadata(ctx, userCred, nil, tagutils.Tagset2MapString(tags.PolicyObjectTags.Flattern()))
 	}
-	model.SResourceBase.PostDelete(ctx, userCred)
+	if model.Keyword() == "project" && len(tags.PolicyProjectTags) > 0 {
+		model.PerformMetadata(ctx, userCred, nil, tagutils.Tagset2MapString(tags.PolicyProjectTags.Flattern()))
+	} else if model.Keyword() == "domain" && len(tags.PolicyDomainTags) > 0 {
+		model.PerformMetadata(ctx, userCred, nil, tagutils.Tagset2MapString(tags.PolicyDomainTags.Flattern()))
+	}
 }
-
-// func (model *SStandaloneAnonResourceBase) Delete(ctx context.Context, userCred mcclient.TokenCredential) error {
-// 	return DeleteModel(ctx, userCred, model)
-// }
 
 func (model *SStandaloneAnonResourceBase) ClearSchedDescCache() error {
 	return nil
@@ -553,4 +716,181 @@ func (model *SStandaloneAnonResourceBase) IsShared() bool {
 
 func (model *SStandaloneAnonResourceBase) OnMetadataUpdated(ctx context.Context, userCred mcclient.TokenCredential) {
 	// noop
+}
+
+type SGetResourceTagValuePairsInput struct {
+	apis.MetadataBaseFilterInput
+
+	// Return keys only
+	KeyOnly *bool `json:"key_only"`
+
+	// Order by key of tags
+	OrderByTagKey string `json:"order_by_tag_key"`
+}
+
+func (manager *SStandaloneAnonResourceBaseManager) GetPropertyTagValuePairs(
+	ctx context.Context,
+	userCred mcclient.TokenCredential,
+	query jsonutils.JSONObject,
+) (jsonutils.JSONObject, error) {
+	return GetPropertyTagValuePairs(
+		manager.GetIStandaloneModelManager(),
+		manager.Keyword(),
+		"id",
+		ctx,
+		userCred,
+		query,
+	)
+}
+
+func GetPropertyTagValuePairs(
+	manager IModelManager,
+	tagObjType string,
+	tagIdField string,
+	ctx context.Context,
+	userCred mcclient.TokenCredential,
+	query jsonutils.JSONObject,
+) (jsonutils.JSONObject, error) {
+	input := SGetResourceTagValuePairsInput{}
+	err := query.Unmarshal(&input)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unmarshal")
+	}
+
+	sq := Metadata.Query().SubQuery()
+	keyOnly := (input.KeyOnly != nil && *input.KeyOnly)
+
+	queryKeys := []string{tagIdField}
+	if tagIdField != "id" {
+		queryKeys = append(queryKeys, "id")
+	}
+	objQ := manager.Query(queryKeys...)
+	objQ, err = ListItemQueryFilters(manager, ctx, objQ, userCred, query, policy.PolicyActionList)
+	if err != nil {
+		return nil, errors.Wrap(err, "ListItemQueryFilters")
+	}
+	objSQ := objQ.SubQuery()
+
+	var queryFields []sqlchemy.IQueryField
+	if keyOnly {
+		queryFields = []sqlchemy.IQueryField{
+			sq.Field("key"),
+			sqlchemy.COUNT("count", objSQ.Field("id")),
+		}
+	} else {
+		queryFields = []sqlchemy.IQueryField{
+			sq.Field("key"),
+			sq.Field("value"),
+			sqlchemy.COUNT("count", objSQ.Field("id")),
+		}
+	}
+	q := sq.Query()
+
+	q = q.Join(objSQ, sqlchemy.AND(
+		sqlchemy.Equals(q.Field("obj_type"), tagObjType),
+		sqlchemy.Equals(q.Field("obj_id"), objSQ.Field(tagIdField)),
+	))
+
+	q = q.AppendField(queryFields...)
+
+	q = Metadata.metadataBaseFilter(q, input.MetadataBaseFilterInput)
+
+	if keyOnly {
+		q = q.GroupBy(q.Field("key"))
+	} else {
+		q = q.GroupBy(q.Field("key"), q.Field("value"))
+	}
+	if input.OrderByTagKey == string(sqlchemy.SQL_ORDER_DESC) {
+		q = q.Desc(q.Field("key"))
+		if !keyOnly {
+			q = q.Desc(q.Field("value"))
+		}
+	} else {
+		q = q.Asc(q.Field("key"))
+		if !keyOnly {
+			q = q.Asc(q.Field("value"))
+		}
+	}
+
+	metadatas := make([]struct {
+		Key   string
+		Value string
+		Count int64
+	}, 0)
+	err = q.All(&metadatas)
+	if err != nil {
+		return nil, errors.Wrap(err, "Query.All")
+	}
+
+	return jsonutils.Marshal(metadatas), nil
+}
+
+type SGetResourceTagValueTreeInput struct {
+	Keys    []string `json:"key"`
+	ShowMap *bool    `json:"show_map"`
+}
+
+func (manager *SStandaloneAnonResourceBaseManager) GetPropertyTagValueTree(
+	ctx context.Context,
+	userCred mcclient.TokenCredential,
+	query jsonutils.JSONObject,
+) (jsonutils.JSONObject, error) {
+	return GetPropertyTagValueTree(
+		manager.GetIStandaloneModelManager(),
+		manager.Keyword(),
+		"id",
+		ctx,
+		userCred,
+		query,
+	)
+}
+
+func GetPropertyTagValueTree(
+	manager IModelManager,
+	tagObjType string,
+	tagIdField string,
+	ctx context.Context,
+	userCred mcclient.TokenCredential,
+	query jsonutils.JSONObject,
+) (jsonutils.JSONObject, error) {
+	input := SGetResourceTagValueTreeInput{}
+	err := query.Unmarshal(&input)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unmarshal")
+	}
+
+	objSubQ := manager.Query().SubQuery()
+	objQ := objSubQ.Query(objSubQ.Field(tagIdField), sqlchemy.COUNT("_sub_count_"))
+	objQ, err = ListItemQueryFilters(manager, ctx, objQ, userCred, query, policy.PolicyActionList)
+	if err != nil {
+		return nil, errors.Wrap(err, "ListItemQueryFilters")
+	}
+	objQ = objQ.GroupBy(objSubQ.Field(tagIdField))
+	q := objQ.SubQuery().Query(sqlchemy.SUM(tagValueCountKey, objQ.Field("_sub_count_")))
+	metadataSQ := Metadata.Query().Equals("obj_type", tagObjType).In("key", input.Keys).SubQuery()
+	groupBy := make([]interface{}, 0)
+	for i, key := range input.Keys {
+		valueFieldName := tagValueKey(i)
+		subq := metadataSQ.Query().Equals("key", key).SubQuery()
+		q = q.LeftJoin(subq, sqlchemy.Equals(q.Field(tagIdField), subq.Field("obj_id")))
+		q = q.AppendField(
+			sqlchemy.NewFunction(
+				sqlchemy.NewCase().When(sqlchemy.IsNull(subq.Field("value")), sqlchemy.NewStringField(tagutils.NoValue)).Else(subq.Field("value")),
+				valueFieldName,
+			),
+		)
+		groupBy = append(groupBy, q.Field(valueFieldName))
+	}
+	q = q.GroupBy(groupBy...)
+	valueMap, err := q.AllStringMap()
+	if err != nil {
+		return nil, errors.Wrap(err, "AllStringAmp")
+	}
+
+	if input.ShowMap != nil && *input.ShowMap {
+		return jsonutils.Marshal(valueMap), nil
+	}
+
+	tree := constructTree(valueMap, input.Keys)
+	return jsonutils.Marshal(tree), nil
 }

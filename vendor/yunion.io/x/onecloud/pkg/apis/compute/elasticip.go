@@ -14,7 +14,9 @@
 
 package compute
 
-import "yunion.io/x/onecloud/pkg/apis"
+import (
+	"yunion.io/x/onecloud/pkg/apis"
+)
 
 type SElasticipCreateInput struct {
 	apis.VirtualResourceCreateInput
@@ -42,20 +44,20 @@ type SElasticipCreateInput struct {
 	//
 	//
 	//
-	// | 平台		|	支持类型			|
-	// | ---		|	--------			|
-	// |Aliyun		| traffic, bandwidth	|
-	// |腾讯云		| traffic				|
-	// |Azure		| traffic				|
-	// |Google		| traffic, bandwidth	|
-	// |Ucloud		| traffic				|
-	// |Aws			| traffic				|
-	// |华为云		| traffic, bandwidth	|
-	// |天翼云		| traffic, bandwidth	|
-	// |KVM			| 不支持创建			|
-	// |VMware		| 不支持创建			|
-	// |ZStack		| traffic				|
-	// |OpenStack	| traffic				|
+	// | 平台       |    支持类型            |
+	// | ---        |    --------            |
+	// |Aliyun      | traffic, bandwidth    |
+	// |腾讯云      | traffic                |
+	// |Azure       | traffic                |
+	// |Google      | traffic, bandwidth    |
+	// |Ucloud      | traffic                |
+	// |Aws         | traffic                |
+	// |华为云      | traffic, bandwidth    |
+	// |天翼云      | traffic, bandwidth    |
+	// |KVM         | 不支持创建            |
+	// |VMware      | 不支持创建            |
+	// |ZStack      | traffic                |
+	// |OpenStack   | traffic                |
 	// default: traffic
 	// enum: traffic, bandwidth
 	ChargeType string `json:"charge_type"`
@@ -87,6 +89,26 @@ type ElasticipDetails struct {
 	AssociateName string `json:"associate_name"`
 }
 
+func (self ElasticipDetails) GetMetricTags() map[string]string {
+	ret := map[string]string{
+		"id":             self.Id,
+		"name":           self.Name,
+		"status":         self.Status,
+		"mode":           self.Mode,
+		"cloudregion":    self.Cloudregion,
+		"cloudregion_id": self.CloudregionId,
+		"region_ext_id":  self.RegionExtId,
+		"tenant":         self.Project,
+		"tenant_id":      self.ProjectId,
+		"brand":          self.Brand,
+		"domain_id":      self.DomainId,
+		"project_domain": self.ProjectDomain,
+		"ip_addr":        self.IpAddr,
+		"external_id":    self.ExternalId,
+	}
+	return ret
+}
+
 type ElasticipSyncstatusInput struct {
 }
 
@@ -103,4 +125,14 @@ type ElasticipAssociateInput struct {
 	// enmu: server, natgateway
 	// default: server
 	InstanceType string `json:"instance_type"`
+
+	// EIP映射的内网IP地址，可选
+	IpAddr string `json:"ip_addr"`
+}
+
+type ElasticDissociateInput struct {
+	// 注意: 若关联到aws NAT网关后，目前没办法解除关联关系
+	// 是否解绑后自动删除弹性公网IP
+	// default: false
+	AutoDelete bool `json:"auto_delete"`
 }

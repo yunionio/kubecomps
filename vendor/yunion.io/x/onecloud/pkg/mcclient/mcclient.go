@@ -27,12 +27,13 @@ import (
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/gotypes"
+	"yunion.io/x/pkg/util/httputils"
+	"yunion.io/x/pkg/util/rbacscope"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	api "yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/httperrors"
-	"yunion.io/x/onecloud/pkg/util/httputils"
 	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/seclib2"
 )
@@ -96,6 +97,14 @@ func (this *Client) HttpClient() *http.Client {
 
 func (this *Client) SetHttpTransportProxyFunc(proxyFunc httputils.TransportProxyFunc) {
 	httputils.SetClientProxyFunc(this.httpconn, proxyFunc)
+}
+
+func (this *Client) GetClient() *http.Client {
+	return this.httpconn
+}
+
+func (this *Client) SetTransport(ts http.RoundTripper) {
+	this.httpconn.Transport = ts
 }
 
 func (this *Client) SetDebug(debug bool) {
@@ -349,7 +358,7 @@ func (this *Client) GetCommonEtcdEndpoint(token TokenCredential, region, interfa
 		return nil, errors.Errorf("current version %s not support get internal etcd endpoint", this.AuthVersion())
 	}
 
-	_, err := this.GetServiceCatalog().GetServiceURL(apis.SERVICE_TYPE_ETCD, region, "", interfaceType)
+	_, err := this.GetServiceCatalog().getServiceURL(apis.SERVICE_TYPE_ETCD, region, "", interfaceType)
 	if err != nil {
 		return nil, err
 	}
@@ -393,7 +402,7 @@ func (this *Client) GetCommonEtcdTLSConfig(endpoint *api.EndpointDetails) (*tls.
 	return seclib2.InitTLSConfigByData(caData, certData, keyData)
 }
 
-func (this *Client) NewSession(ctx context.Context, region, zone, endpointType string, token TokenCredential, apiVersion string) *ClientSession {
+func (this *Client) NewSession(ctx context.Context, region, zone, endpointType string, token TokenCredential) *ClientSession {
 	cata := token.GetServiceCatalog()
 	if this.GetServiceCatalog() == nil {
 		if cata == nil || cata.Len() == 0 {
@@ -412,14 +421,19 @@ func (this *Client) NewSession(ctx context.Context, region, zone, endpointType s
 		zone:                zone,
 		endpointType:        endpointType,
 		token:               token,
-		defaultApiVersion:   apiVersion,
 		Header:              http.Header{},
 		customizeServiceUrl: map[string]string{},
 	}
 }
 
+type SCheckPoliciesInput struct {
+	UserId    string
+	ProjectId string
+	LoginIp   string
+}
+
 type SFetchMatchPoliciesOutput struct {
-	Names    map[rbacutils.TRbacScope][]string `json:"names"`
+	Names    map[rbacscope.TRbacScope][]string `json:"names"`
 	Policies rbacutils.TPolicyGroup            `json:"policies"`
 }
 
@@ -452,6 +466,19 @@ func (client *Client) FetchMatchPolicies(ctx context.Context, token TokenCredent
 		header.Add(api.AUTH_TOKEN_HEADER, token.GetTokenString())
 	}
 	_, rbody, err := client.jsonRequest(ctx, client.authUrl, "", "GET", "/auth/policies", header, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "jsonRequest")
+	}
+	output := &SFetchMatchPoliciesOutput{}
+	err = output.Decode(rbody)
+	if err != nil {
+		return nil, errors.Wrap(err, "SFetchMatchPoliciesOutput.Decode")
+	}
+	return output, nil
+}
+
+func (client *Client) CheckMatchPolicies(ctx context.Context, adminToken TokenCredential, input SCheckPoliciesInput) (*SFetchMatchPoliciesOutput, error) {
+	_, rbody, err := client.jsonRequest(ctx, client.authUrl, adminToken.GetTokenString(), "POST", "/auth/policies", nil, jsonutils.Marshal(input))
 	if err != nil {
 		return nil, errors.Wrap(err, "jsonRequest")
 	}

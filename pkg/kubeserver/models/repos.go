@@ -12,9 +12,9 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
 
@@ -113,8 +113,8 @@ func (man *SRepoManager) FetchCustomizeColumns(
 	return rows
 }
 
-func (man *SRepoManager) ResourceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeDomain
+func (man *SRepoManager) ResourceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeDomain
 }
 
 func (man *SRepoManager) GetRepoDataDir(projectId string) string {

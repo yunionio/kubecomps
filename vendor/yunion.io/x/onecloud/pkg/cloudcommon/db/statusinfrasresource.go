@@ -44,23 +44,11 @@ func NewStatusInfrasResourceBaseManager(dt interface{}, tableName string, keywor
 	}
 }
 
-func (model *SStatusInfrasResourceBase) AllowGetDetailsStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return model.IsOwner(userCred) || IsDomainAllowGetSpec(userCred, model, "status")
-}
-
-func (self *SStatusInfrasResourceBase) AllowPerformStatus(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PerformStatusInput) bool {
-	return IsDomainAllowPerform(userCred, self, "status")
-}
-
 func (self *SStatusInfrasResourceBase) GetIStatusInfrasModel() IStatusInfrasModel {
 	return self.GetVirtualObject().(IStatusInfrasModel)
 }
 
-func (manager *SStatusInfrasResourceBaseManager) AllowGetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return IsAdminAllowGetSpec(userCred, manager, "statistics")
-}
-
-func (manager *SStatusInfrasResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (map[string]apis.StatusStatistic, error) {
+func (manager *SStatusInfrasResourceBaseManager) GetPropertyStatistics(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*apis.StatusStatistic, error) {
 	im, ok := manager.GetVirtualObject().(IModelManager)
 	if !ok {
 		im = manager
@@ -85,11 +73,14 @@ func (manager *SStatusInfrasResourceBaseManager) GetPropertyStatistics(ctx conte
 	if err != nil {
 		return nil, errors.Wrapf(err, "q.All")
 	}
-	result := map[string]apis.StatusStatistic{}
+	result := &apis.StatusStatistic{
+		StatusInfo: []apis.StatusStatisticStatusInfo{},
+	}
 	for _, s := range ret {
-		result[s.Status] = apis.StatusStatistic{
+		result.StatusInfo = append(result.StatusInfo, apis.StatusStatisticStatusInfo{
+			Status:     s.Status,
 			TotalCount: s.TotalCount,
-		}
+		})
 	}
 	return result, nil
 }

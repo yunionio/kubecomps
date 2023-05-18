@@ -20,12 +20,9 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 )
 
-func EnableGlobalRbac(refreshInterval time.Duration, debug bool) {
-	if !consts.IsRbacEnabled() {
-		consts.EnableRbac()
-		if debug {
-			consts.EnableRbacDebug()
-		}
-		PolicyManager.init(refreshInterval)
+func EnableGlobalRbac(refreshInterval time.Duration, debug bool, workerCount int) {
+	if debug {
+		consts.EnableRbacDebug()
 	}
+	PolicyManager.init(refreshInterval, workerCount)
 }

@@ -37,6 +37,7 @@ const (
 	AUTH_METHOD_SAML     = "saml"
 	AUTH_METHOD_OIDC     = "oidc"
 	AUTH_METHOD_OAuth2   = "oauth2"
+	AUTH_METHOD_VERIFY   = "verify"
 
 	// AUTH_METHOD_ID_PASSWORD = 1
 	// AUTH_METHOD_ID_TOKEN    = 2
@@ -53,6 +54,8 @@ const (
 	EndpointInterfaceInternal = "internal"
 	EndpointInterfaceAdmin    = "admin"
 	EndpointInterfaceConsole  = "console"
+
+	EndpointInterfaceApigateway = "apigateway"
 
 	KeystoneDomainRoot = "<<keystone.domain.root>>"
 
@@ -101,7 +104,6 @@ var (
 		"default": []string{
 			"enable_quota_check",
 			"default_quota_value",
-			"enable_rbac",
 			"non_default_domain_projects",
 			"time_zone",
 			"domainized_namespace",
@@ -110,6 +112,8 @@ var (
 			"global_http_proxy",
 			"global_https_proxy",
 			"ignore_nonrunning_guests",
+			"platform_name",
+			"platform_names",
 		},
 	}
 
@@ -152,6 +156,11 @@ var (
 			// db blacklist options
 			// ############################
 			"sql_connection",
+			"clickhouse",
+			"ops_log_with_clickhouse",
+			"db_checksum_skip_init",
+			"db_checksum_tables",
+			"enable_db_checksum_tables",
 			"auto_sync_table",
 			"exit_after_db_init",
 			"global_virtual_resource_namespace",
@@ -169,6 +178,9 @@ var (
 			"etcd_key",
 			"splitable_max_duration_hours",
 			"splitable_max_keep_segments",
+			"ops_log_max_keep_months",
+
+			"disable_local_vpc",
 
 			// ############################
 			// keystone blacklist options
@@ -210,6 +222,13 @@ var (
 			// glance blacklist options
 			// ############################
 			"deploy_server_socket_path",
+			"enable_remote_executor",
+			"executor_socket_path",
+
+			// ############################
+			// kubeserver blacklist options
+			// ############################
+			"running_mode",
 		},
 	}
 )

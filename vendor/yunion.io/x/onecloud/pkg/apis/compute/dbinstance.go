@@ -15,6 +15,7 @@
 package compute
 
 import (
+	"strings"
 	"time"
 
 	"yunion.io/x/onecloud/pkg/apis"
@@ -45,10 +46,10 @@ type DBInstanceCreateInput struct {
 	//
 	//
 	// | 云平台      | 最大支出安全组数量 |
-	// |-------------|----------|
-	// | 腾讯云      | 5    |
-	// | 华为云      | 1   |
-	// | 阿里云      | 不支持|
+	// |-------------|----------          |
+	// | 腾讯云      | 5                  |
+	// | 华为云      | 1                  |
+	// | 阿里云      | 不支持             |
 	SecgroupIds []string `json:"secgroup_ids"`
 	// swagger:ignore
 	Secgroup string `json:"secgroup" yunion-deprecated-by:"secgroup_ids"`
@@ -108,12 +109,12 @@ type DBInstanceCreateInput struct {
 	//
 	//
 	//
-	// | 平台		| 支持类型	| 说明 |
-	// | -----		| ------	| --- |
-	// | 华为云		|ha, single, replica| ha: 高可用, single: 单机, replica: 只读|
-	// | 阿里云		|basic, high_availability, always_on, finance|basic: 基础版, high_availability: 高可用, always_on: 集群版, finance: 金融版, 三节点|
-	// | Google		|Zonal, Regional | Zonal: 单区域, Regional: 区域级|
-	// | 腾讯云		|fe, ha, basic | ha: 高可用, basic: 基础版, fe: 金融版|
+	// | 平台        | 支持类型    | 说明 |
+	// | -----       | ------    | --- |
+	// | 华为云      |ha, single, replica| ha: 高可用, single: 单机, replica: 只读|
+	// | 阿里云      |basic, high_availability, always_on, finance|basic: 基础版, high_availability: 高可用, always_on: 集群版, finance: 金融版, 三节点|
+	// | Google      |Zonal, Regional | Zonal: 单区域, Regional: 区域级|
+	// | 腾讯云      |fe, ha, basic | ha: 高可用, basic: 基础版, fe: 金融版|
 	// required: true
 	Category string `json:"category"`
 
@@ -121,12 +122,12 @@ type DBInstanceCreateInput struct {
 	//
 	//
 	//
-	// | 平台	| 支持类型	| 说明 |
-	// | -----		| ------	| --- |
-	// | 华为云	|SSD, SAS, SATA| |
-	// | 阿里云	|local_ssd, cloud_essd, cloud_ssd| |
-	// | Google	|PD_SSD, PD_HDD| PD_SSD: SSD, PD_HDD: HDD|
-	// | 腾讯云	|cloud_ssd, local_ssd| |
+	// | 平台    | 支持类型    | 说明 |
+	// | -----   | ------    | --- |
+	// | 华为云  |SSD, SAS, SATA| |
+	// | 阿里云  |local_ssd, cloud_essd, cloud_ssd| |
+	// | Google  |PD_SSD, PD_HDD| PD_SSD: SSD, PD_HDD: HDD|
+	// | 腾讯云  |cloud_ssd, local_ssd| |
 	// required: true
 	StorageType string `json:"storage_type"`
 
@@ -160,6 +161,9 @@ type DBInstanceCreateInput struct {
 
 	// 从备份中创建新实例
 	DBInstancebackupId string `json:"dbinstancebackup_id"`
+
+	// 多可用区部署
+	MultiAZ bool `json:"multi_az"`
 }
 
 type SDBInstanceChangeConfigInput struct {
@@ -178,11 +182,11 @@ type SDBInstanceRecoveryConfigInput struct {
 	// 备份Id
 	//
 	//
-	// | 平台		| 支持引擎								| 说明		|
-	// | -----		| ------								| ---		|
-	// | 华为云		|MySQL, SQL Server						| 仅SQL Server支持恢复到当前实例			|
-	// | 阿里云		|MySQL, SQL Server						| MySQL要求必须开启单库单表恢复功能 并且只能是MySQL 8.0 高可用版（本地SSD盘）MySQL 5.7 高可用版（本地SSD盘）或MySQL 5.6 高可用版, MySQL仅支持恢复到当前实例|
-	// | Google		|MySQL, PostgreSQL, SQL Server			| PostgreSQL备份恢复时，要求实例不能有副本			|
+	// | 平台        | 支持引擎                                | 说明        |
+	// | -----        | ------                                | ---        |
+	// | 华为云        |MySQL, SQL Server                        | 仅SQL Server支持恢复到当前实例            |
+	// | 阿里云        |MySQL, SQL Server                        | MySQL要求必须开启单库单表恢复功能 并且只能是MySQL 8.0 高可用版（本地SSD盘）MySQL 5.7 高可用版（本地SSD盘）或MySQL 5.6 高可用版, MySQL仅支持恢复到当前实例|
+	// | Google        |MySQL, PostgreSQL, SQL Server            | PostgreSQL备份恢复时，要求实例不能有副本            |
 	DBInstancebackupId string `json:"dbinstancebackup_id"`
 
 	// 数据库信息, 例如 {"src":"dest"} 是将备份中的src数据库恢复到目标实例的dest数据库中, 阿里云此参数为必传
@@ -214,6 +218,9 @@ type DBInstanceListInput struct {
 	EngineVersion string `json:"engine_version"`
 
 	InstanceType string `json:"instance_type"`
+
+	// 通过IP搜索RDS实例
+	IpAddr string `json:"ip_addr"`
 }
 
 type DBInstanceBackupListInput struct {
@@ -298,9 +305,12 @@ type DBInstanceDetails struct {
 	// iops
 	// example: 0
 	Iops int `json:"iops"`
-	// IP子网名称
+	// IP子网名称, 若有多个以 ',' 分隔
 	// example: test-network
 	Network string `json:"network"`
+
+	// 内网IP地址, 若有多个以 ',' 分隔
+	IpAddrs string `json:"ip_addrs"`
 
 	// Zone1名称
 	Zone1Name string `json:"zone1_name"`
@@ -308,6 +318,39 @@ type DBInstanceDetails struct {
 	Zone2Name string `json:"zone2_name"`
 	// Zone3名称
 	Zone3Name string `json:"zone3_name"`
+
+	Databases []apis.IdNameDetails `json:"databases"`
+}
+
+func (self DBInstanceDetails) GetMetricTags() map[string]string {
+	ret := map[string]string{
+		"id":             self.Id,
+		"rds_id":         self.Id,
+		"rds_name":       self.Name,
+		"zone":           self.Zone1Name,
+		"zone_id":        self.Zone1,
+		"status":         self.Status,
+		"engine":         self.Engine,
+		"server_type":    strings.ToLower(self.Engine),
+		"cloudregion":    self.Cloudregion,
+		"cloudregion_id": self.CloudregionId,
+		"region_ext_id":  self.RegionExtId,
+		"tenant":         self.Project,
+		"tenant_id":      self.ProjectId,
+		"brand":          self.Brand,
+		"domain_id":      self.DomainId,
+		"project_domain": self.ProjectDomain,
+		"external_id":    self.ExternalId,
+	}
+	if len(self.IpAddrs) > 0 {
+		ret["rds_ip"] = strings.ReplaceAll(self.IpAddrs, ",", "|")
+	}
+	return ret
+}
+
+func (self DBInstanceDetails) GetMetricPairs() map[string]string {
+	ret := map[string]string{}
+	return ret
 }
 
 type DBInstanceResourceInfoBase struct {

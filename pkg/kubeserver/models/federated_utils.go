@@ -11,9 +11,9 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/gotypes"
+	"yunion.io/x/pkg/util/rbacscope"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 )
@@ -21,7 +21,7 @@ import (
 func GetFedRunningCluster(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) ([]SCluster, error) {
 	// TODO: support specify domain
 	q := GetClusterManager().Query().Equals("status", api.ClusterStatusRunning)
-	if scope, _ := query.GetString("scope"); scope != string(rbacutils.ScopeSystem) {
+	if scope, _ := query.GetString("scope"); scope != string(rbacscope.ScopeSystem) {
 		q = q.Equals("domain_id", userCred.GetDomainId())
 	}
 	clusters := make([]SCluster, 0)

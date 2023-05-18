@@ -172,7 +172,7 @@ func (m *SStorageClassManager) GetRawStorageClasses(cli *client.ClusterManager) 
 }
 
 func (obj *SStorageClass) AllowPerformSetDefault(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
-	return db.IsDomainAllowPerform(userCred, obj, "set-default")
+	return db.IsDomainAllowPerform(ctx, userCred, obj, "set-default")
 }
 
 func (obj *SStorageClass) PerformSetDefault(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {

@@ -17,14 +17,13 @@ package notify
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"yunion.io/x/onecloud/pkg/apis"
 )
 
 type ReceiverCreateInput struct {
-	apis.StatusStandaloneResourceCreateInput
-	apis.DomainizedResourceCreateInput
-	apis.EnabledBaseResourceCreateInput
+	apis.EnabledStatusDomainLevelResourceCreateInput
 
 	// description: user id in keystone
 	// example: adfb720ccdd34c638346ea4fa7a713a8
@@ -43,6 +42,9 @@ type ReceiverCreateInput struct {
 	// description: enabled contact types for user
 	// example: {"email", "mobile", "feishu", "dingtalk", "workwx"}
 	EnabledContactTypes []string `json:"enabled_contact_types"`
+
+	// force verified if admin create the records
+	ForceVerified bool `json:"force_verified"`
 }
 
 type SInternationalMobile struct {
@@ -73,6 +75,40 @@ func ParseInternationalMobile(mobile string) SInternationalMobile {
 	}
 }
 
+// 支持接受分机号（仅保留数字）
+func (im *SInternationalMobile) AcceptExtMobile() {
+	im.Mobile = moveAreaCode(im.Mobile)
+	im.Mobile = moveExtStr(im.Mobile)
+}
+
+// 对传入的手机号去除地区编号
+func moveAreaCode(mobile string) string {
+	// 所有地区编号
+	allArea := `283|282|281|280|269|268|267|266|265|264|263|262|261|260|259|258|257|256|255|254|253|252|251|250|249|248|247|246|245|244|243|242|241|240|239|238|237|236|235|234|233|232|231|230|229|228|227|226|225|224|223|222|221|220|219|218|217|216|215|214|213|212|211|210|98|95|94|93|92|91|90|86|84|82|81|66|65|64|63|62|61|60|58|57|56|55|54|53|52|51|49|48|47|46|45|44|43|41|40|39|36|34|33|32|31|30|27|20|7|1`
+	temp := strings.Split(allArea, "|")
+	for _, area := range temp {
+		if strings.HasPrefix(mobile, "+"+area) {
+			mobile = mobile[1+len(area):]
+			break
+		}
+	}
+	return mobile
+}
+
+// 对传入的手机号去除分机号后缀
+func moveExtStr(mobile string) string {
+	// 定义正则表达式，只保留数字字符串，到不为数字时结束
+	re := regexp.MustCompile(`^\d+`)
+	// 匹配正则表达式并获取原号码
+	match := re.FindStringSubmatch(mobile)
+	if match != nil {
+		mobile = match[0]
+	} else {
+		mobile = ""
+	}
+	return mobile
+}
+
 func (im SInternationalMobile) String() string {
 	if im.AreaCode == "" {
 		return im.Mobile
@@ -81,8 +117,7 @@ func (im SInternationalMobile) String() string {
 }
 
 type ReceiverDetails struct {
-	apis.StatusStandaloneResourceDetails
-	apis.DomainizedResourceInfo
+	apis.EnabledStatusDomainLevelResourceDetails
 
 	SReceiver
 	InternationalMobile SInternationalMobile `json:"international_mobile"`
@@ -102,9 +137,7 @@ type VerifiedInfo struct {
 }
 
 type ReceiverListInput struct {
-	apis.StatusStandaloneResourceListInput
-	apis.DomainizedResourceListInput
-	apis.EnabledResourceBaseListInput
+	apis.EnabledStatusDomainLevelResourceListInput
 
 	UID string `json:"uid"`
 
@@ -118,7 +151,7 @@ type ReceiverListInput struct {
 }
 
 type ReceiverUpdateInput struct {
-	apis.StatusStandaloneResourceBaseUpdateInput
+	apis.EnabledStatusDomainLevelResourceBaseUpdateInput
 
 	// description: user email
 	// example: example@gmail.com
@@ -129,6 +162,8 @@ type ReceiverUpdateInput struct {
 	// description: enabled contacts for user
 	// example: {"email", "mobile", "feishu", "dingtalk", "workwx"}
 	EnabledContactTypes []string `json:"enabled_contact_types"`
+
+	ForceVerified bool `json:"force_verified"`
 }
 
 type ReceiverTriggerVerifyInput struct {

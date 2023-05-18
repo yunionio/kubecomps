@@ -17,25 +17,23 @@ package cloudcommon
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"net/http"
 	"time"
+
+	"github.com/mattn/go-sqlite3"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/sqlchemy"
 
-	"yunion.io/x/onecloud/pkg/appsrv"
+	noapi "yunion.io/x/onecloud/pkg/apis/notify"
 	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
+	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
 	"yunion.io/x/onecloud/pkg/cloudcommon/etcd"
 	"yunion.io/x/onecloud/pkg/cloudcommon/informer"
+	"yunion.io/x/onecloud/pkg/cloudcommon/notifyclient"
 	common_options "yunion.io/x/onecloud/pkg/cloudcommon/options"
-)
-
-const (
-	MIN_DB_CONN_MAX = 5
 )
 
 func InitDB(options *common_options.DBOptions) {
@@ -52,15 +50,61 @@ func InitDB(options *common_options.DBOptions) {
 		consts.DisableHistoricalUniqueName()
 	}
 
+	if options.OpsLogMaxKeepMonths > 0 {
+		consts.SetSplitableMaxKeepMonths(options.OpsLogMaxKeepMonths)
+	}
+	if options.SplitableMaxDurationHours > 0 {
+		consts.SetSplitableMaxDurationHours(options.SplitableMaxDurationHours)
+	}
+
 	dialect, sqlStr, err := options.GetDBConnection()
 	if err != nil {
 		log.Fatalf("Invalid SqlConnection string: %s error: %v", options.SqlConnection, err)
 	}
+	backend := sqlchemy.MySQLBackend
+	switch dialect {
+	case "sqlite3":
+		backend = sqlchemy.SQLiteBackend
+		dialect = "sqlite3_with_extensions"
+		sql.Register(dialect,
+			&sqlite3.SQLiteDriver{
+				Extensions: []string{
+					"/opt/yunion/share/sqlite/inet",
+				},
+			},
+		)
+	case "clickhouse":
+		log.Fatalf("cannot use clickhouse as primary database")
+	}
+	log.Infof("database dialect: %s sqlStr: %s", dialect, sqlStr)
 	dbConn, err := sql.Open(dialect, sqlStr)
 	if err != nil {
 		panic(err)
 	}
-	sqlchemy.SetDB(dbConn)
+	sqlchemy.SetDBWithNameBackend(dbConn, sqlchemy.DefaultDB, backend)
+
+	dialect, sqlStr, err = options.GetClickhouseConnStr()
+	if err == nil {
+		// connect to clickcloud
+		// force convert sqlstr from clickhouse v2 to v1
+		sqlStr, err = clickhouseSqlStrV2ToV1(sqlStr)
+		if err != nil {
+			log.Fatalf("fail to convert clickhouse sqlstr from v2 to v1: %s", err)
+		}
+		err = validateClickhouseV1Str(sqlStr)
+		if err != nil {
+			log.Fatalf("invalid clickhouse sqlstr: %s", err)
+		}
+		click, err := sql.Open(dialect, sqlStr)
+		if err != nil {
+			panic(err)
+		}
+		sqlchemy.SetDBWithNameBackend(click, db.ClickhouseDB, sqlchemy.ClickhouseBackend)
+
+		if options.OpsLogWithClickhouse {
+			consts.OpsLogWithClickhouse = true
+		}
+	}
 
 	switch options.LockmanMethod {
 	case common_options.LockMethodInMemory, "":
@@ -88,7 +132,14 @@ func InitDB(options *common_options.DBOptions) {
 	}
 	// lm := lockman.NewNoopLockManager()
 
+	initDBNotifier()
 	startInitInformer(options)
+}
+
+func initDBNotifier() {
+	db.SetChecksumTestFailedNotifier(func(obj *jsonutils.JSONDict) {
+		notifyclient.SystemExceptionNotifyWithResult(context.TODO(), noapi.ActionChecksumTest, noapi.TOPIC_RESOURCE_DB_TABLE_RECORD, noapi.ResultFailed, obj)
+	})
 }
 
 // startInitInformer starts goroutine init informer backend
@@ -131,29 +182,4 @@ func initInformer(options *common_options.DBOptions) error {
 
 func CloseDB() {
 	sqlchemy.CloseDB()
-}
-
-func AppDBInit(app *appsrv.Application) {
-	dbConn := sqlchemy.GetDB()
-	if dbConn != nil {
-		connMax := appsrv.GetDBConnectionCount()
-		if connMax < MIN_DB_CONN_MAX {
-			connMax = MIN_DB_CONN_MAX
-		}
-		log.Infof("Total %d db workers, set db connection max", connMax)
-		dbConn.SetMaxIdleConns(connMax)
-		dbConn.SetMaxOpenConns(connMax*2 + 1)
-	}
-
-	app.AddDefaultHandler("GET", "/db_stats", DBStatsHandler, "db_stats")
-}
-
-func DBStatsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	result := jsonutils.NewDict()
-	dbConn := sqlchemy.GetDB()
-	if dbConn != nil {
-		stats := dbConn.Stats()
-		result.Add(jsonutils.Marshal(&stats), "db_stats")
-	}
-	fmt.Fprintf(w, result.String())
 }

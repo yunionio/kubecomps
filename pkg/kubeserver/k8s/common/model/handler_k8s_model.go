@@ -22,8 +22,8 @@ import (
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/mcclient/auth"
-	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
 	"yunion.io/x/pkg/gotypes"
+	"yunion.io/x/pkg/util/printutils"
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
@@ -125,17 +125,14 @@ func (h *K8SModelHandler) KeywordPlural() string {
 }
 
 func (h *K8SModelHandler) Filter(f appsrv.FilterHandler) appsrv.FilterHandler {
-	if consts.IsRbacEnabled() {
-		return auth.AuthenticateWithDelayDecision(f, true)
-	}
 	return auth.Authenticate(f)
 }
 
-func (h *K8SModelHandler) List(ctx *RequestContext, query *jsonutils.JSONDict) (*modulebase.ListResult, error) {
+func (h *K8SModelHandler) List(ctx *RequestContext, query *jsonutils.JSONDict) (*printutils.ListResult, error) {
 	return ListK8SModels(ctx, h.modelManager, query)
 }
 
-func ListK8SModels(ctx *RequestContext, man IK8sModelManager, query *jsonutils.JSONDict) (*modulebase.ListResult, error) {
+func ListK8SModels(ctx *RequestContext, man IK8sModelManager, query *jsonutils.JSONDict) (*printutils.ListResult, error) {
 	var err error
 	//var maxLimit int64 = consts.GetMaxPagingLimit()
 	baseInput := new(api.ListInputK8SBase)
@@ -199,8 +196,8 @@ func ListK8SModels(ctx *RequestContext, man IK8sModelManager, query *jsonutils.J
 	return calculateListResult(listResult, q.GetTotal(), q.GetLimit(), q.GetOffset()), nil
 }
 
-func calculateListResult(data []jsonutils.JSONObject, total, limit, offset int64) *modulebase.ListResult {
-	ret := modulebase.ListResult{Data: data, Total: int(total), Limit: int(limit), Offset: int(offset)}
+func calculateListResult(data []jsonutils.JSONObject, total, limit, offset int64) *printutils.ListResult {
+	ret := printutils.ListResult{Data: data, Total: int(total), Limit: int(limit), Offset: int(offset)}
 	return &ret
 }
 
@@ -227,13 +224,6 @@ func (h *K8SModelHandler) Get(ctx *RequestContext, id string, query *jsonutils.J
 		return nil, err
 	}
 
-	/*if consts.IsRbacEnabled() {
-		if err := db.IsObjectRbacAllowed(model, userCred, policy.PolicyActionGet); err != nil {
-			return nil, err
-		}
-	} else if !model.AllowGetDetails(ctx, userCred, query) {
-		return nil, httperrors.NewForbiddenError("Not allow to get details")
-	}*/
 	return getModelItemDetails(ctx, h.modelManager, model)
 }
 

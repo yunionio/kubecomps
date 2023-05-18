@@ -8,8 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"yunion.io/x/onecloud/pkg/cloudcommon/object"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/object"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 )

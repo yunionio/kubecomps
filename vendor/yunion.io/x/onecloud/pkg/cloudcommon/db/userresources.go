@@ -20,13 +20,13 @@ import (
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/reflectutils"
 	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 )
 
@@ -58,7 +58,7 @@ func (manager *SUserResourceBaseManager) ListItemFilter(
 	if err != nil {
 		return nil, err
 	}
-	if ((query.Admin != nil && *query.Admin) || query.Scope == string(rbacutils.ScopeSystem)) && IsAdminAllowList(userCred, manager) {
+	if ((query.Admin != nil && *query.Admin) || query.Scope == string(rbacscope.ScopeSystem)) && IsAdminAllowList(userCred, manager).Result.IsAllow() {
 		user := query.UserId
 		if len(user) > 0 {
 			uc, _ := UserCacheManager.FetchUserByIdOrName(ctx, user)
@@ -125,9 +125,9 @@ func (manager *SUserResourceBaseManager) FetchCustomizeColumns(
 	return rows
 }
 
-func (manager *SUserResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, owner mcclient.IIdentityProvider, scope rbacutils.TRbacScope) *sqlchemy.SQuery {
+func (manager *SUserResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	if owner != nil {
-		if scope == rbacutils.ScopeUser {
+		if scope == rbacscope.ScopeUser {
 			if len(owner.GetUserId()) > 0 {
 				q = q.Equals("owner_id", owner.GetUserId())
 			}
@@ -169,34 +169,14 @@ func (manager *SUserResourceBaseManager) ValidateCreateData(ctx context.Context,
 	return input, nil
 }
 
-func (manager *SUserResourceBaseManager) AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return true
-}
-
-func (manager *SUserResourceBaseManager) AllowCreateItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return true
-}
-
-func (self *SUserResourceBase) AllowUpdateItem(ctx context.Context, userCred mcclient.TokenCredential) bool {
-	return self.IsOwner(userCred) || IsAdminAllowUpdate(userCred, self)
-}
-
-func (self *SUserResourceBase) AllowDeleteItem(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return self.IsOwner(userCred) || IsAdminAllowDelete(userCred, self)
-}
-
-func (self *SUserResourceBase) AllowGetDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return self.IsOwner(userCred) || IsAdminAllowGet(userCred, self)
-}
-
 func (manager *SUserResourceBaseManager) FetchOwnerId(ctx context.Context, data jsonutils.JSONObject) (mcclient.IIdentityProvider, error) {
 	return FetchUserInfo(ctx, data)
 }
 
-func (manager *SUserResourceBaseManager) NamespaceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeUser
+func (manager *SUserResourceBaseManager) NamespaceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeUser
 }
 
-func (manager *SUserResourceBaseManager) ResourceScope() rbacutils.TRbacScope {
-	return rbacutils.ScopeUser
+func (manager *SUserResourceBaseManager) ResourceScope() rbacscope.TRbacScope {
+	return rbacscope.ScopeUser
 }
