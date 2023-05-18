@@ -103,7 +103,7 @@ type SCluster struct {
 	ServiceCidr     string               `width:"36" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	ServiceDomain   string               `width:"128" charset:"ascii" nullable:"false" create:"required" list:"user"`
 	PodCidr         string               `width:"36" charset:"ascii" nullable:"true" create:"optional" list:"user"`
-	Ha              tristate.TriState    `nullable:"true" create:"required" list:"user"`
+	Ha              tristate.TriState    `nullable:"true" create:"optional" list:"user"`
 	ImageRepository jsonutils.JSONObject `nullable:"true" create:"optional" list:"user"`
 
 	// kubernetes config
