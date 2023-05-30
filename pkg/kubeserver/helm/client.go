@@ -13,8 +13,10 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/release"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+
 	//"helm.sh/helm/v3/pkg/downloader"
 
+	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 
@@ -153,7 +155,7 @@ var (
 //
 // According to the Kubernetes help text, the regular expression it uses is:
 //
-//  (([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
+//	(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?
 //
 // We modified that. First, we added start and end delimiters. Second, we changed
 // the final ? to + to require that the pattern match at least once. This modification
@@ -263,7 +265,15 @@ func (r releaseClient) Update(input *api.ReleaseUpdateInput) (*release.Release, 
 
 	vals, err := r.getValueOptions(input.Values, input.Sets)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "getValueOptions by values: %s, sets: %#v", input.Values, input.Sets)
+	}
+	valObj := jsonutils.Marshal(vals).(*jsonutils.JSONDict)
+	if input.ValuesJson != nil {
+		valObj.Update(input.ValuesJson)
+		vals, err = r.getValueOptions(valObj.YAMLString(), nil)
+		if err != nil {
+			return nil, errors.Wrapf(err, "getValueOptions again by %s", valObj.PrettyString())
+		}
 	}
 	cp, err := r.chartClient.Show(input.Repo, input.ChartName, input.Version)
 	if err != nil {
