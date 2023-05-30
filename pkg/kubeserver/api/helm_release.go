@@ -31,6 +31,8 @@ type ReleaseCreateInput struct {
 	Values     string               `json:"values"`
 	Sets       map[string]string    `json:"sets"`
 	ValuesJson jsonutils.JSONObject `json:"values_json"`
+	// Project only works for internal release
+	Project string `json:"project"`
 }
 
 type ReleaseUpdateInput struct {
