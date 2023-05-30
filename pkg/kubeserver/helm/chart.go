@@ -175,11 +175,11 @@ func (c ChartClient) buildIndex(filterRepo string) (*search.Index, error) {
 func (c ChartClient) Show(repoName, chartName, version string) (*chart.Chart, error) {
 	repoCli, err := NewRepoClient(c.dataDir)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "NewRepoClient from data dir %q", c.dataDir)
 	}
 	repo, err := repoCli.GetEntry(repoName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Get repo Entry %q", repoName)
 	}
 	return c.LocateChart(repoName, chartName, version, repo)
 }
@@ -189,11 +189,11 @@ func (c ChartClient) getChartPath(chartName, version string, r *repo.Entry) (str
 	idxFilePath := filepath.Join(setting.RepositoryCache, helmpath.CacheIndexFile(r.Name))
 	idxFile, err := repo.LoadIndexFile(idxFilePath)
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrapf(err, "LoadIndexFile: %q", idxFilePath)
 	}
 	cv, err := idxFile.Get(chartName, version)
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrapf(err, "Get %s:%s from idxFilePath %q", chartName, version, idxFilePath)
 	}
 	chartPath := filepath.Join(filepath.Dir(idxFilePath), fmt.Sprintf("%s-%s.tgz", chartName, cv.Version))
 	return chartPath, cv, nil
@@ -202,7 +202,7 @@ func (c ChartClient) getChartPath(chartName, version string, r *repo.Entry) (str
 func (c ChartClient) LocateChart(repoName, chartName, version string, repo *repo.Entry) (*chart.Chart, error) {
 	chPath, chartVersion, err := c.getChartPath(chartName, version, repo)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getChartPath")
 	}
 
 	if digestNum, err := provenance.DigestFile(chPath); err == nil && digestNum == chartVersion.Digest {
