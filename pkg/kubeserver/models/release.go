@@ -165,7 +165,7 @@ func (m *SReleaseManager) ValidateCreateData(ctx context.Context, userCred mccli
 	}
 	chartObj, err := m.ShowChart(repoObj.(*SRepo), chart, data.Version)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "show chart %s:%s on repo %q", chart, data.Version, repoObj.GetName())
 	}
 	data.Version = chartObj.Metadata.Version
 	data.Chart = chart
@@ -407,11 +407,11 @@ func (r *SRelease) SetStatusByRemoteObject(ctx context.Context, userCred mcclien
 func (r *SRelease) GetHelmClient() (*helm.Client, error) {
 	cls, err := r.GetCluster()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Get release %s cluster", r.GetId())
 	}
 	ns, err := r.GetNamespace()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Get relase %s namespace", r.GetId())
 	}
 	return NewHelmClient(cls, ns.GetName())
 }
@@ -677,11 +677,20 @@ func (obj *SRelease) PerformRollback(ctx context.Context, userCred mcclient.Toke
 }
 
 func (obj *SRelease) PerformUpgrade(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input *api.ReleaseUpdateInput) (jsonutils.JSONObject, error) {
-	log.Infof("Upgrade repo=%q, chart=%q, release='%s/%s'", input.Repo, input.ChartName, input.Namespace, input.ReleaseName)
 	cli, err := obj.GetHelmClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "get helm client")
 	}
+	repo, err := obj.GetRepo()
+	if err != nil {
+		return nil, errors.Wrapf(err, "get release %s repo", obj.GetName())
+	}
+	repoName := repo.GetName()
+	input.Repo = repoName
+	input.ChartName = obj.Chart
+	input.Namespace, _ = obj.GetNamespaceName()
+	input.ReleaseName = obj.GetName()
+	log.Infof("Upgrade repo=%q, chart=%q, release='%s/%s'", input.Repo, input.ChartName, input.Namespace, input.ReleaseName)
 	rls, err := cli.Release().Update(input)
 	if err != nil {
 		return nil, errors.Wrap(err, "update release")
