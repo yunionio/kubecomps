@@ -3,6 +3,7 @@ package release
 import (
 	"context"
 
+	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/pkg/errors"
@@ -43,6 +44,16 @@ func (d *internalDriver) ValidateCreateData(ctx context.Context, userCred mcclie
 	data.ClusterId = sysCls.GetId()
 	nsData := new(api.NamespaceCreateInputV2)
 	nsData.Name = ownerCred.GetProjectId()
+	if data.Project != "" {
+		project, err := db.DefaultProjectFetcher(ctx, data.Project, "")
+		if err != nil {
+			return nil, errors.Wrapf(err, "Get project by project %q", data.Project)
+		}
+		nsData.Name = project.GetId()
+	}
+	if nsData.Name == "" {
+		return nil, httperrors.NewInputParameterError("project must provided")
+	}
 	nsData.ClusterId = sysCls.GetId()
 	ns, err := models.GetNamespaceManager().EnsureNamespace(ctx, userCred, ownerCred, sysCls, nsData)
 	if err != nil {
