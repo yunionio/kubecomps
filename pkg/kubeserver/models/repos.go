@@ -18,7 +18,7 @@ import (
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
 
-	api "yunion.io/x/kubecomps/pkg/kubeserver/api"
+	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/helm"
 	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 )

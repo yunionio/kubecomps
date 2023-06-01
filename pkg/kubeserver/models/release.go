@@ -160,6 +160,27 @@ func (m *SReleaseManager) ValidateCreateData(ctx context.Context, userCred mccli
 	}
 	data.NamespaceResourceCreateInput = *nInput
 
+	// check local name
+	releaseObj, err := m.GetByName(userCred, data.ClusterId, data.NamespaceId, data.Name)
+	if errors.Cause(err) != sql.ErrNoRows {
+		if releaseObj != nil {
+			return nil, httperrors.NewDuplicateNameError(releaseObj.GetName(), releaseObj.GetId())
+		} else if err != nil {
+			return nil, err
+		} else {
+			return nil, httperrors.NewInputParameterError("check release name %s", data.Name)
+		}
+	}
+	// check remote name
+	helmCli, err := GetHelmClient(data.ClusterId, data.Namespace)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Get helm client by clusterId %s and namespace %s", data.ClusterId, data.Namespace)
+	}
+	rls, _ := helmCli.Release().Get().Run(data.Name)
+	if rls != nil {
+		return nil, httperrors.NewDuplicateResourceError("release %s at namespace %s already exists at cluster %s", data.Name, data.Namespace, data.ClusterId)
+	}
+
 	if data.Version == "" {
 		data.Version = ">0.0.0-0"
 	}
@@ -404,16 +425,20 @@ func (r *SRelease) SetStatusByRemoteObject(ctx context.Context, userCred mcclien
 	return nil
 }
 
-func (r *SRelease) GetHelmClient() (*helm.Client, error) {
-	cls, err := r.GetCluster()
+func GetHelmClient(clsId string, nsName string) (*helm.Client, error) {
+	cls, err := GetClusterById(clsId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Get release %s cluster", r.GetId())
+		return nil, errors.Wrapf(err, "Get cluster by id %s", clsId)
 	}
+	return NewHelmClient(cls, nsName)
+}
+
+func (r *SRelease) GetHelmClient() (*helm.Client, error) {
 	ns, err := r.GetNamespace()
 	if err != nil {
 		return nil, errors.Wrapf(err, "Get relase %s namespace", r.GetId())
 	}
-	return NewHelmClient(cls, ns.GetName())
+	return GetHelmClient(r.ClusterId, ns.GetName())
 }
 
 func (r *SRelease) GetChartClient() (*helm.ChartClient, error) {
@@ -695,5 +720,10 @@ func (obj *SRelease) PerformUpgrade(ctx context.Context, userCred mcclient.Token
 	if err != nil {
 		return nil, errors.Wrap(err, "update release")
 	}
+	db.Update(obj, func() error {
+		obj.ChartVersion = rls.Chart.Metadata.Version
+		obj.Config = jsonutils.Marshal(rls.Config)
+		return nil
+	})
 	return jsonutils.Marshal(rls), nil
 }
