@@ -8,6 +8,7 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/cronman"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
+	"yunion.io/x/kubecomps/pkg/kubeserver/controllers/helm"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
 	"yunion.io/x/kubecomps/pkg/kubeserver/options"
@@ -26,4 +27,8 @@ func InitClient(cron *cronman.SCronJobManager) {
 	if options.Options.RunningMode == options.RUNNING_MODE_K8S {
 		cron.AddJobAtIntervalsWithStartRun("StartSyncSystemGrafanaDashboard", 1*time.Minute, models.MonitorComponentManager.SyncSystemGrafanaDashboard, true)
 	}
+
+	syncPeriod := options.Options.RepoRefreshDuration
+	cron.AddJobAtIntervalsWithStartRun("StartHelmRepoSyncTask", time.Duration(syncPeriod)*time.Minute,
+		helm.Start, true)
 }

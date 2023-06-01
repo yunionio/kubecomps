@@ -1,15 +1,15 @@
 package helm
 
 import (
-	"time"
+	"context"
 
 	"helm.sh/helm/v3/pkg/repo"
+	"yunion.io/x/onecloud/pkg/mcclient"
 
 	"yunion.io/x/log"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/helm"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
-	"yunion.io/x/kubecomps/pkg/kubeserver/options"
 )
 
 /*var OfficialRepos = []helm.Repo{
@@ -25,7 +25,8 @@ import (
 	},
 }*/
 
-func Start() {
+func Start(ctx context.Context, userCred mcclient.TokenCredential, isStart bool) {
+	log.Infof("start sync helm repos")
 	var err error
 	repos, err := models.RepoManager.ListRepos()
 	if err != nil {
@@ -43,13 +44,7 @@ func Start() {
 }
 
 func startRepoRefresh(man *helm.RepoCacheBackend) {
-	tick := time.Tick(time.Duration(options.Options.RepoRefreshDuration) * time.Minute)
-	for {
-		select {
-		case <-tick:
-			doRepoRefresh(man)
-		}
-	}
+	doRepoRefresh(man)
 }
 
 func doRepoRefresh(man *helm.RepoCacheBackend) {
@@ -62,8 +57,15 @@ func doRepoRefresh(man *helm.RepoCacheBackend) {
 	for _, r := range repos {
 		rs = append(rs, r.ToEntry())
 	}
+	for _, r := range repos {
+		if err := r.DoSync(); err != nil {
+			log.Errorf("Sync repo %s error: %v", r.GetName(), err)
+		} else {
+			log.Infof("Repo %s sync finished", r.GetName())
+		}
+	}
 	if err := man.Update(rs...); err != nil {
 		log.Errorf("Update all repos error: %v", err)
 	}
-	log.Debugf("Finish refresh all repos")
+	log.Infof("Finish refresh all repos")
 }

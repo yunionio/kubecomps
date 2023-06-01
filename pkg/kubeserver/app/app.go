@@ -18,7 +18,6 @@ import (
 	"yunion.io/x/pkg/util/signalutils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
-	"yunion.io/x/kubecomps/pkg/kubeserver/controllers"
 	"yunion.io/x/kubecomps/pkg/kubeserver/helm"
 	"yunion.io/x/kubecomps/pkg/kubeserver/initial"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
@@ -65,11 +64,6 @@ func Run(ctx context.Context) error {
 	} else {
 		log.Fatalf("Fail sync db")
 	}
-
-	go func() {
-		log.Infof("Auth complete, start controllers.")
-		controllers.Start()
-	}()
 
 	httpsAddr := net.JoinHostPort(opt.Address, strconv.Itoa(opt.HttpsPort))
 
