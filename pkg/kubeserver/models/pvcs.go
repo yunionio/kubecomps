@@ -63,14 +63,16 @@ func (m *SPVCManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, us
 	if err != nil {
 		return nil, errors.Wrap(err, "SNamespaceResourceBaseManager.ListItemFilter")
 	}
-	if input.Unused != nil {
+
+	// ceph pvc 可用时也为 Bound 状态，所以用状态过滤不准
+	/*if input.Unused != nil {
 		unused := *input.Unused
 		if !unused {
 			q = q.Equals("status", string(v1.ClaimBound))
 		} else {
 			q = q.NotEquals("status", string(v1.ClaimBound))
 		}
-	}
+	}*/
 	return q, nil
 }
 
