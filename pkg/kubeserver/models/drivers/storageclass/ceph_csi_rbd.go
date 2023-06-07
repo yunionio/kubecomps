@@ -10,11 +10,12 @@ import (
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/utils"
 
+	"yunion.io/x/onecloud/pkg/mcclient"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/utils/ceph"
-	"yunion.io/x/onecloud/pkg/mcclient"
 )
 
 const (
@@ -87,6 +88,9 @@ func (drv *CephCSIRBD) getCephConfig(userCred mcclient.TokenCredential, cli *cli
 	if err != nil {
 		return nil, err
 	}
+
+	input.SecretName = secObj.GetName()
+	input.SecretNamespace = nsObj.GetName()
 
 	// check clusterId
 	component, err := cluster.GetComponentByType(api.ClusterComponentCephCSI)
