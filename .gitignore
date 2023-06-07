@@ -40,3 +40,5 @@ static/
 # generated source code
 pkg/generated
 zz_generated.blob.go
+
+.DS_Store
