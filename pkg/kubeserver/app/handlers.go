@@ -41,6 +41,7 @@ func InitHandlers(app *appsrv.Application) {
 		models.ClusterManager,
 		models.ComponentManager,
 		models.MachineManager,
+		models.GetContainerRegistryManager(),
 
 		// k8s cluster resource manager
 		models.GetNodeManager(),
