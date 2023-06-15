@@ -49,6 +49,7 @@ func (man *SChartManager) List(userCred mcclient.TokenCredential, query *api.Cha
 	if err != nil {
 		return nil, err
 	}
+	query.Repo = repoObj.GetName()
 
 	inputAllVersion := query.AllVersion
 	if len(options.Options.ChartIgnores) != 0 {
