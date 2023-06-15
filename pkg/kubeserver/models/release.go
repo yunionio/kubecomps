@@ -235,7 +235,7 @@ func (rls *SRelease) fillReleaseDetail(detail api.ReleaseDetailV2, isList bool) 
 		return detail, errors.Wrap(err, "get helm release detail")
 	}
 	detail.Info = rel.Info
-	// detail.Chart = rel.Chart
+	detail.ChartInfo = rel.Chart
 	detail.Config = rel.Config
 	detail.Manifest = rel.Manifest
 	detail.Hooks = rel.Hooks
