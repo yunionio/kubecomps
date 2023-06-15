@@ -217,8 +217,8 @@ func (man *SReleaseManager) Create(req *common.Request) (interface{}, error) {
 		return nil
 	}
 	for _, rls := range releases {
-		if rls.Chart.Metadata.Name == chartPkg.Metadata.Name {
-			return httperrors.NewBadRequestError("Release %s already created by chart %s", rls.Name, rls.Chart.Metadata.Name)
+		if rls.ChartInfo.Metadata.Name == chartPkg.Metadata.Name {
+			return httperrors.NewBadRequestError("Release %s already created by chart %s", rls.Name, rls.ChartInfo.Metadata.Name)
 		}
 	}
 	return nil
