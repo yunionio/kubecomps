@@ -105,7 +105,7 @@ func (man *SChartManager) shouldIngoreChart(repo string, chart *api.ChartResult,
 	for _, iExp := range ignores {
 		exp := regexp.MustCompile(iExp)
 		if exp.Match([]byte(chartKey)) {
-			log.Infof("Chart %q ignore by regexp %q", chartKey, iExp)
+			log.Infof("ChartInfo %q ignore by regexp %q", chartKey, iExp)
 			return true
 		}
 	}
