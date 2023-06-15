@@ -104,8 +104,8 @@ type ReleaseV2 struct {
 	NamespaceResourceDetail
 	// Info provides information about a release
 	Info *release.Info `json:"info,omitempty"`
-	// Chart is the chart that was released.
-	Chart *chart.Chart `json:"chart,omitempty"`
+	// ChartInfo is the chart that was released.
+	ChartInfo *chart.Chart `json:"chart_info,omitempty"`
 	// Config is the set of extra Values added to the chart.
 	// These values override the default values inside of the chart.
 	Config map[string]interface{} `json:"config,omitempty"`
