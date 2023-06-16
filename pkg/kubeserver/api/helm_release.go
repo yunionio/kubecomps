@@ -61,7 +61,8 @@ type ReleaseListQuery struct {
 type Release struct {
 	*release.Release
 	*ClusterMeta
-	Status string `json:"status"`
+	Status     string            `json:"status"`
+	PodsStatus map[string]string `json:"pods_status"`
 }
 
 type ReleaseDetail struct {
@@ -113,6 +114,8 @@ type ReleaseV2 struct {
 	Hooks []*release.Hook `json:"hooks,omitempty"`
 	// Version is an int which represents the version of the release.
 	Version int `json:"version,omitempty"`
+
+	PodsStatus map[string]string `json:"pods_status,omitempty"`
 }
 
 type ReleaseDetailV2 struct {
