@@ -22,6 +22,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -154,6 +155,31 @@ func EnsureNamespace(cluster *SCluster, namespace string) error {
 		return errors.Wrap(err, "get cluster k8s client")
 	}
 	return k8sutil.EnsureNamespace(lister, cli, namespace)
+}
+
+func GetReleasePods(rel *release.Release, clusterMan model.ICluster) ([]v1.Pod, error) {
+	var sets labels.Set = rel.Labels
+	k8sCli := clusterMan.GetClientset()
+	pods, err := k8sCli.CoreV1().Pods(rel.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: sets.AsSelector().String(),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "List pods of release %s/%q", rel.Namespace, rel.Name)
+	}
+	return pods.Items, nil
+}
+
+func GetReleasePodsStatus(rel *release.Release, clusterMan model.ICluster) (map[string]string, error) {
+	pods, err := GetReleasePods(rel, clusterMan)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetReleasePods")
+	}
+	statusMap := make(map[string]string)
+	for _, pod := range pods {
+		status := GetPodManager().getPodStatus(&pod)
+		statusMap[pod.GetName()] = status.Status
+	}
+	return statusMap, nil
 }
 
 func GetReleaseResources(
