@@ -227,6 +227,7 @@ func (rls *SRelease) fillReleaseDetail(detail api.ReleaseDetailV2, isList bool) 
 		typ = api.RepoTypeExternal
 	}
 	detail.Type = typ
+	detail.PodsStatus = rel.PodsStatus
 	return detail, nil
 }
 
@@ -454,18 +455,26 @@ func (r *SRelease) GetHelmRelease(isList bool) (*api.ReleaseDetail, error) {
 		}
 	}
 	return &api.ReleaseDetail{
-		Release:   *ToRelease(rls, clusCli.Cluster.(api.ICluster)),
+		Release:   *ToRelease(rls, clusCli),
 		Resources: res,
 		Files:     GetChartRawFiles(rls.Chart),
 	}, nil
 }
 
-func ToRelease(release *release.Release, cluster api.ICluster) *api.Release {
-	return &api.Release{
+func ToRelease(release *release.Release, clusterCli *client.ClusterManager) *api.Release {
+	cluster := clusterCli.Cluster
+	ret := &api.Release{
 		Release:     release,
 		ClusterMeta: api.NewClusterMeta(cluster),
 		Status:      release.Info.Status.String(),
 	}
+	podsStatus, err := GetReleasePodsStatus(release, clusterCli)
+	if err != nil {
+		log.Warningf("GetReleasePodsStatus %s/%s/%s", cluster.GetName(), release.Namespace, release.Name)
+	} else {
+		ret.PodsStatus = podsStatus
+	}
+	return ret
 }
 
 func (r *SRelease) GetHelmValues() map[string]interface{} {
