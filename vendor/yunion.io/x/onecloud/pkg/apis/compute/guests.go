@@ -241,6 +241,9 @@ type ServerDetails struct {
 	// 是否支持GPU
 	IsGpu bool `json:"is_gpu"`
 
+	// Cdrom信息
+	Cdrom []Cdrom `json:"cdrom"`
+
 	//Floppy信息
 	Floppy []Floppy `json:"floppy"`
 
