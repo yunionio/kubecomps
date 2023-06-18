@@ -23,6 +23,9 @@ type ServicePort struct {
 
 	// The port on each node on which service is exposed.
 	NodePort int32 `json:"nodePort"`
+
+	// Nodes ip with nodePort
+	NodePortEndpoints []string `json:"nodePortEndpoints"`
 }
 
 type EndpointDetail struct {

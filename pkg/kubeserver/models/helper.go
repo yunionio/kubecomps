@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
@@ -158,7 +159,10 @@ func EnsureNamespace(cluster *SCluster, namespace string) error {
 }
 
 func GetReleasePods(rel *release.Release, clusterMan model.ICluster) ([]v1.Pod, error) {
-	var sets labels.Set = rel.Labels
+	var sets labels.Set = map[string]string{
+		"app.kubernetes.io/name":     rel.Chart.Name(),
+		"app.kubernetes.io/instance": rel.Name,
+	}
 	k8sCli := clusterMan.GetClientset()
 	pods, err := k8sCli.CoreV1().Pods(rel.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: sets.AsSelector().String(),
@@ -192,8 +196,9 @@ func GetReleaseResources(
 		return nil, err
 	}
 	ret := make(map[string][]interface{})
-	ress.Visit(func(info *resource.Info, err error) error {
+	if err := ress.Visit(func(info *resource.Info, err error) error {
 		gvk := info.Object.GetObjectKind().GroupVersionKind()
+		log.Infof("visit info: %#v, %s/%s", gvk, info.Namespace, info.ObjectName())
 		man := GetOriginK8sModelManager(gvk.Kind)
 		if man == nil {
 			log.Warningf("not fond %s manager", gvk.Kind)
@@ -242,7 +247,7 @@ func GetReleaseResources(
 			if isNsObj {
 				dbObj, err = FetchClusterResourceByName(dbMan, GetAdminCred(), cluster.GetId(), nsObj.GetNamespaceId(), nsObj.GetName())
 			} else {
-				dbObj, err = FetchClusterResourceByName(dbMan, GetAdminCred(), cluster.GetId(), "", nsObj.GetName())
+				dbObj, err = FetchClusterResourceByName(dbMan, GetAdminCred(), cluster.GetId(), "", dbObj.GetName())
 			}
 			if err != nil {
 				return errors.Wrapf(err, "Fetch DB object %v", getObj)
@@ -264,7 +269,9 @@ func GetReleaseResources(
 			ret[keyword] = list
 		}
 		return nil
-	})
+	}); err != nil {
+		log.Warningf("visit release resources error: %v", err)
+	}
 	return ret, nil
 }
 
@@ -562,7 +569,9 @@ func GetPodInfo(current int32, desired *int32, pods []*v1.Pod) (*api.PodInfo, er
 
 // GetInternalEndpoint returns internal endpoint name for the given service properties, e.g.,
 // "my-service.namespace 80/TCP" or "my-service 53/TCP,53/UDP".
-func GetInternalEndpoint(serviceName, namespace string, ports []v1.ServicePort) api.Endpoint {
+func GetInternalEndpoint(nodes []v1.Node,
+	serviceName, namespace string,
+	ports []v1.ServicePort) api.Endpoint {
 	name := serviceName
 
 	if namespace != v1.NamespaceDefault && len(namespace) > 0 && len(serviceName) > 0 {
@@ -574,7 +583,7 @@ func GetInternalEndpoint(serviceName, namespace string, ports []v1.ServicePort) 
 
 	return api.Endpoint{
 		Host:  name,
-		Ports: GetServicePorts(ports),
+		Ports: GetServicePorts(nodes, ports),
 	}
 }
 
@@ -588,15 +597,36 @@ func getExternalEndpoint(ingress v1.LoadBalancerIngress, ports []v1.ServicePort)
 	}
 	return api.Endpoint{
 		Host:  host,
-		Ports: GetServicePorts(ports),
+		Ports: GetServicePorts(nil, ports),
 	}
 }
 
 // GetServicePorts returns human readable name for the given service ports list.
-func GetServicePorts(apiPorts []v1.ServicePort) []api.ServicePort {
+func GetServicePorts(nodes []v1.Node, apiPorts []v1.ServicePort) []api.ServicePort {
 	var ports []api.ServicePort
 	for _, port := range apiPorts {
-		ports = append(ports, api.ServicePort{port.Port, port.Protocol, port.NodePort})
+		sp := api.ServicePort{
+			Port:     port.Port,
+			Protocol: port.Protocol,
+			NodePort: port.NodePort,
+		}
+		if sp.NodePort != 0 {
+			// todo
+			sp.NodePortEndpoints = []string{}
+			if len(nodes) != 0 {
+				for _, node := range nodes {
+					addrs := node.Status.Addresses
+					if len(addrs) == 0 {
+						continue
+					}
+					_, isMaster := node.GetLabels()["node-role.kubernetes.io/master"]
+					if isMaster || strings.Contains(node.GetName(), "-controlplane-") {
+						sp.NodePortEndpoints = append(sp.NodePortEndpoints, fmt.Sprintf("%s:%d", addrs[0].Address, sp.NodePort))
+					}
+				}
+			}
+		}
+		ports = append(ports, sp)
 	}
 	return ports
 }
@@ -613,7 +643,7 @@ func GetExternalEndpoints(service *v1.Service) []api.Endpoint {
 	for _, ip := range service.Spec.ExternalIPs {
 		externalEndpoints = append(externalEndpoints, api.Endpoint{
 			Host:  ip,
-			Ports: GetServicePorts(service.Spec.Ports),
+			Ports: GetServicePorts(nil, service.Spec.Ports),
 		})
 	}
 

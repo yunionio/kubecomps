@@ -147,7 +147,11 @@ func (n NetworkConfig) ToPodAnnotation() map[string]string {
 func GetServicePorts(apiPorts []v1.ServicePort) []ServicePort {
 	var ports []ServicePort
 	for _, port := range apiPorts {
-		ports = append(ports, ServicePort{port.Port, port.Protocol, port.NodePort})
+		ports = append(ports, ServicePort{
+			Port:     port.Port,
+			Protocol: port.Protocol,
+			NodePort: port.NodePort,
+		})
 	}
 	return ports
 }
