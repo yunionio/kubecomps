@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	res "k8s.io/apimachinery/pkg/api/resource"
@@ -89,7 +89,11 @@ func (m *SPodManager) GetGCQuery() *sqlchemy.SQuery {
 	return q
 }
 
-func (m *SPodManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, input *api.PodListInput) (*sqlchemy.SQuery, error) {
+func (m *SPodManager) ListItemFilter(ctx context.Context,
+	q *sqlchemy.SQuery,
+	userCred mcclient.TokenCredential,
+	input *api.PodListInput,
+) (*sqlchemy.SQuery, error) {
 	q, err := m.SNamespaceResourceBaseManager.ListItemFilter(ctx, q, userCred, &input.NamespaceResourceListInput)
 	return q, err
 }

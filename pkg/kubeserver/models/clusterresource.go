@@ -744,12 +744,12 @@ func (m *SClusterResourceBaseManager) ListItemFilter(ctx context.Context, q *sql
 	if err != nil {
 		return nil, err
 	}
-	if input.Cluster != "" {
-		cls, err := ClusterManager.FetchClusterByIdOrName(userCred, input.Cluster)
+	if input.ClusterId != "" {
+		cls, err := ClusterManager.FetchClusterByIdOrName(userCred, input.ClusterId)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "FetchClusterByIdOrName")
 		}
-		input.Cluster = cls.GetId()
+		input.ClusterId = cls.GetId()
 		q = q.Equals("cluster_id", cls.GetId())
 	}
 	return q, nil
