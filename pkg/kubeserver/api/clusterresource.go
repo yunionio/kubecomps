@@ -34,8 +34,14 @@ type ClusterResourceListInput struct {
 	apis.StatusDomainLevelResourceListInput
 	System *bool `json:"system"`
 
+	// Deprecated
+	Cluster string `json:"cluster" yunion-deprecated-by:"cluster_id"`
 	// 集群名称
-	Cluster string `json:"cluster"`
+	ClusterId string `json:"cluster_id"`
+	// Deprecated
+	Account string `json:"account" yunion-deprecated-by:"cluster_id"`
+	// Deprecated
+	AccountId string `json:"account_id" yunion-deprecated-by:"cluster_id"`
 }
 
 type ClusterResourceUpdateInput struct {

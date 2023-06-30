@@ -18,6 +18,13 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/errors"
+	"yunion.io/x/pkg/tristate"
+	"yunion.io/x/pkg/util/netutils"
+	"yunion.io/x/pkg/util/rbacscope"
+	"yunion.io/x/pkg/utils"
+	"yunion.io/x/sqlchemy"
+
 	computeapi "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
@@ -26,12 +33,6 @@ import (
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
-	"yunion.io/x/pkg/errors"
-	"yunion.io/x/pkg/tristate"
-	"yunion.io/x/pkg/util/netutils"
-	"yunion.io/x/pkg/util/rbacscope"
-	"yunion.io/x/pkg/utils"
-	"yunion.io/x/sqlchemy"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
@@ -411,7 +412,12 @@ func (m *SClusterManager) GetSession() (*mcclient.ClientSession, error) {
 	return GetAdminSession()
 }
 
-func (m *SClusterManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, input *api.ClusterListInput) (*sqlchemy.SQuery, error) {
+func (m *SClusterManager) ListItemFilter(
+	ctx context.Context,
+	q *sqlchemy.SQuery,
+	userCred mcclient.TokenCredential,
+	input *api.ClusterListInput,
+) (*sqlchemy.SQuery, error) {
 	q, err := m.SStatusDomainLevelResourceBaseManager.ListItemFilter(ctx, q, userCred, input.StatusDomainLevelResourceListInput)
 	if err != nil {
 		return nil, err
