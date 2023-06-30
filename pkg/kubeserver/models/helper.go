@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	"yunion.io/x/onecloud/pkg/apis"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -866,4 +867,36 @@ func ConvertRawToAPIObject(
 	targetVal := reflect.ValueOf(target)
 	targetVal.Elem().Set(ret[0].Elem())
 	return nil
+}
+
+func ToResourceEventNote(ctx context.Context,
+	userCred mcclient.TokenCredential,
+	res INamespaceModel,
+	k8sObj interface{},
+	resultF func(domainId string, nsLabels map[string]string, detailObj interface{}) interface{}) interface{} {
+	detailObj := res.GetClusterModelManager().FetchCustomizeColumns(ctx, userCred, nil, []interface{}{res}, nil, false)[0]
+	cli, err := res.GetClusterClient()
+	if err != nil {
+		log.Warningf("Get cluster client by res %s/%s: %s", res.GetNamespaceId(), res.GetName(), err)
+	}
+	// 如果 pod 已经被删除，返回的是 StatusDomainLevelResourceDetails
+	// 需要用参数中的 k8sObj 去重新生成 details
+	baseDetail, ok := detailObj.(apis.StatusDomainLevelResourceDetails)
+	if ok {
+		detailObj = res.GetDetails(cli, baseDetail, k8sObj.(runtime.Object), false)
+	}
+	nsObj, err := res.GetNamespace()
+	if err != nil {
+		log.Warningf("Get resource %s namespace: %s", res.GetName(), err)
+	}
+	var ns *v1.Namespace
+	ns, err = cli.GetClientset().CoreV1().Namespaces().Get(ctx, nsObj.GetName(), metav1.GetOptions{})
+	if err != nil {
+		log.Warningf("Get pod %s/%s namespace: %s", nsObj.GetName(), res.GetName(), err)
+	}
+	nsLabels := map[string]string{}
+	if ns != nil {
+		nsLabels = ns.GetLabels()
+	}
+	return resultF(res.GetDomainId(), nsLabels, detailObj)
 }

@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -27,6 +28,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
 	"yunion.io/x/kubecomps/pkg/kubeserver/k8s/common/getters"
+	"yunion.io/x/kubecomps/pkg/kubeserver/models/logevent"
 )
 
 var (
@@ -479,11 +481,31 @@ func (p *SPod) UpdateFromRemoteObject(ctx context.Context, userCred mcclient.Tok
 	return nil
 }
 
+func (p *SPod) ToEventNote(ctx context.Context, userCred mcclient.TokenCredential, k8sObj interface{}) interface{} {
+	return ToResourceEventNote(ctx, userCred, p, k8sObj, func(domainId string, nsLabels map[string]string, detailObj interface{}) interface{} {
+		detail := detailObj.(api.PodDetailV2)
+		note := logevent.NewPodNote(
+			p.DomainId, detail, nsLabels,
+			&logevent.Resources{
+				CPU:    p.CpuLimits,
+				Memory: p.MemoryLimits,
+			},
+			&logevent.Resources{
+				CPU:    p.CpuRequests,
+				Memory: p.MemoryRequests,
+			})
+		return note
+	})
+}
+
 func (p *SPod) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
 	k8sPod := extObj.(*v1.Pod)
 	status := getters.GetPodStatus(k8sPod)
 	if status.Status != p.Status {
 		p.Status = status.Status
+		note := p.ToEventNote(ctx, userCred, extObj)
+		status := p.Status
+		db.OpsLog.LogEvent(p, status, jsonutils.Marshal(note), userCred)
 	}
 	return nil
 }

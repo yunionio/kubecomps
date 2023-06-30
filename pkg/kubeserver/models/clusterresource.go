@@ -109,6 +109,7 @@ type IClusterModelManager interface {
 
 type IClusterModel interface {
 	db.IStatusDomainLevelModel
+	GetDomainId() string
 
 	// LogPrefix return db object log short prefix string
 	LogPrefix() string
@@ -332,6 +333,10 @@ func NewObjectMeta(res IClusterModel) (api.ObjectMeta, error) {
 
 func (res SClusterResourceBase) GetObjectMeta() (api.ObjectMeta, error) {
 	return NewObjectMeta(&res)
+}
+
+func (res SClusterResourceBase) GetDomainId() string {
+	return res.DomainId
 }
 
 func (res *SClusterResourceBase) CustomizeCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) error {
