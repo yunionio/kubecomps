@@ -6,6 +6,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -16,6 +17,7 @@ import (
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/client"
+	"yunion.io/x/kubecomps/pkg/kubeserver/models/logevent"
 )
 
 var (
@@ -185,9 +187,20 @@ func (obj *SPVC) GetRawPods(cli *client.ClusterManager, rawObj runtime.Object) (
 }
 
 func (obj *SPVC) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
-	status := string(extObj.(*v1.PersistentVolumeClaim).Status.Phase)
-	obj.Status = status
+	curStatus := string(extObj.(*v1.PersistentVolumeClaim).Status.Phase)
+	if obj.Status != curStatus {
+		note := obj.ToEventNote(ctx, userCred, extObj)
+		obj.Status = curStatus
+		db.OpsLog.LogEvent(obj, curStatus, jsonutils.Marshal(note), userCred)
+	}
 	return nil
+}
+
+func (obj *SPVC) ToEventNote(ctx context.Context, userCred mcclient.TokenCredential, k8sObj interface{}) interface{} {
+	return ToResourceEventNote(ctx, userCred, obj, k8sObj, func(domainId string, nsLabels map[string]string, detailObj interface{}) interface{} {
+		detail := detailObj.(api.PersistentVolumeClaimDetail)
+		return logevent.NewPVCNote(domainId, detail, nsLabels)
+	})
 }
 
 func (obj *SPVC) GetMountPodNames(cli *client.ClusterManager, pvc *v1.PersistentVolumeClaim) ([]string, error) {
