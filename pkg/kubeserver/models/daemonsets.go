@@ -133,10 +133,10 @@ func (obj *SDaemonSet) GetPodInfo(cli *client.ClusterManager, ds *apps.DaemonSet
 	return podInfo, nil
 }
 
-func (obj *SDaemonSet) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SDaemonSet) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	ds := k8sObj.(*apps.DaemonSet)
 	detail := api.DaemonSetDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		ContainerImages:         GetContainerImages(&ds.Spec.Template.Spec),
 		InitContainerImages:     GetInitContainerImages(&ds.Spec.Template.Spec),
 		LabelSelector:           ds.Spec.Selector,

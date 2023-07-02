@@ -351,11 +351,11 @@ func (p *SPod) getConditions(pod *v1.Pod) []*api.Condition {
 	return SortConditions(conds)
 }
 
-func (p *SPod) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (p *SPod) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	pod := k8sObj.(*v1.Pod)
 	warnings, _ := GetEventManager().GetWarningEventsByPods(cli, []*v1.Pod{pod})
 	out := api.PodDetailV2{
-		NamespaceResourceDetail: p.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: p.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Warnings:                warnings,
 		PodStatus:               GetPodManager().getPodStatus(pod),
 		RestartCount:            GetPodManager().getRestartCount(pod),

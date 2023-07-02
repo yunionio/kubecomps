@@ -151,8 +151,8 @@ func (r *SRole) UpdateFromRemoteObject(ctx context.Context, userCred mcclient.To
 	return nil
 }
 
-func (r *SRole) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	detail := r.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail)
+func (r *SRole) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+	detail := r.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail)
 	role := k8sObj.(*rbacv1.Role)
 	out := api.RoleDetail{
 		NamespaceResourceDetail: detail,

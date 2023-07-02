@@ -194,8 +194,8 @@ func (m *SReleaseManager) FetchCustomizeColumns(
 	return m.SNamespaceResourceBaseManager.FetchCustomizeColumns(ctx, userCred, query, objs, fields, isList)
 }
 
-func (rls *SRelease) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	nsDetail := rls.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail)
+func (rls *SRelease) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+	nsDetail := rls.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail)
 	detail := api.ReleaseDetailV2{
 		ReleaseV2: api.ReleaseV2{
 			NamespaceResourceDetail: nsDetail,

@@ -135,8 +135,8 @@ func (rb *SRoleBinding) UpdateFromRemoteObject(ctx context.Context, userCred mcc
 	return nil
 }
 
-func (rb *SRoleBinding) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	detail := rb.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail)
+func (rb *SRoleBinding) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+	detail := rb.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail)
 	binding := k8sObj.(*rbacv1.RoleBinding)
 	out := api.RoleBindingDetail{
 		NamespaceResourceDetail: detail,

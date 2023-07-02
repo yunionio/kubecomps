@@ -1,7 +1,9 @@
 package models
 
 import (
-	"k8s.io/api/core/v1"
+	"context"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
@@ -56,10 +58,10 @@ func (obj *SPV) getPVCShortDesc(pv *v1.PersistentVolume) string {
 	return claim
 }
 
-func (obj *SPV) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SPV) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	pv := k8sObj.(*v1.PersistentVolume)
 	detail := api.PersistentVolumeDetailV2{
-		ClusterResourceDetail: obj.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail),
+		ClusterResourceDetail: obj.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail),
 		Capacity:              pv.Spec.Capacity,
 		AccessModes:           pv.Spec.AccessModes,
 		ReclaimPolicy:         pv.Spec.PersistentVolumeReclaimPolicy,

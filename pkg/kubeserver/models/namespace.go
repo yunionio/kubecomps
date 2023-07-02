@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/jsonutils"
@@ -165,8 +165,8 @@ func (m *SNamespace) GetEvents() ([]*api.Event, error) {
 	return GetEventManager().GetNamespaceEvents(cli, m.GetName())
 }
 
-func (m *SNamespace) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	detail := m.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail)
+func (m *SNamespace) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+	detail := m.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail)
 	out := api.NamespaceDetailV2{
 		ClusterResourceDetail: detail,
 	}

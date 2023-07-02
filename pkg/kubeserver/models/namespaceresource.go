@@ -269,9 +269,9 @@ func (m *SNamespaceResourceBaseManager) FetchCustomizeColumns(
 	return m.SClusterResourceBaseManager.FetchCustomizeColumns(ctx, userCred, query, objs, fields, isList)
 }
 
-func (obj *SNamespaceResourceBase) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SNamespaceResourceBase) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	out := api.NamespaceResourceDetail{
-		ClusterResourceDetail: obj.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail),
+		ClusterResourceDetail: obj.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail),
 	}
 	ns, err := obj.GetNamespace()
 	if err != nil {
@@ -279,6 +279,11 @@ func (obj *SNamespaceResourceBase) GetDetails(cli *client.ClusterManager, base i
 	} else {
 		out.Namespace = ns.GetName()
 		out.NamespaceId = ns.GetId()
+
+		remoteNs, _ := cli.GetClientset().CoreV1().Namespaces().Get(ctx, ns.GetName(), metav1.GetOptions{})
+		if remoteNs != nil {
+			out.NamespaceLabels = remoteNs.GetLabels()
+		}
 	}
 	return out
 }

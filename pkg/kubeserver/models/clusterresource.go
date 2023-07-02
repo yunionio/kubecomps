@@ -127,7 +127,7 @@ type IClusterModel interface {
 	UpdateFromRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error
 	GetClusterClient() (*client.ClusterManager, error)
 	RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error
-	GetDetails(cli *client.ClusterManager, baseDetails interface{}, k8sObj runtime.Object, isList bool) interface{}
+	GetDetails(ctx context.Context, cli *client.ClusterManager, baseDetails interface{}, k8sObj runtime.Object, isList bool) interface{}
 
 	// RemoteObject operator interfaces
 	// GetRemoteObject get remote object from cluster
@@ -790,7 +790,7 @@ func FetchClusterResourceCustomizeColumns(
 			ret[idx] = baseDetail
 			continue
 		}
-		out := obj.GetDetails(cli, baseDetail, k8sObj, isList)
+		out := obj.GetDetails(ctx, cli, baseDetail, k8sObj, isList)
 		ret[idx] = out
 	}
 	return ret
@@ -819,6 +819,7 @@ func (m *SClusterResourceBaseManager) PurgeAllByCluster(ctx context.Context, use
 }
 
 func (obj *SClusterResourceBase) GetDetails(
+	ctx context.Context,
 	cli *client.ClusterManager,
 	base interface{},
 	k8sObj runtime.Object,
@@ -835,6 +836,7 @@ func (obj *SClusterResourceBase) GetDetails(
 	out.Cluster = cls.GetName()
 	out.ClusterId = cls.GetId()
 	out.ClusterID = cls.GetId()
+	out.Distribution = cls.Distribution
 	return GetK8SResourceMetaDetail(k8sObj, out)
 }
 

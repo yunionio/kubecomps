@@ -150,8 +150,8 @@ func (crb *SClusterRoleBinding) UpdateFromRemoteObject(ctx context.Context, user
 	return crb.SClusterResourceBase.UpdateFromRemoteObject(ctx, userCred, extObj)
 }
 
-func (crb *SClusterRoleBinding) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	detail := crb.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail)
+func (crb *SClusterRoleBinding) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+	detail := crb.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail)
 	binding := k8sObj.(*rbacv1.ClusterRoleBinding)
 	out := api.ClusterRoleBindingDetail{
 		ClusterResourceDetail: detail,

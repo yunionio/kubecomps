@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/jsonutils"
@@ -119,10 +119,10 @@ func (obj *SLimitRange) ToRangeItem(lr *v1.LimitRange) []*api.LimitRangeItem {
 	return limitRangeList
 }
 
-func (obj *SLimitRange) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SLimitRange) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	lr := k8sObj.(*v1.LimitRange)
 	detail := api.LimitRangeDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Limits:                  obj.ToRangeItem(lr),
 	}
 	return detail

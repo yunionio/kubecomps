@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -167,10 +167,10 @@ func (obj *SNode) getNodeAllocatedResources(node *v1.Node, pods []*v1.Pod) (api.
 	}, nil
 }
 
-func (node *SNode) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (node *SNode) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	rNode := k8sObj.(*v1.Node)
 	out := api.NodeDetailV2{
-		ClusterResourceDetail: node.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail),
+		ClusterResourceDetail: node.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail),
 		Ready:                 node.getNodeConditionStatus(rNode, v1.NodeReady) == v1.ConditionTrue,
 		Address:               rNode.Status.Addresses,
 		NodeInfo:              rNode.Status.NodeInfo,

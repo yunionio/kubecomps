@@ -1,7 +1,7 @@
 package api
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 // PersistentVolumeClaim provides the simplified presentation layer view of Kubernetes Persistent Volume Claim resource.
@@ -23,6 +23,7 @@ type PersistentVolumeClaimDetail struct {
 	Status       string                          `json:"status"`
 	Volume       string                          `json:"volume"`
 	Capacity     v1.ResourceList                 `json:"capacity"`
+	CapacityMb   int                             `json:"capacity_mb"`
 	AccessModes  []v1.PersistentVolumeAccessMode `json:"accessModes"`
 	StorageClass *string                         `json:"storageClass"`
 	MountedBy    []string                        `json:"mountedBy"`

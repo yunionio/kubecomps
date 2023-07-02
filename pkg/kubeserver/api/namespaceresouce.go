@@ -42,6 +42,8 @@ type NamespaceResourceDetail struct {
 
 	NamespaceId string `json:"namespace_id"`
 	Namespace   string `json:"namespace"`
+
+	NamespaceLabels map[string]string `json:"namespace_labels"`
 }
 
 type NamespaceResourceUpdateInput struct {

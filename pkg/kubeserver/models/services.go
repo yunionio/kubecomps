@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -102,6 +102,7 @@ func (obj *SService) IsOwnedBy(ownerModel IClusterModel) (bool, error) {
 }
 
 func (obj *SService) GetDetails(
+	ctx context.Context,
 	cli *client.ClusterManager,
 	base interface{},
 	k8sObj runtime.Object,
@@ -109,7 +110,7 @@ func (obj *SService) GetDetails(
 ) interface{} {
 	svc := k8sObj.(*v1.Service)
 	detail := api.ServiceDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		InternalEndpoint:        GetInternalEndpoint(svc.Name, svc.Namespace, svc.Spec.Ports),
 		ExternalEndpoints:       GetExternalEndpoints(svc),
 		Selector:                svc.Spec.Selector,

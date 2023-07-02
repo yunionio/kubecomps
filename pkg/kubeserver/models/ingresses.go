@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -161,6 +162,7 @@ func (obj *SIngress) getEndpoints(rObj *unstructured.Unstructured) []api.Endpoin
 }
 
 func (obj *SIngress) GetDetails(
+	ctx context.Context,
 	cli *client.ClusterManager,
 	base interface{},
 	k8sObj runtime.Object,
@@ -168,7 +170,7 @@ func (obj *SIngress) GetDetails(
 ) interface{} {
 	ing := k8sObj.(*unstructured.Unstructured)
 	detail := api.IngressDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Endpoints:               obj.getEndpoints(ing),
 	}
 	if isList {

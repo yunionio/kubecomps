@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/jsonutils"
@@ -58,10 +58,10 @@ func (m *SResourceQuotaManager) ValidateCreateData(ctx context.Context, userCred
 	return nil, httperrors.NewBadRequestError("Not support resourcequota create")
 }
 
-func (obj *SResourceQuota) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SResourceQuota) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	rq := k8sObj.(*v1.ResourceQuota)
 	detail := api.ResourceQuotaDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		ResourceQuotaSpec:       rq.Spec,
 	}
 	if isList {

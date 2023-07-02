@@ -1,6 +1,8 @@
 package models
 
 import (
+	"context"
+
 	batch "k8s.io/api/batch/v1"
 	batch2 "k8s.io/api/batch/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -100,7 +102,7 @@ func (m *SCronJobManager) NewRemoteObjectForCreate(model IClusterModel, cli *cli
 	return res, nil
 }
 
-func (obj *SCronJob) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SCronJob) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	cj := k8sObj.(*unstructured.Unstructured)
 	spec, _, _ := unstructured.NestedMap(cj.Object, "spec")
 	status, _, _ := unstructured.NestedMap(cj.Object, "status")
@@ -112,7 +114,7 @@ func (obj *SCronJob) GetDetails(cli *client.ClusterManager, base interface{}, k8
 	startingDeadlineSeconds, _, _ := unstructured.NestedInt64(spec, "concurrencyPolicy")
 
 	detail := api.CronJobDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Schedule:                schedule,
 		Suspend:                 suspend,
 		Active:                  len(actives),

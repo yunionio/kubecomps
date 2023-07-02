@@ -15,6 +15,8 @@ type BaseNote struct {
 	ClusterId string    `json:"cluster_id"`
 	Cluster   string    `json:"cluster"`
 	CreatedAt time.Time `json:"created_at"`
+
+	Distribution string `json:"distribution"`
 }
 
 func NewBaseNote(domainId string, input api.ClusterResourceDetail) *BaseNote {
@@ -24,6 +26,8 @@ func NewBaseNote(domainId string, input api.ClusterResourceDetail) *BaseNote {
 		ClusterId: input.ClusterId,
 		Cluster:   input.Cluster,
 		CreatedAt: input.CreationTimestamp,
+
+		Distribution: input.Distribution,
 	}
 }
 
@@ -50,11 +54,15 @@ type Resources struct {
 
 type PodNote struct {
 	*NamespaceResourceNote
-	Limits   *Resources `json:"limits"`
-	Requests *Resources `json:"requests"`
-	QOSClass string     `json:"qos_class"`
-	PodIP    string     `json:"pod_ip"`
-	Status   string     `json:"status"`
+	Limits         *Resources `json:"limits"`
+	Requests       *Resources `json:"requests"`
+	CpuLimits      int        `json:"cpu_limits"`
+	CpuRequests    int        `json:"cpu_requests"`
+	MemoryLimits   int        `json:"memory_limits"`
+	MemoryRequests int        `json:"memory_requests"`
+	QOSClass       string     `json:"qosClass"`
+	PodIP          string     `json:"pod_ip"`
+	Status         string     `json:"status"`
 }
 
 func NewPodNote(domainId string,
@@ -64,7 +72,11 @@ func NewPodNote(domainId string,
 	return &PodNote{
 		NamespaceResourceNote: NewNamespaceResourceNote(domainId, input.NamespaceResourceDetail, nsLabels),
 		Limits:                limits,
+		CpuLimits:             int(limits.CPU),
+		MemoryLimits:          int(limits.Memory),
 		Requests:              requests,
+		CpuRequests:           int(requests.CPU),
+		MemoryRequests:        int(requests.Memory),
 		QOSClass:              input.QOSClass,
 		PodIP:                 input.PodIP,
 		Status:                input.Status,
