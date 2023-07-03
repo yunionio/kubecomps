@@ -136,8 +136,8 @@ func (cr *SClusterRole) UpdateFromRemoteObject(ctx context.Context, userCred mcc
 	return nil
 }
 
-func (cr *SClusterRole) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
-	detail := cr.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail)
+func (cr *SClusterRole) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+	detail := cr.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail)
 	role := k8sObj.(*rbacv1.ClusterRole)
 	out := api.ClusterRoleDetail{
 		ClusterResourceDetail: detail,

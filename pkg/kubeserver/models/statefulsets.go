@@ -145,10 +145,10 @@ func (obj *SStatefulSet) GetPodInfo(cli *client.ClusterManager, ss *apps.Statefu
 	return GetPodInfo(ss.Status.Replicas, ss.Spec.Replicas, pods)
 }
 
-func (obj *SStatefulSet) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SStatefulSet) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	ss := k8sObj.(*apps.StatefulSet)
 	detail := api.StatefulSetDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Replicas:                ss.Spec.Replicas,
 		ContainerImages:         GetContainerImages(&ss.Spec.Template.Spec),
 		InitContainerImages:     GetContainerImages(&ss.Spec.Template.Spec),

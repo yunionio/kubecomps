@@ -291,7 +291,7 @@ type IFedJointResAPI interface {
 	// IsNamespaceScope mark object is namespace scope
 	IsNamespaceScope(jObj IFedJointClusterModel) bool
 	// GetDetails get joint object details
-	GetDetails(jObj IFedJointClusterModel, userCred mcclient.TokenCredential, base apis.JointResourceBaseDetails, isList bool) interface{}
+	GetDetails(ctx context.Context, jObj IFedJointClusterModel, userCred mcclient.TokenCredential, base apis.JointResourceBaseDetails, isList bool) interface{}
 }
 
 type sFedJointResAPI struct {
@@ -325,7 +325,7 @@ func (a sFedJointResAPI) FetchResourceModel(jObj IFedJointClusterModel) (ICluste
 	return FetchClusterResourceById(man, jObj.GetClusterId(), "", jObj.GetResourceId())
 }
 
-func (a sFedJointResAPI) GetDetails(jObj IFedJointClusterModel, userCred mcclient.TokenCredential, base apis.JointResourceBaseDetails, isList bool) interface{} {
+func (a sFedJointResAPI) GetDetails(ctx context.Context, jObj IFedJointClusterModel, userCred mcclient.TokenCredential, base apis.JointResourceBaseDetails, isList bool) interface{} {
 	out := api.FedJointClusterResourceDetails{
 		JointResourceBaseDetails: base,
 	}

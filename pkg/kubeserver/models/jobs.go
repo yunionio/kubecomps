@@ -4,7 +4,7 @@ import (
 	"context"
 
 	batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -108,6 +108,7 @@ func (obj *SJob) GetPodInfo(cli *client.ClusterManager, job *batch.Job) (*api.Po
 }
 
 func (obj *SJob) GetDetails(
+	ctx context.Context,
 	cli *client.ClusterManager,
 	base interface{},
 	k8sObj runtime.Object,
@@ -116,7 +117,7 @@ func (obj *SJob) GetDetails(
 	job := k8sObj.(*batch.Job)
 	jobStatus := api.JobStatus{Status: api.JobStatusRunning}
 	detail := api.JobDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		ContainerImages:         GetContainerImages(&job.Spec.Template.Spec),
 		InitContainerImages:     GetInitContainerImages(&job.Spec.Template.Spec),
 		Parallelism:             job.Spec.Parallelism,

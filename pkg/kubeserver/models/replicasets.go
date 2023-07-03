@@ -84,9 +84,9 @@ func (obj *SReplicaSet) GetPodInfo(cli *client.ClusterManager, rs *apps.ReplicaS
 	return GetPodInfo(rs.Status.Replicas, rs.Spec.Replicas, pods)
 }
 
-func (obj *SReplicaSet) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SReplicaSet) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	detail := api.ReplicaSetDetail{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 	}
 	rs := k8sObj.(*apps.ReplicaSet)
 	podInfo, err := obj.GetPodInfo(cli, rs)

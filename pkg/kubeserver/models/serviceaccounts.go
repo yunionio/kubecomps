@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"yunion.io/x/jsonutils"
@@ -51,10 +51,10 @@ func (m *SServiceAccountManager) ValidateCreateData(ctx context.Context, userCre
 	return nil, httperrors.NewBadRequestError("Not support serviceaccount create")
 }
 
-func (obj *SServiceAccount) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SServiceAccount) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	sa := k8sObj.(*v1.ServiceAccount)
 	return api.ServiceAccountDetail{
-		NamespaceResourceDetail:      obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail:      obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Secrets:                      sa.Secrets,
 		ImagePullSecrets:             sa.ImagePullSecrets,
 		AutomountServiceAccountToken: sa.AutomountServiceAccountToken,

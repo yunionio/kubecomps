@@ -150,4 +150,6 @@ type ClusterResourceDetail struct {
 	// clusterID is DEPRECATED, use cluster_id
 	ClusterID string `json:"clusterID"`
 	Cluster   string `json:"cluster"`
+
+	Distribution string `json:"distribution"`
 }

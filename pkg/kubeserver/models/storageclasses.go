@@ -134,7 +134,7 @@ func (m *SStorageClassManager) NewRemoteObjectForCreate(model IClusterModel, cli
 	}, nil
 }
 
-func (m *SStorageClass) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (m *SStorageClass) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	sc := k8sObj.(*v1.StorageClass)
 	isDefault := false
 	if _, ok := sc.Annotations[IsDefaultStorageClassAnnotation]; ok {
@@ -144,7 +144,7 @@ func (m *SStorageClass) GetDetails(cli *client.ClusterManager, base interface{},
 		isDefault = true
 	}
 	detail := api.StorageClassDetailV2{
-		ClusterResourceDetail: m.SClusterResourceBase.GetDetails(cli, base, k8sObj, isList).(api.ClusterResourceDetail),
+		ClusterResourceDetail: m.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail),
 		Provisioner:           sc.Provisioner,
 		Parameters:            sc.Parameters,
 		IsDefault:             isDefault,

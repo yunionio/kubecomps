@@ -233,6 +233,7 @@ func (obj *SDeployment) FindNewReplicaSet(deploy *apps.Deployment) (*apps.Replic
 }
 
 func (obj *SDeployment) GetDetails(
+	ctx context.Context,
 	cli *client.ClusterManager,
 	base interface{},
 	k8sObj runtime.Object,
@@ -240,7 +241,7 @@ func (obj *SDeployment) GetDetails(
 ) interface{} {
 	deploy := k8sObj.(*apps.Deployment)
 	detail := api.DeploymentDetailV2{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Replicas:                deploy.Spec.Replicas,
 		ContainerImages:         GetContainerImages(&deploy.Spec.Template.Spec),
 		InitContainerImages:     GetInitContainerImages(&deploy.Spec.Template.Spec),

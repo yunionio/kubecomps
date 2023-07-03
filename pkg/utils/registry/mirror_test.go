@@ -43,7 +43,7 @@ func TestMirrorImage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := MirrorImage(tt.args.name, tt.args.tag, tt.args.prefix); got != tt.want {
+			if got := MirrorImage("", tt.args.name, tt.args.tag, tt.args.prefix); got != tt.want {
 				t.Errorf("MirrorImage() = %v, want %v", got, tt.want)
 			}
 		})

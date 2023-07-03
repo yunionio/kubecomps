@@ -853,7 +853,7 @@ func ToResourceEventNote(ctx context.Context,
 	// 需要用参数中的 k8sObj 去重新生成 details
 	baseDetail, ok := detailObj.(apis.StatusDomainLevelResourceDetails)
 	if ok {
-		detailObj = res.GetDetails(cli, baseDetail, k8sObj.(runtime.Object), false)
+		detailObj = res.GetDetails(ctx, cli, baseDetail, k8sObj.(runtime.Object), false)
 	}
 	nsObj, err := res.GetNamespace()
 	if err != nil {

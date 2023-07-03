@@ -3,13 +3,14 @@ package models
 import (
 	"context"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+
 	// "yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/pkg/errors"
@@ -215,13 +216,15 @@ func (obj *SPVC) GetMountPodNames(cli *client.ClusterManager, pvc *v1.Persistent
 	return names, nil
 }
 
-func (obj *SPVC) GetDetails(cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
+func (obj *SPVC) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	pvc := k8sObj.(*v1.PersistentVolumeClaim)
+	quantity := pvc.Status.Capacity[v1.ResourceStorage]
 	detail := api.PersistentVolumeClaimDetail{
-		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
+		NamespaceResourceDetail: obj.SNamespaceResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.NamespaceResourceDetail),
 		Status:                  string(pvc.Status.Phase),
 		Volume:                  pvc.Spec.VolumeName,
 		Capacity:                pvc.Status.Capacity,
+		CapacityMb:              int(quantity.ScaledValue(resource.Mega)),
 		AccessModes:             pvc.Spec.AccessModes,
 		StorageClass:            pvc.Spec.StorageClassName,
 	}
