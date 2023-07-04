@@ -8,6 +8,7 @@ type ContainerRegistryType string
 
 const (
 	ContainerRegistryTypeHarbor = "harbor"
+	ContainerRegistryTypeCommon = "common"
 )
 
 type ContainerRegistryListInput struct {
@@ -16,12 +17,17 @@ type ContainerRegistryListInput struct {
 	Type string `json:"type"`
 }
 
-type ContainerRegistryConfigHarbor struct {
+type ContainerRegistryConfigCommon struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
+type ContainerRegistryConfigHarbor struct {
+	ContainerRegistryConfigCommon
+}
+
 type ContainerRegistryConfig struct {
+	Common *ContainerRegistryConfigCommon `json:"common`
 	Harbor *ContainerRegistryConfigHarbor `json:"harbor"`
 }
 
