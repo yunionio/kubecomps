@@ -350,7 +350,7 @@ func Client() *mcclient.Client {
 
 func AdminCredential() mcclient.TokenCredential {
 	if manager.adminCredential.GetExpires().Before(time.Now()) {
-		manager.reAuth()
+		manager.authAdmin()
 	}
 	return manager.adminCredential
 }

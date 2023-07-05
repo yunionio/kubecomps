@@ -485,7 +485,7 @@ func (p *SPod) UpdateFromRemoteObject(ctx context.Context, userCred mcclient.Tok
 	return nil
 }
 
-func (p *SPod) ToEventNote(ctx context.Context, userCred mcclient.TokenCredential, k8sObj interface{}) interface{} {
+func (p *SPod) toEventNote(ctx context.Context, userCred mcclient.TokenCredential, k8sObj interface{}) interface{} {
 	return ToResourceEventNote(ctx, userCred, p, k8sObj, func(domainId string, nsLabels map[string]string, detailObj interface{}) interface{} {
 		detail := detailObj.(api.PodDetailV2)
 		note := logevent.NewPodNote(
@@ -506,10 +506,16 @@ func (p *SPod) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.To
 	k8sPod := extObj.(*v1.Pod)
 	status := getters.GetPodStatus(k8sPod)
 	if status.Status != p.Status {
+		oldStatus := p.Status
 		p.Status = status.Status
-		note := p.ToEventNote(ctx, userCred, extObj)
-		status := p.Status
-		db.OpsLog.LogEvent(p, status, jsonutils.Marshal(note), userCred)
+		note := p.toEventNote(ctx, userCred, extObj)
+		curStatus := p.Status
+		if curStatus == string(v1.PodRunning) {
+			curStatus = db.ACT_START
+		} else if oldStatus == string(v1.PodRunning) {
+			curStatus = db.ACT_STOP
+		}
+		db.OpsLog.LogEvent(p, curStatus, jsonutils.Marshal(note), userCred)
 	}
 	return nil
 }

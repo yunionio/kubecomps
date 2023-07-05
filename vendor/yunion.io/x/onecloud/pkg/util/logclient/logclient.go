@@ -242,7 +242,7 @@ type logTask struct {
 
 func (t *logTask) Run() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_APPNAME, consts.GetServiceName())
+	ctx = context.WithValue(ctx, appctx.APP_CONTEXT_KEY_APPNAME, consts.GetServiceType())
 	s := DefaultSessionGenerator(ctx, t.userCred, "")
 	_, err := t.api.Create(s, t.logentry)
 	if err != nil {

@@ -190,14 +190,20 @@ func (obj *SPVC) GetRawPods(cli *client.ClusterManager, rawObj runtime.Object) (
 func (obj *SPVC) SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error {
 	curStatus := string(extObj.(*v1.PersistentVolumeClaim).Status.Phase)
 	if obj.Status != curStatus {
-		note := obj.ToEventNote(ctx, userCred, extObj)
+		note := obj.toEventNote(ctx, userCred, extObj)
+		oldStatus := obj.Status
 		obj.Status = curStatus
+		if curStatus == string(v1.ClaimBound) {
+			curStatus = db.ACT_BIND
+		} else if oldStatus == string(v1.ClaimBound) {
+			curStatus = db.ACT_UNBIND
+		}
 		db.OpsLog.LogEvent(obj, curStatus, jsonutils.Marshal(note), userCred)
 	}
 	return nil
 }
 
-func (obj *SPVC) ToEventNote(ctx context.Context, userCred mcclient.TokenCredential, k8sObj interface{}) interface{} {
+func (obj *SPVC) toEventNote(ctx context.Context, userCred mcclient.TokenCredential, k8sObj interface{}) interface{} {
 	return ToResourceEventNote(ctx, userCred, obj, k8sObj, func(domainId string, nsLabels map[string]string, detailObj interface{}) interface{} {
 		detail := detailObj.(api.PersistentVolumeClaimDetail)
 		return logevent.NewPVCNote(domainId, detail, nsLabels)
