@@ -9,6 +9,13 @@ const (
 	RepoTypeExternal RepoType = "external"
 )
 
+type RepoBackend string
+
+const (
+	RepoBackendCommon = "common"
+	RepoBackendNexus  = "nexus"
+)
+
 type RepoCreateInput struct {
 	apis.StatusInfrasResourceBaseCreateInput
 
@@ -17,9 +24,20 @@ type RepoCreateInput struct {
 	// example: http://mirror.azure.cn/kubernetes/charts
 	Url string `json:"url"`
 
+	// Repo username
+	// required: false
+	Username string `json:"username"`
+
+	// Repo password
+	Password string `json:"password"`
+
 	// Repo type
 	// enum: internal, external
 	Type string `json:"type"`
+
+	// Repo backend
+	// enum: common, nexus
+	Backend RepoBackend `json:"backend"`
 }
 
 type RepoListInput struct {
