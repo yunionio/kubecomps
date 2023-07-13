@@ -145,6 +145,11 @@ func (m *SReleaseManager) ValidateCreateData(ctx context.Context, userCred mccli
 		data.Name = data.ReleaseName
 	}
 
+	// validate name
+	if err := helm.ValidateReleaseName(data.Name); err != nil {
+		return nil, httperrors.NewInputParameterError("invalid name: %s", err)
+	}
+
 	drv, err := m.GetDriver(repoObj.(*SRepo).GetType())
 	if err != nil {
 		return nil, err
@@ -606,8 +611,19 @@ func (obj *SRelease) DeleteRemoteObject() error {
 	if err != nil {
 		return errors.Wrap(err, "get helm client when delete")
 	}
+	rls, err := helmCli.Release().Get().Run(obj.Name)
+	if err != nil {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "not found") {
+			return nil
+		}
+		if strings.Contains(errMsg, "release name is invalid") {
+			return nil
+		}
+		return errors.Wrap(err, "get release")
+	}
 	act := helmCli.Release().UnInstall()
-	if _, err := act.Run(obj.GetName()); err != nil {
+	if _, err := act.Run(rls.Name); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil
 		}
