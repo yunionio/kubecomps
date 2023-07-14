@@ -190,7 +190,7 @@ func (m *SContainerRegistryManager) CustomizeHandlerInfo(info *appsrv.SHandlerIn
 
 func (r *SContainerRegistry) PerformUploadImage(ctx context.Context, userCred mcclient.TokenCredential, query, data api.ContainerRegistryUploadImageInput) (*client.ImageMetadata, error) {
 	appParams := appsrv.AppContextGetParams(ctx)
-	savedPath, err := r.saveImageFromStream(appParams.Request.Body, appParams.Request.ContentLength)
+	savedPath, err := saveImageFromStream(appParams.Request.Body, appParams.Request.ContentLength)
 	defer func() {
 		log.Infof("remove %s", savedPath)
 		if savedPath != "" {
@@ -203,7 +203,7 @@ func (r *SContainerRegistry) PerformUploadImage(ctx context.Context, userCred mc
 	return r.uploadImage(ctx, savedPath, data)
 }
 
-func (r *SContainerRegistry) saveImageFromStream(reader io.Reader, totalSize int64) (string, error) {
+func saveImageFromStream(reader io.Reader, totalSize int64) (string, error) {
 	imgName := stringutils.UUID4()
 	tarPath := fmt.Sprintf("/tmp/%s", imgName)
 	fp, err := os.Create(tarPath)
