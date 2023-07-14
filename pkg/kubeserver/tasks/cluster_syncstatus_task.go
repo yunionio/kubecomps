@@ -41,6 +41,10 @@ func (t *ClusterSyncstatusTask) OnInit(ctx context.Context, obj db.IStandaloneMo
 		if err != nil {
 			return nil, err
 		}
+		err = cluster.IsHealthy()
+		if err != nil {
+			return nil, err
+		}
 		info, err := k8sCli.Discovery().ServerVersion()
 		if err != nil {
 			return nil, err

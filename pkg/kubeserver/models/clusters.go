@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -998,10 +1000,24 @@ func (c *SCluster) IsHealthy() error {
 	if err != nil {
 		return err
 	}
-	if _, err := cli.Discovery().ServerVersion(); err != nil {
+	nodeList, err := cli.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
 		return err
 	}
-	return nil
+	for _, node := range nodeList.Items {
+		isMasterNode := false
+		if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
+			isMasterNode = true
+		}
+		if isMasterNode {
+			for _, condition := range node.Status.Conditions {
+				if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+					return nil
+				}
+			}
+		}
+	}
+	return fmt.Errorf("all control-plane is not ready, please reinstall kubernetes or resolve notready")
 }
 
 func (m *SClusterManager) FetchCustomizeColumns(
