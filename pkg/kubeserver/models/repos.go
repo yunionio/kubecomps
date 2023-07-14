@@ -2,13 +2,16 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"os"
 	"path"
+	"strings"
 
 	"helm.sh/helm/v3/pkg/repo"
-
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
@@ -42,6 +45,7 @@ func (m *SRepoManager) InitializeData() error {
 		sqlchemy.IsNullOrEmpty(q.Field("domain_id")),
 		sqlchemy.IsNullOrEmpty(q.Field("domain_src")),
 		sqlchemy.IsNullOrEmpty(q.Field("type")),
+		sqlchemy.IsNullOrEmpty(q.Field("backend")),
 	))
 	if err := db.FetchModelObjects(m, q, &repos); err != nil {
 		return errors.Wrap(err, "fetch empty project repos")
@@ -50,9 +54,14 @@ func (m *SRepoManager) InitializeData() error {
 	for _, r := range repos {
 		tmpRepo := &r
 		if _, err := db.Update(tmpRepo, func() error {
-			tmpRepo.DomainId = userCred.GetProjectDomainId()
+			if tmpRepo.DomainId == "" {
+				tmpRepo.DomainId = userCred.GetProjectDomainId()
+			}
 			if tmpRepo.Type == "" {
 				tmpRepo.Type = string(api.RepoTypeExternal)
+			}
+			if tmpRepo.Backend == "" {
+				tmpRepo.Backend = string(api.RepoBackendCommon)
 			}
 			return nil
 		}); err != nil {
@@ -66,10 +75,11 @@ func (m *SRepoManager) InitializeData() error {
 type SRepo struct {
 	db.SStatusInfrasResourceBase
 
-	Url      string `width:"256" charset:"ascii" nullable:"false" create:"required" update:"user" list:"user"`
-	Username string `width:"256" charset:"ascii" nullable:"false"`
-	Password string `width:"256" charset:"ascii" nullable:"false"`
+	Url      string `width:"256" charset:"ascii" nullable:"false" create:"required" list:"user"`
+	Username string `width:"256" charset:"ascii" nullable:"false" update:"user" list:"user"`
+	Password string `width:"256" charset:"ascii" nullable:"false" update:"user"`
 	Type     string `charset:"ascii" width:"128" create:"required" nullable:"true" list:"user"`
+	Backend  string `charset:"ascii" width:"128" create:"required" nullable:"true" list:"user"`
 }
 
 func (man *SRepoManager) AllowListItems(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
@@ -151,10 +161,20 @@ func (man *SRepoManager) ValidateCreateData(ctx context.Context, userCred mcclie
 		return nil, httperrors.NewInputParameterError("Not support type %q", data.Type)
 	}
 
-	entry := &repo.Entry{
-		Name: data.Name,
-		URL:  data.Url,
+	if data.Backend == "" {
+		data.Backend = api.RepoBackendCommon
 	}
+
+	drv, err := man.GetDriver(data.Backend)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get helm repo driver by backend %q", data.Backend)
+	}
+	data, err = drv.ValidateCreateData(ctx, userCred, ownerId, query, data)
+	if err != nil {
+		return nil, err
+	}
+
+	entry := man.ToEntry(data.Name, data.Url, data.Username, data.Password)
 	cli, err := man.GetClient(ownerId.GetProjectDomainId())
 	if err != nil {
 		return nil, err
@@ -193,13 +213,22 @@ func (man *SRepoManager) ListRepos() ([]SRepo, error) {
 	return repos, err
 }
 
-func (r *SRepo) ToEntry() *repo.Entry {
-	return &repo.Entry{
-		Name:     r.Name,
-		URL:      r.Url,
-		Username: r.Username,
-		Password: r.Password,
+func (man *SRepoManager) ToEntry(name, url, username, password string) *repo.Entry {
+	ret := &repo.Entry{
+		Name:     name,
+		URL:      url,
+		Username: username,
+		Password: password,
+		// InsecureSkipTLSverify: true,
 	}
+	if strings.HasPrefix(url, "https") {
+		ret.InsecureSkipTLSverify = true
+	}
+	return ret
+}
+
+func (r *SRepo) ToEntry() *repo.Entry {
+	return RepoManager.ToEntry(r.Name, r.Url, r.Username, r.Password)
 }
 
 func (r *SRepo) GetReleaseCount() (int, error) {
@@ -241,10 +270,7 @@ func (r *SRepo) DoSync() error {
 	if err != nil {
 		return err
 	}
-	entry := &repo.Entry{
-		Name: r.Name,
-		URL:  r.Url,
-	}
+	entry := r.ToEntry()
 	if err := cli.Add(entry); err != nil && errors.Cause(err) != helm.ErrRepoAlreadyExists {
 		return err
 	}
@@ -257,4 +283,46 @@ func (r *SRepo) GetType() api.RepoType {
 
 func (r *SRepo) GetChartClient() *helm.ChartClient {
 	return RepoManager.GetChartClient(r.DomainId)
+}
+
+func (man *SRepoManager) GetDriver(backend api.RepoBackend) (IRepoDriver, error) {
+	return GetRepoDriver(backend)
+}
+
+func (r *SRepo) GetBackend() api.RepoBackend {
+	return api.RepoBackend(r.Backend)
+}
+
+func (r *SRepo) GetDriver() IRepoDriver {
+	drv, err := RepoManager.GetDriver(r.GetBackend())
+	if err != nil {
+		panic(fmt.Sprintf("Get helm repo driver for %s/%s", r.GetId(), r.GetName()))
+	}
+	return drv
+}
+
+func (r *SRepo) PerformUploadChart(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	chartName, _ := query.GetString("file")
+	if chartName == "" {
+		chartName, _ = query.GetString("chart_name")
+		if chartName == "" {
+			return nil, httperrors.NewNotEmptyError("chart_name is empty")
+		}
+	}
+	appParams := appsrv.AppContextGetParams(ctx)
+	savedPath, err := saveImageFromStream(appParams.Request.Body, appParams.Request.ContentLength)
+	defer func() {
+		log.Infof("remove %s", savedPath)
+		if savedPath != "" {
+			os.RemoveAll(savedPath)
+		}
+	}()
+	if err != nil {
+		return nil, errors.Wrap(err, "save from stream")
+	}
+	drv := r.GetDriver()
+	if _, err := drv.UploadChart(ctx, userCred, r, chartName, savedPath); err != nil {
+		return nil, errors.Wrapf(err, "upload chart %s to %s", chartName, drv.GetBackend())
+	}
+	return nil, r.DoSync()
 }
