@@ -40,9 +40,9 @@ require (
 	yunion.io/x/code-generator v0.0.0-20230130032150-a6851cfe4737
 	yunion.io/x/jsonutils v1.0.1-0.20230613121553-0f3b41e2ef19
 	yunion.io/x/log v1.0.1-0.20230411060016-feb3f46ab361
-	yunion.io/x/onecloud v0.0.0-20230704172035-b57fdc6dfac2
-	yunion.io/x/pkg v1.0.1-0.20230613081559-f38e2cb344b4
-	yunion.io/x/sqlchemy v1.1.2-0.20230615091740-63854d9b514e
+	yunion.io/x/onecloud v0.0.0-20230718094204-288bb6d900db
+	yunion.io/x/pkg v1.0.1-0.20230711090507-0aafe0f0c9db
+	yunion.io/x/sqlchemy v1.1.2-0.20230712025503-b1892bc5944c
 )
 
 require (
@@ -237,8 +237,8 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
-	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20230704115544-46184b6aad76 // indirect
-	yunion.io/x/executor v0.0.0-20211018100936-39a2cd966656 // indirect
+	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20230714020436-02f1bfcc8e8e // indirect
+	yunion.io/x/executor v0.0.0-20230705125604-c5ac3141db32 // indirect
 	yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e // indirect
 	yunion.io/x/structarg v0.0.0-20220312084958-9c6c79c7d1c6 // indirect
 )
