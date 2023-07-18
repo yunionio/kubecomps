@@ -53,7 +53,11 @@ func Run(ctx context.Context) error {
 	app_commmon.InitAuth(&opt.CommonOptions, func() {})
 	common_options.StartOptionManager(opt, opt.ConfigSyncPeriodSeconds, constants.ServiceType, constants.ServiceVersion, options.OnOptionsChange)
 
-	if db.CheckSync(options.Options.AutoSyncTable, options.Options.EnableDBChecksumTables, options.Options.DBChecksumSkipInit) {
+	dbOpts := &options.Options.DBOptions
+	db.EnsureAppSyncDB(app, dbOpts, models.InitDB)
+	defer cloudcommon.CloseDB()
+
+	/*if db.CheckSync(options.Options.AutoSyncTable, options.Options.EnableDBChecksumTables, options.Options.DBChecksumSkipInit) {
 		for _, initDBFunc := range []func() error{
 			models.InitDB,
 		} {
@@ -64,7 +68,7 @@ func Run(ctx context.Context) error {
 		}
 	} else {
 		log.Fatalf("Fail sync db")
-	}
+	}*/
 
 	go func() {
 		log.Infof("Auth complete, start controllers.")
