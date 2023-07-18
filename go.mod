@@ -38,11 +38,11 @@ require (
 	sigs.k8s.io/controller-runtime v0.6.4
 	sigs.k8s.io/yaml v1.2.0
 	yunion.io/x/code-generator v0.0.0-20230130032150-a6851cfe4737
-	yunion.io/x/jsonutils v1.0.1-0.20230428104347-7c2fdff8e8e7
+	yunion.io/x/jsonutils v1.0.1-0.20230613121553-0f3b41e2ef19
 	yunion.io/x/log v1.0.1-0.20230411060016-feb3f46ab361
-	yunion.io/x/onecloud v0.3.10-0-alpha2.0.20230516033511-40d691f4970e
-	yunion.io/x/pkg v1.0.1-0.20230504073602-0a74096f836a
-	yunion.io/x/sqlchemy v1.1.2-0.20230512065832-5323af46107e
+	yunion.io/x/onecloud v0.3.10-0-alpha2.0.20230718094212-602e63a165f1
+	yunion.io/x/pkg v1.0.1-0.20230711090507-0aafe0f0c9db
+	yunion.io/x/sqlchemy v1.1.2-0.20230712025503-b1892bc5944c
 )
 
 require (
@@ -154,11 +154,11 @@ require (
 	github.com/minio/md5-simd v1.1.0 // indirect
 	github.com/minio/minio-go/v6 v6.0.33 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect
-	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
-	github.com/mitchellh/reflectwalk v1.0.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/term v0.0.0-20200312100748-672ec06f55cd // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -211,7 +211,7 @@ require (
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
@@ -237,8 +237,8 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
-	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20230515072204-34461417d90f // indirect
-	yunion.io/x/executor v0.0.0-20211018100936-39a2cd966656 // indirect
+	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20230714020436-02f1bfcc8e8e // indirect
+	yunion.io/x/executor v0.0.0-20230705125604-c5ac3141db32 // indirect
 	yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e // indirect
 	yunion.io/x/structarg v0.0.0-20220312084958-9c6c79c7d1c6 // indirect
 )
