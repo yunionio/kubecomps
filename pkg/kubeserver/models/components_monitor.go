@@ -439,6 +439,12 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 		grafanaIni.Server.EnforceDomain = true
 	}
 
+	grafanaIni.AnonyousAuth = &components.GrafanaIniAnonyousAuth{
+		Enabled: false,
+		OrgName: "Main Org.",
+		OrgRole: "Viewer",
+	}
+
 	if input.Grafana.OAuth != nil {
 		oauth := input.Grafana.OAuth
 		grafanaIni.OAuth = &components.GrafanaIniOAuth{
