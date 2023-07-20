@@ -30,6 +30,10 @@ func newHarborImpl() models.IContainerRegistryDriver {
 
 type harborImpl struct{}
 
+func (h harborImpl) DownloadImage(ctx context.Context, url string, conf *api.ContainerRegistryConfig, input api.ContainerRegistryDownloadImageInput) (string, error) {
+	return "", httperrors.NewNotSupportedError("harbor not support download image")
+}
+
 func (h harborImpl) GetType() api.ContainerRegistryType {
 	return api.ContainerRegistryTypeHarbor
 }

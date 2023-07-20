@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"yunion.io/x/jsonutils"
@@ -183,7 +186,7 @@ func (m *SContainerRegistryManager) CustomizeHandlerInfo(info *appsrv.SHandlerIn
 	m.SStatusInfrasResourceBaseManager.CustomizeHandlerInfo(info)
 
 	switch info.GetName(nil) {
-	case "perform_action":
+	case "perform_action", "get_specific":
 		info.SetProcessTimeout(time.Minute * 120).SetWorkerManager(imgStreamingWorkerMan)
 	}
 }
@@ -275,4 +278,56 @@ func (r *SContainerRegistry) uploadImage(ctx context.Context, imgPath string, in
 		return nil, errors.Wrapf(err, "push image by input: %s", jsonutils.Marshal(input))
 	}
 	return meta, nil
+}
+
+func (r *SContainerRegistry) GetDetailsDownloadImage(ctx context.Context, userCred mcclient.TokenCredential, query api.ContainerRegistryDownloadImageInput) (jsonutils.JSONObject, error) {
+	if query.ImageName == "" {
+		return nil, httperrors.NewNotEmptyError("image name required")
+	}
+	if query.Tag == "" {
+		return nil, httperrors.NewNotEmptyError("image tag required")
+	}
+	drv := r.GetDriver()
+	conf, _ := r.GetConfig()
+	savedPath, err := drv.DownloadImage(ctx, r.Url, conf, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "download image")
+	}
+
+	fStat, err := os.Stat(savedPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "os.Stat %s", savedPath)
+	}
+	f, err := os.Open(savedPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "os.Open %s", savedPath)
+	}
+	defer f.Close()
+	fSize := fStat.Size()
+
+	appParams := appsrv.AppContextGetParams(ctx)
+	header := appParams.Response.Header()
+	header.Set("Content-Length", strconv.FormatInt(fSize, 10))
+	header.Set("Image-Filename", filepath.Base(savedPath))
+
+	defer func() {
+		for _, sp := range []string{
+			savedPath,
+			strings.TrimSuffix(savedPath, ".gz"),
+		} {
+			if err := os.RemoveAll(sp); err != nil {
+				log.Infof("try to remove %q", sp)
+				if err != nil {
+					log.Errorf("remove %q: %v", sp, err)
+				}
+				log.Infof("%q removed", sp)
+			}
+		}
+	}()
+
+	_, err = streamutils.StreamPipe(f, appParams.Response, false, nil)
+	if err != nil {
+		return nil, httperrors.NewGeneralError(err)
+	}
+	return nil, nil
 }
