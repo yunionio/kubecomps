@@ -58,3 +58,8 @@ type ContainerRegistryUploadImageInput struct {
 type ContainerRegistryGetImageTagsInput struct {
 	Repository string `json:"repository"`
 }
+
+type ContainerRegistryDownloadImageInput struct {
+	ImageName string `json:"image_name"`
+	Tag       string `json:"tag"`
+}
