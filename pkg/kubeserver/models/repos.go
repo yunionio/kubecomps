@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"helm.sh/helm/v3/pkg/repo"
@@ -18,6 +20,7 @@ import (
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/rbacscope"
+	"yunion.io/x/pkg/util/streamutils"
 	"yunion.io/x/pkg/utils"
 	"yunion.io/x/sqlchemy"
 
@@ -325,4 +328,39 @@ func (r *SRepo) PerformUploadChart(ctx context.Context, userCred mcclient.TokenC
 		return nil, errors.Wrapf(err, "upload chart %s to %s", chartName, drv.GetBackend())
 	}
 	return nil, r.DoSync()
+}
+
+func (r *SRepo) GetDetailsDownloadChart(ctx context.Context, userCred mcclient.TokenCredential, input *api.RepoDownloadChartInput) (jsonutils.JSONObject, error) {
+	if err := r.DoSync(); err != nil {
+		return nil, errors.Wrap(err, "sync repo")
+	}
+	cli := r.GetChartClient()
+	if input.ChartName == "" {
+		return nil, httperrors.NewNotEmptyError("chart_name is empty")
+	}
+	chPath, err := cli.LocateChartPath(r.GetName(), input.ChartName, input.Version, r.ToEntry())
+	if err != nil {
+		return nil, errors.Wrapf(err, "LocateChartPath %s %s", input.ChartName, input.Version)
+	}
+	fStat, err := os.Stat(chPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "os.Stat %s", chPath)
+	}
+	f, err := os.Open(chPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "os.Open %s", chPath)
+	}
+	defer f.Close()
+	fSize := fStat.Size()
+
+	appParams := appsrv.AppContextGetParams(ctx)
+	header := appParams.Response.Header()
+	header.Set("Content-Length", strconv.FormatInt(fSize, 10))
+	header.Set("Chart-Filename", filepath.Base(chPath))
+
+	_, err = streamutils.StreamPipe(f, appParams.Response, false, nil)
+	if err != nil {
+		return nil, httperrors.NewGeneralError(err)
+	}
+	return nil, nil
 }
