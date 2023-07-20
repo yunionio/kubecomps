@@ -53,3 +53,8 @@ type RepoDetail struct {
 	Type         string `json:"type"`
 	ReleaseCount int    `json:"release_count"`
 }
+
+type RepoDownloadChartInput struct {
+	ChartName string `json:"chart_name"`
+	Version   string `json:"version"`
+}

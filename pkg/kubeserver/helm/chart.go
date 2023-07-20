@@ -199,15 +199,15 @@ func (c ChartClient) getChartPath(chartName, version string, r *repo.Entry) (str
 	return chartPath, cv, nil
 }
 
-func (c ChartClient) LocateChart(repoName, chartName, version string, repo *repo.Entry) (*chart.Chart, error) {
+func (c ChartClient) LocateChartPath(repoName, chartName, version string, repo *repo.Entry) (string, error) {
 	chPath, chartVersion, err := c.getChartPath(chartName, version, repo)
 	if err != nil {
-		return nil, errors.Wrap(err, "getChartPath")
+		return "", errors.Wrap(err, "getChartPath")
 	}
 
 	if digestNum, err := provenance.DigestFile(chPath); err == nil && digestNum == chartVersion.Digest {
 		log.Infof("chart %s already exists, use it directly", chPath)
-		return loader.Load(chPath)
+		return chPath, nil
 	} else {
 		log.Infof("download chart %s:%s of repo %v", chartName, version, repo)
 	}
@@ -218,9 +218,17 @@ func (c ChartClient) LocateChart(repoName, chartName, version string, repo *repo
 
 	cp, err := pathOpt.LocateChart(chartName, c.GetSetting())
 	if err != nil {
-		return nil, err
+		return "", errors.Wrapf(err, "LocateChart %q", chartName)
 	}
-	return loader.Load(cp)
+	return cp, nil
+}
+
+func (c ChartClient) LocateChart(repoName, chartName, version string, repo *repo.Entry) (*chart.Chart, error) {
+	chPath, err := c.LocateChartPath(repoName, chartName, version, repo)
+	if err != nil {
+		return nil, errors.Wrap(err, "LocateChartPath")
+	}
+	return loader.Load(chPath)
 }
 
 func (c ChartClient) NewChartPathOptions(
