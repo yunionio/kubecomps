@@ -1,8 +1,13 @@
 package container_registries
 
 import (
+	"compress/gzip"
 	"context"
+	"fmt"
+	"io"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"yunion.io/x/jsonutils"
@@ -13,6 +18,7 @@ import (
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/container_registries/client"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
+	"yunion.io/x/kubecomps/pkg/utils/skopeo"
 )
 
 func init() {
@@ -72,4 +78,44 @@ func (c commonImpl) PreparePushImage(ctx context.Context, url string, conf *api.
 	parts := strings.Split(meta.Ref.Repository, "/")
 	meta.Ref.Repository = parts[len(parts)-1]
 	return nil
+}
+
+func (c commonImpl) DownloadImage(ctx context.Context, regUrl string, conf *api.ContainerRegistryConfig, input api.ContainerRegistryDownloadImageInput) (string, error) {
+	srcUrl := strings.TrimPrefix(strings.TrimPrefix(regUrl, "http://"), "https://")
+	imgName := fmt.Sprintf("%s:%s", input.ImageName, input.Tag)
+	savedPath := fmt.Sprintf("/tmp/%s.tar", strings.ReplaceAll(imgName, ":", "-"))
+	imageUrl := filepath.Join(srcUrl, imgName)
+	copyParams := &skopeo.CopyParams{
+		SrcTLSVerify: false,
+		SrcUsername:  conf.Common.Username,
+		SrcPassword:  conf.Common.Password,
+		SrcPath:      imageUrl,
+		TargetPath:   savedPath,
+	}
+	if err := skopeo.NewSkopeo().Copy(copyParams); err != nil {
+		return "", errors.Wrapf(err, "copy container image to local path %s", savedPath)
+	}
+	gzFilePath := fmt.Sprintf("%s.gz", savedPath)
+	f, err := os.Create(gzFilePath)
+	if err != nil {
+		return "", errors.Wrapf(err, "create %s", gzFilePath)
+	}
+	defer f.Close()
+	w, err := gzip.NewWriterLevel(f, gzip.BestSpeed)
+	if err != nil {
+		return "", errors.Wrap(err, "gzip.NewWriterLevel")
+	}
+	defer w.Close()
+	savedFile, err := os.Open(savedPath)
+	if err != nil {
+		return "", errors.Wrapf(err, "open %s", savedPath)
+	}
+	defer savedFile.Close()
+	if _, err := io.Copy(w, savedFile); err != nil {
+		return "", errors.Wrapf(err, "gzip %s to %s", savedPath, gzFilePath)
+	}
+	// Flush the gzip writer to ensure all data is written
+	w.Flush()
+
+	return gzFilePath, nil
 }

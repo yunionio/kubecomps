@@ -15,6 +15,6 @@ KUBECTL_VERSION = 1.24.3
 kubectl:
 	$(DOCKER_BUILDX)/kubectl:$(KUBECTL_VERSION) -f ./Dockerfile.kubectl-1_20 .
 
-KUBESERVER_BASE_VERSION = v0.0.4
+KUBESERVER_BASE_VERSION = v0.0.5
 kubeserver-base:
 	$(DOCKER_BUILDX)/kubeserver-base:$(KUBESERVER_BASE_VERSION) -f ./Dockerfile.kubeserver-base-1_20 .
