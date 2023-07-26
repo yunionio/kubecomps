@@ -50,7 +50,7 @@ func (s *skopeo) getCopyCommand(params *CopyParams) string {
 		args = append(args, fmt.Sprintf("--src-password %s", params.SrcPassword))
 	}
 	args = append(args, fmt.Sprintf("docker://%s", params.SrcPath))
-	args = append(args, fmt.Sprintf("docker-archive:%s", params.TargetPath))
+	args = append(args, fmt.Sprintf("docker-archive:%s:%s", params.TargetPath, params.SrcPath))
 	return s.GetCommand(args...)
 }
 
