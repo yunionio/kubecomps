@@ -911,7 +911,7 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 				} else {
 					c.Status = api.ClusterStatusRunning
 				}
-				if err := client.GetClustersManager().UpdateClient(c); err != nil {
+				if err := client.GetClustersManager().UpdateClient(c, false); err != nil {
 					log.Errorf("Update cluster %s client error: %v", c.GetName(), err)
 					c.SetStatus(userCred, prevStatus, err.Error())
 				} else {
@@ -1415,7 +1415,9 @@ func (c *SCluster) PerformSetKubeconfig(ctx context.Context, userCred mcclient.T
 	if err := c.SetKubeconfig(input.Kubeconfig); err != nil {
 		return nil, errors.Wrap(err, "set kubeconfig to DB")
 	}
-	return c.PerformSync(ctx, userCred, query, api.ClusterSyncInput{})
+	return c.PerformSync(ctx, userCred, query, api.ClusterSyncInput{
+		Force: true,
+	})
 }
 
 func (c *SCluster) GetDetailsKubesprayConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*api.ClusterKubesprayConfig, error) {
@@ -2316,7 +2318,7 @@ func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCrede
 		return nil, httperrors.NewNotAcceptableError("can't sync: %v", err)
 	}
 	if canSync || input.Force {
-		if err := c.StartSyncTask(ctx, userCred, nil, ""); err != nil {
+		if err := c.StartSyncTask(ctx, userCred, jsonutils.Marshal(input).(*jsonutils.JSONDict), ""); err != nil {
 			return nil, err
 		}
 	}
@@ -2324,6 +2326,9 @@ func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCrede
 }
 
 func (c *SCluster) StartSyncTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentId string) error {
+	if data == nil {
+		data = jsonutils.NewDict()
+	}
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterSyncTask", c, userCred, data, parentId, "")
 	if err != nil {
 		return errors.Wrap(err, "New ClusterSyncTask")
@@ -2361,7 +2366,7 @@ func (w *funcTaskWrapper) Run() {
 func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCredential, waitChan chan error) {
 	if err := c.DisableBidirectionalSync(); err != nil {
 		if waitChan != nil {
-			log.Errorf("DisableBidirectionalSync before submic sync error: %s", err)
+			log.Errorf("DisableBidirectionalSync before submit sync error: %s", err)
 			waitChan <- err
 		}
 		return
