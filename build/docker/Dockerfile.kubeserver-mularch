@@ -7,7 +7,7 @@ COPY . /go/src/yunion.io/x/kubecomps
 WORKDIR /go/src/yunion.io/x/kubecomps
 RUN make cmd/kubeserver
 
-FROM registry.cn-beijing.aliyuncs.com/yunionio/kubeserver-base:v0.0.5
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kubeserver-base:20230803.0
 RUN mkdir -p /opt/yunion/bin
 COPY --from=build /go/src/yunion.io/x/kubecomps/manifests/ansible /opt/yunion/ansible
 COPY --from=build /go/src/yunion.io/x/kubecomps/_output/bin/kubeserver /opt/yunion/bin/kubeserver

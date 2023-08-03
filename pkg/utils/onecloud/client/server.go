@@ -81,10 +81,13 @@ func (h *ServerHelper) GetLoginInfo(id string) (*ServerLoginInfo, error) {
 
 type ServerSSHLoginInfo struct {
 	*ServerLoginInfo
-	Hostname   string
-	EIP        string
-	PrivateIP  string
-	PrivateKey string
+	Hostname              string
+	EIP                   string
+	PrivateIP             string
+	PrivateKey            string
+	ExternalId            string
+	Cloudregion           string
+	CloudregionExternalId string
 }
 
 func (info ServerSSHLoginInfo) GetAccessIP() string {
@@ -114,11 +117,14 @@ func (h *ServerHelper) GetSSHLoginInfo(id string) (*ServerSSHLoginInfo, error) {
 	loginInfo.Password = ""
 	loginInfo.Username = cloudansible.PUBLIC_CLOUD_ANSIBLE_USER
 	return &ServerSSHLoginInfo{
-		ServerLoginInfo: loginInfo,
-		Hostname:        detail.Name,
-		EIP:             detail.Eip,
-		PrivateIP:       privateIP,
-		PrivateKey:      privateKey,
+		ServerLoginInfo:       loginInfo,
+		Hostname:              detail.Name,
+		EIP:                   detail.Eip,
+		PrivateIP:             privateIP,
+		PrivateKey:            privateKey,
+		ExternalId:            detail.ExternalId,
+		Cloudregion:           detail.Cloudregion,
+		CloudregionExternalId: detail.RegionExternalId,
 	}, nil
 }
 

@@ -722,3 +722,8 @@ func (m *SMachine) GetKubernetesVersion() (string, error) {
 
 	return cls.GetVersion(), nil
 }
+
+func (m *SMachine) PerformPostPrepareResource(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	drv := m.GetDriver()
+	return drv.PostPrepareResource(ctx, userCred, m, data)
+}
