@@ -1399,6 +1399,25 @@ func (c *SCluster) GetDetailsKubeconfig(ctx context.Context, userCred mcclient.T
 	return ret, nil
 }
 
+func (c *SCluster) PerformSetKubeconfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input api.ClusterSetKubeconfig) (jsonutils.JSONObject, error) {
+	if input.Kubeconfig == "" {
+		return nil, httperrors.NewNotEmptyError("kubeconfig is empty")
+	}
+	cli, _, err := client.BuildClient(c.ApiServer, input.Kubeconfig)
+	if err != nil {
+		return nil, httperrors.NewNotAcceptableError("use kubeconfig build client for cluster %s: %v", c.ApiServer, err)
+	}
+	info, err := cli.ServerVersion()
+	if err != nil {
+		return nil, httperrors.NewNotAcceptableError("use new kubeconfig to get server version: %v", err)
+	}
+	log.Infof("use new kubeconfig get server version: %s", info.String())
+	if err := c.SetKubeconfig(input.Kubeconfig); err != nil {
+		return nil, errors.Wrap(err, "set kubeconfig to DB")
+	}
+	return c.PerformSync(ctx, userCred, query, api.ClusterSyncInput{})
+}
+
 func (c *SCluster) GetDetailsKubesprayConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*api.ClusterKubesprayConfig, error) {
 	return c.GetDriver().GetKubesprayConfig(ctx, c)
 }
@@ -2291,11 +2310,15 @@ func (c *SCluster) AllowPerformSync(ctx context.Context, userCred mcclient.Token
 	return db.IsDomainAllowPerform(ctx, userCred, c, "sync")
 }
 
-func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	input := new(api.ClusterSyncInput)
-	data.Unmarshal(input)
-	if c.CanSync() || input.Force {
-		c.StartSyncTask(ctx, userCred, nil, "")
+func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input api.ClusterSyncInput) (jsonutils.JSONObject, error) {
+	canSync, err := c.CanSync()
+	if err != nil && !input.Force {
+		return nil, httperrors.NewNotAcceptableError("can't sync: %v", err)
+	}
+	if canSync || input.Force {
+		if err := c.StartSyncTask(ctx, userCred, nil, ""); err != nil {
+			return nil, err
+		}
 	}
 	return nil, nil
 }
