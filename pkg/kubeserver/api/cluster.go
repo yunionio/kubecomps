@@ -458,3 +458,7 @@ type ClusterExtraConfig struct {
 	DockerRegistryMirrors    []string `json:"docker_registry_mirrors"`
 	DockerInsecureRegistries []string `json:"docker_insecure_registries"`
 }
+
+type ClusterSetKubeconfig struct {
+	Kubeconfig string `json:"kubeconfig"`
+}
