@@ -29,6 +29,26 @@ type IClusterDriver interface {
 	IClusterDriverMethods
 }
 
+type ClusterHelmChartInstallOption struct {
+	EmbedChartName string
+	ReleaseName    string
+	Namespace      string
+	Values         map[string]interface{}
+}
+
+func (o ClusterHelmChartInstallOption) Validate() error {
+	for k, v := range map[string]string{
+		"embed_chart_name": o.EmbedChartName,
+		"release_name":     o.ReleaseName,
+		"namespace":        o.Namespace,
+	} {
+		if v == "" {
+			return errors.Errorf("%s is empty", k)
+		}
+	}
+	return nil
+}
+
 type IClusterDriverMethods interface {
 	// GetUsableInstances return usable instances for cluster
 	GetUsableInstances(s *mcclient.ClientSession) ([]api.UsableInstance, error)
@@ -45,6 +65,9 @@ type IClusterDriverMethods interface {
 	RequestDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, machines []manager.IMachine, task taskman.ITask) error
 
 	ValidateCreateMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, info *api.ClusterMachineCommonInfo, imageRepo *api.ImageRepository, data []*api.CreateMachineData) error
+
+	GetAddonsHelmCharts(cluster *SCluster, conf *api.ClusterAddonsManifestConfig) ([]*ClusterHelmChartInstallOption, error)
+
 	// GetAddonsManifest return addons yaml manifest to be applied to cluster
 	GetAddonsManifest(cluster *SCluster, conf *api.ClusterAddonsManifestConfig) (string, error)
 	// GetClusterUsers query users resource from remote k8s cluster

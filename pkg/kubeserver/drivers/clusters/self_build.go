@@ -21,9 +21,8 @@ import (
 	"yunion.io/x/pkg/utils"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
-	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
-	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/addons"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/kubespray"
+	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/selfbuild"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/machines"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 	"yunion.io/x/kubecomps/pkg/kubeserver/models/manager"
@@ -35,6 +34,17 @@ import (
 	"yunion.io/x/kubecomps/pkg/utils/ssh"
 )
 
+func init() {
+	for _, drv := range []selfbuild.ISelfBuildDriver{
+		selfbuild.NewOnecloudDriver(),
+		selfbuild.NewOnecloudKvmDriver(),
+		selfbuild.NewAwsDriver(),
+		selfbuild.NewAliyunDriver(),
+	} {
+		registerSelfBuildClusterDriver(drv)
+	}
+}
+
 // iSelfBuildDriver create k8s cluster resources through onecloud
 type iSelfBuildDriver interface {
 	models.IClusterDriverMethods
@@ -42,26 +52,23 @@ type iSelfBuildDriver interface {
 
 type selfBuildClusterDriver struct {
 	iSelfBuildDriver
-	provider     api.ProviderType
-	resourceType api.ClusterResourceType
+	providerDriver selfbuild.ISelfBuildDriver
 }
 
-func registerSelfBuildClusterDriver(provider api.ProviderType) {
-	registerClusterDriver(
-		newSelfBuildClusterDriver(
-			provider,
-			// currently only support vm instance
-			api.ClusterResourceTypeGuest),
-	)
+func registerSelfBuildClusterDriver(driver selfbuild.ISelfBuildDriver) {
+	registerClusterDriver(newSelfBuildClusterDriver(driver))
 }
 
-func newSelfBuildClusterDriver(provider api.ProviderType, resourceType api.ClusterResourceType) models.IClusterDriver {
+func newSelfBuildClusterDriver(pDrv selfbuild.ISelfBuildDriver) models.IClusterDriver {
 	drv := &selfBuildClusterDriver{
-		provider:     provider,
-		resourceType: resourceType,
+		providerDriver: pDrv,
 	}
 	drv.iSelfBuildDriver = newSelfBuildDriver(drv)
 	return drv
+}
+
+func (d *selfBuildClusterDriver) getProviderDriver() selfbuild.ISelfBuildDriver {
+	return d.providerDriver
 }
 
 func (d *selfBuildClusterDriver) GetMode() api.ModeType {
@@ -69,23 +76,19 @@ func (d *selfBuildClusterDriver) GetMode() api.ModeType {
 }
 
 func (d *selfBuildClusterDriver) GetProvider() api.ProviderType {
-	return d.provider
+	return d.providerDriver.GetProvider()
 }
 
 func (d *selfBuildClusterDriver) GetResourceType() api.ClusterResourceType {
-	return d.resourceType
+	return d.providerDriver.GetResourceType()
 }
 
 func (d *selfBuildClusterDriver) GetK8sVersions() []string {
-	return []string{
-		constants.K8S_VERSION_1_17_0,
-		constants.K8S_VERSION_1_20_0,
-		constants.K8S_VERSION_1_22_9,
-	}
+	return d.providerDriver.GetK8sVersions()
 }
 
 func (d *selfBuildClusterDriver) PreCheck(s *mcclient.ClientSession, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error) {
-	mDrv, err := machines.GetYunionVMDriver().GetHypervisor(string(d.provider))
+	mDrv, err := machines.GetYunionVMDriver().GetHypervisor(string(d.GetProvider()))
 	if err != nil {
 		return nil, err
 	}
@@ -103,14 +106,18 @@ func (d *selfBuildClusterDriver) PreCheck(s *mcclient.ClientSession, data jsonut
 	return ret, nil
 }
 
-func newSelfBuildDriver(driver models.IClusterDriver) iSelfBuildDriver {
+func (d *selfBuildClusterDriver) ChangeKubesprayVars(vars *kubespray.KubesprayVars) {
+	d.providerDriver.ChangeKubesprayVars(vars)
+}
+
+func newSelfBuildDriver(driver *selfBuildClusterDriver) iSelfBuildDriver {
 	return &selfBuildDriver{
 		driver: driver,
 	}
 }
 
 type selfBuildDriver struct {
-	driver models.IClusterDriver
+	driver *selfBuildClusterDriver
 }
 
 func (c selfBuildDriver) NeedCreateMachines() bool {
@@ -134,6 +141,12 @@ func (c *selfBuildDriver) ValidateCreateData(ctx context.Context, userCred mccli
 	input.VpcId = vpc.Id
 	if input.CloudregionId == "" {
 		input.CloudregionId = vpc.CloudregionId
+	}
+	if input.ManagerId == "" {
+		input.ManagerId = vpc.ManagerId
+	}
+	if input.ManagerId != vpc.ManagerId {
+		return errors.Wrapf(err, "cloudprovider id %s(input) != %s (vpc cloudprovider)", input.ManagerId, vpc.ManagerId)
 	}
 
 	if input.ProjectDomainId != "" {
@@ -464,10 +477,15 @@ func (d *selfBuildDriver) GetKubesprayInventory(
 			}
 			roles = append(roles, kubespray.KubesprayNodeRoleNode)
 
-			host, err := kubespray.NewKubesprayInventoryHost(loginInfo.Hostname, accessIP, loginInfo.Username, loginInfo.Password, roles...)
+			hostname, err := d.driver.getProviderDriver().GetKubesprayHostname(loginInfo)
+			if err != nil {
+				return errors.Wrapf(err, "get kubespray hostname")
+			}
+			host, err := kubespray.NewKubesprayInventoryHost(hostname, accessIP, loginInfo.Username, loginInfo.Password, roles...)
 			if err != nil {
 				return errors.Wrapf(err, "new kubespray inventory host for machine %s", m.GetName())
 			}
+			host.SetAliasName(loginInfo.Hostname)
 			if loginInfo.PrivateKey != "" {
 				if err := host.SetPrivateKey([]byte(loginInfo.PrivateKey)); err != nil {
 					return errors.Wrapf(err, "set private key for host %s", m.GetName())
@@ -617,7 +635,7 @@ func (d *selfBuildDriver) deployClusterByAction(
 
 	findInventoryHost := func(hosts []*kubespray.KubesprayInventoryHost, name string) *kubespray.KubesprayInventoryHost {
 		for _, h := range hosts {
-			if h.Hostname == name {
+			if h.Hostname == name || h.AliasName == name {
 				return h
 			}
 		}
@@ -716,35 +734,12 @@ func (d *selfBuildDriver) setCAKeyPair(cli onecloudcli.IClient, cluster *models.
 	return nil
 }
 
+func (d *selfBuildDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig) ([]*models.ClusterHelmChartInstallOption, error) {
+	return d.driver.getProviderDriver().GetAddonsHelmCharts(cluster, conf)
+}
+
 func (d *selfBuildDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig) (string, error) {
-	commonConf, err := GetCommonAddonsConfig(cluster)
-	if err != nil {
-		return "", err
-	}
-
-	// reg, err := cluster.GetImageRepository()
-	// if err != nil {
-	// 	return "", err
-	// }
-
-	if !cluster.IsInClassicNetwork() {
-		commonConf.CloudProviderYunionConfig = nil
-		commonConf.IngressControllerYunionConfig = nil
-		commonConf.CSIYunionConfig = nil
-	}
-
-	pluginConf := &addons.YunionVMPluginsConfig{
-		YunionCommonPluginsConfig: commonConf,
-		// CNICalicoConfig: &addons.CNICalicoConfig{
-		// 	ControllerImage:     registry.MirrorImage(reg.Url, "kube-controllers", "v3.12.1", "calico"),
-		// 	NodeImage:           registry.MirrorImage(reg.Url, "node", "v3.12.1", "calico"),
-		// 	CNIImage:            registry.MirrorImage(reg.Url, "cni", "v3.12.1", "calico"),
-		// 	ClusterCIDR:         cluster.GetPodCidr(),
-		// 	EnableNativeIPAlloc: conf.Network.EnableNativeIPAlloc,
-		// 	NodeAgentImage:      registry.MirrorImage(reg.Url, "node-agent", "latest", "calico"),
-		// },
-	}
-	return pluginConf.GenerateYAML()
+	return d.driver.getProviderDriver().GetAddonsManifest(cluster, conf)
 }
 
 func (d *selfBuildDriver) ValidateDeleteMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, ms []manager.IMachine) error {
@@ -790,7 +785,11 @@ func (d *selfBuildDriver) withKubespray(k8sVersion string, extraConf *api.Cluste
 		}
 	}
 	if useOffline {
-		return kubespray.NewOfflineVars(k8sVersion, extraConf)
+		return kubespray.NewOfflineVars(k8sVersion, extraConf, d)
 	}
-	return kubespray.NewDefaultVars(k8sVersion, extraConf)
+	return kubespray.NewDefaultVars(k8sVersion, extraConf, d)
+}
+
+func (d *selfBuildDriver) ChangeVars(vars *kubespray.KubesprayVars) {
+	d.driver.ChangeKubesprayVars(vars)
 }

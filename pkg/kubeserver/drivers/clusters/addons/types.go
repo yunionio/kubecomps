@@ -99,3 +99,18 @@ type CSIRancherLocalPathConfig struct {
 func (c CSIRancherLocalPathConfig) GenerateYAML() (string, error) {
 	return CompileTemplateFromMap(CSIRancherLocalPath, c)
 }
+
+type AwsVPCCNIConfig struct {
+	InitImage string
+	Image     string
+}
+
+func (a AwsVPCCNIConfig) GenerateYAML() (string, error) {
+	return CompileTemplateFromMap(AwsVPCCNITemplate, a)
+}
+
+type CloudProviderAwsConfig struct{}
+
+func (c CloudProviderAwsConfig) GenerateYAML() (string, error) {
+	return CompileTemplateFromMap(CloudProviderAwsTemplate, c)
+}
