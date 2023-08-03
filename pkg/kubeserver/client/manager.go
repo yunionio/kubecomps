@@ -30,7 +30,7 @@ var (
 
 type IClustersManager interface {
 	AddClient(dbCluster manager.ICluster) error
-	UpdateClient(dbCluster manager.ICluster) error
+	UpdateClient(dbCluster manager.ICluster, ignoreStatus bool) error
 	RemoveClient(clusterId string) error
 }
 
@@ -94,11 +94,17 @@ func (m *ClustersManager) addManager(man *ClusterManager) {
 }
 
 func (m *ClustersManager) AddClient(dbCluster manager.ICluster) error {
+	return m.addClient(dbCluster, false)
+}
+
+func (m *ClustersManager) addClient(dbCluster manager.ICluster, ignoreStatus bool) error {
 	m.actionLock.Lock()
 	defer m.actionLock.Unlock()
 
-	if status := dbCluster.GetStatus(); status != api.ClusterStatusRunning {
-		return errors.Wrapf(ErrClusterNotRunning, "clusterId %s current status %s", dbCluster.GetName(), status)
+	if !ignoreStatus {
+		if status := dbCluster.GetStatus(); status != api.ClusterStatusRunning {
+			return errors.Wrapf(ErrClusterNotRunning, "clusterId %s current status %s", dbCluster.GetName(), status)
+		}
 	}
 
 	clusterId := dbCluster.GetId()
@@ -114,9 +120,9 @@ func (m *ClustersManager) AddClient(dbCluster manager.ICluster) error {
 	return nil
 }
 
-func (m *ClustersManager) UpdateClient(dbCluster manager.ICluster) error {
+func (m *ClustersManager) UpdateClient(dbCluster manager.ICluster, ignoreStatus bool) error {
 	m.RemoveClient(dbCluster.GetId())
-	return m.AddClient(dbCluster)
+	return m.addClient(dbCluster, ignoreStatus)
 }
 
 func (m *ClustersManager) RemoveClient(clusterId string) error {
