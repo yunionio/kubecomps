@@ -31,15 +31,15 @@ type SSyncableK8sBaseResource struct {
 	LastSyncEndAt time.Time `list:"domain"`
 }
 
-func (self *SSyncableK8sBaseResource) CanSync() bool {
+func (self *SSyncableK8sBaseResource) CanSync() (bool, error) {
 	if self.SyncStatus == K8S_SYNC_STATUS_QUEUED || self.SyncStatus == K8S_SYNC_STATUS_SYNCING {
 		if self.LastSync.IsZero() || time.Now().Sub(self.LastSync) > 30*time.Minute {
-			return true
+			return true, nil
 		} else {
-			return false
+			return false, errors.Errorf("cluster sync_status is %q", self.SyncStatus)
 		}
 	}
-	return true
+	return true, nil
 }
 
 func (m *SSyncableK8sBaseResourceManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, query api.SyncableK8sBaseResourceListInput) (*sqlchemy.SQuery, error) {
