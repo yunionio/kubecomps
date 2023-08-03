@@ -917,7 +917,7 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 				} else {
 					c.Status = api.ClusterStatusRunning
 				}
-				if err := client.GetClustersManager().UpdateClient(c); err != nil {
+				if err := client.GetClustersManager().UpdateClient(c, false); err != nil {
 					log.Errorf("Update cluster %s client error: %v", c.GetName(), err)
 					c.SetStatus(userCred, prevStatus, err.Error())
 				} else {
@@ -1403,6 +1403,27 @@ func (c *SCluster) GetDetailsKubeconfig(ctx context.Context, userCred mcclient.T
 	ret := jsonutils.NewDict()
 	ret.Add(jsonutils.NewString(conf), "kubeconfig")
 	return ret, nil
+}
+
+func (c *SCluster) PerformSetKubeconfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input api.ClusterSetKubeconfig) (jsonutils.JSONObject, error) {
+	if input.Kubeconfig == "" {
+		return nil, httperrors.NewNotEmptyError("kubeconfig is empty")
+	}
+	cli, _, err := client.BuildClient(c.ApiServer, input.Kubeconfig)
+	if err != nil {
+		return nil, httperrors.NewNotAcceptableError("use kubeconfig build client for cluster %s: %v", c.ApiServer, err)
+	}
+	info, err := cli.ServerVersion()
+	if err != nil {
+		return nil, httperrors.NewNotAcceptableError("use new kubeconfig to get server version: %v", err)
+	}
+	log.Infof("use new kubeconfig get server version: %s", info.String())
+	if err := c.SetKubeconfig(input.Kubeconfig); err != nil {
+		return nil, errors.Wrap(err, "set kubeconfig to DB")
+	}
+	return c.PerformSync(ctx, userCred, query, api.ClusterSyncInput{
+		Force: true,
+	})
 }
 
 func (c *SCluster) GetDetailsKubesprayConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*api.ClusterKubesprayConfig, error) {
@@ -2297,16 +2318,23 @@ func (c *SCluster) AllowPerformSync(ctx context.Context, userCred mcclient.Token
 	return db.IsDomainAllowPerform(ctx, userCred, c, "sync")
 }
 
-func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	input := new(api.ClusterSyncInput)
-	data.Unmarshal(input)
-	if c.CanSync() || input.Force {
-		c.StartSyncTask(ctx, userCred, nil, "")
+func (c *SCluster) PerformSync(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input api.ClusterSyncInput) (jsonutils.JSONObject, error) {
+	canSync, err := c.CanSync()
+	if err != nil && !input.Force {
+		return nil, httperrors.NewNotAcceptableError("can't sync: %v", err)
+	}
+	if canSync || input.Force {
+		if err := c.StartSyncTask(ctx, userCred, jsonutils.Marshal(input).(*jsonutils.JSONDict), ""); err != nil {
+			return nil, err
+		}
 	}
 	return nil, nil
 }
 
 func (c *SCluster) StartSyncTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentId string) error {
+	if data == nil {
+		data = jsonutils.NewDict()
+	}
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterSyncTask", c, userCred, data, parentId, "")
 	if err != nil {
 		return errors.Wrap(err, "New ClusterSyncTask")
@@ -2344,7 +2372,7 @@ func (w *funcTaskWrapper) Run() {
 func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCredential, waitChan chan error) {
 	if err := c.DisableBidirectionalSync(); err != nil {
 		if waitChan != nil {
-			log.Errorf("DisableBidirectionalSync before submic sync error: %s", err)
+			log.Errorf("DisableBidirectionalSync before submit sync error: %s", err)
 			waitChan <- err
 		}
 		return
