@@ -130,6 +130,18 @@ func BuildClientConfig(master string, kubeconfig string) (*rest.Config, *clientc
 	if err != nil {
 		return nil, nil, err
 	}
+	curCtxName := configInternal.CurrentContext
+	curCtx, ok := configInternal.Contexts[curCtxName]
+	if !ok {
+		return nil, nil, errors.Errorf("Not found context %q", curCtxName)
+	}
+	ctxClsName := curCtx.Cluster
+	cls, ok := configInternal.Clusters[ctxClsName]
+	if !ok {
+		return nil, nil, errors.Errorf("Not found cluster %q", ctxClsName)
+	}
+	cls.Server = master
+	configInternal.Clusters[ctxClsName] = cls
 
 	clientConfig := clientcmd.NewDefaultClientConfig(*configInternal, &clientcmd.ConfigOverrides{
 		ClusterDefaults: clientcmdapi.Cluster{Server: master},
