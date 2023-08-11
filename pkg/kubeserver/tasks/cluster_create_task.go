@@ -90,7 +90,6 @@ func (t *ClusterCreateTask) CreateMachines(ctx context.Context, cluster *models.
 func (t *ClusterCreateTask) OnMachinesCreated(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
 	t.SetStage("OnApplyAddonsComplete", nil)
 	cluster.StartApplyAddonsTask(ctx, t.GetUserCred(), t.GetParams(), t.GetTaskId())
-
 }
 
 func (t *ClusterCreateTask) OnMachinesCreatedFailed(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {

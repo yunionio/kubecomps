@@ -1,4 +1,4 @@
-package clusters
+package selfbuild
 
 import (
 	"yunion.io/x/jsonutils"

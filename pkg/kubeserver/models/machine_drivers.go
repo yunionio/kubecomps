@@ -9,9 +9,10 @@ import (
 	computeapi "yunion.io/x/onecloud/pkg/apis/compute"
 	"yunion.io/x/onecloud/pkg/mcclient"
 
+	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers"
-	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 )
 
 type IMachineDriver interface {
@@ -27,6 +28,7 @@ type IMachineDriver interface {
 
 	RequestPrepareMachine(ctx context.Context, userCred mcclient.TokenCredential, m *SMachine, task taskman.ITask) error
 	PrepareResource(session *mcclient.ClientSession, m *SMachine, data *api.MachinePrepareInput) (jsonutils.JSONObject, error)
+	PostPrepareResource(ctx context.Context, userCred mcclient.TokenCredential, m *SMachine, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
 
 	ValidateDeleteCondition(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, m *SMachine) error
 	TerminateResource(s *mcclient.ClientSession, m *SMachine) error

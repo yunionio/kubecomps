@@ -38,6 +38,7 @@ type IYunionVMDriver interface {
 type IYunionVmHypervisor interface {
 	GetHypervisor() api.ProviderType
 	FindSystemDiskImage(s *mcclient.ClientSession, zoneId string) (jsonutils.JSONObject, error)
+	PostPrepareServerResource(ctx context.Context, s *mcclient.ClientSession, m *models.SMachine, srv *ocapi.ServerDetails) error
 }
 
 type sYunionVMDriver struct {
@@ -303,6 +304,12 @@ func (d *sYunionVMDriver) PrepareResource(
 	if err != nil {
 		return nil, errors.Wrap(err, "get server create input")
 	}
+
+	drv, err := d.GetHypervisor(input.Hypervisor)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get hypervisor driver %q", m.Hypervisor)
+	}
+
 	helper := onecloudcli.NewServerHelper(s)
 	ret, err := helper.Create(s, input.JSON(input))
 	if err != nil {
@@ -339,9 +346,13 @@ func (d *sYunionVMDriver) PrepareResource(
 
 	// 3. prepare others resource
 	// resOut, err := d.prepareResources(s, m, srvDetail.Id)
-	_, err = d.prepareResources(s, m, srvDetail)
+	_, err = d.prepareResources(s, m, srvDetail, drv)
 	if err != nil {
 		return nil, errors.Wrapf(err, "prepare other resources for machine %s", m.GetName())
+	}
+
+	if err := drv.PostPrepareServerResource(context.Background(), s, m, srvDetail); err != nil {
+		return nil, errors.Wrapf(err, "PostPrepareServerResource %s", srvDetail.Name)
 	}
 
 	if err := d.waitSSHPortOpen(onecloudcli.NewClientSets(s), srvDetail.Id, m); err != nil {
@@ -388,7 +399,23 @@ func (d *sYunionVMDriver) prepareEIP(s *mcclient.ClientSession, srv *ocapi.Serve
 	return eip, nil
 }
 
-func (d *sYunionVMDriver) prepareResources(s *mcclient.ClientSession, m *models.SMachine, srv *ocapi.ServerDetails) (*vmPreparedResource, error) {
+func (d *sYunionVMDriver) PostPrepareResource(ctx context.Context, userCred mcclient.TokenCredential, m *models.SMachine, _ jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	drv, err := d.GetHypervisor(m.Hypervisor)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get hypervisor driver %q", m.Hypervisor)
+	}
+	s, err := models.GetUserSession(ctx, userCred)
+	if err != nil {
+		return nil, errors.Wrap(err, "get user session")
+	}
+	srv, err := onecloudcli.NewServerHelper(s).GetDetails(m.ResourceId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get server details by %s", m.ResourceId)
+	}
+	return nil, drv.PostPrepareServerResource(ctx, s, m, srv)
+}
+
+func (d *sYunionVMDriver) prepareResources(s *mcclient.ClientSession, m *models.SMachine, srv *ocapi.ServerDetails, drv IYunionVmHypervisor) (*vmPreparedResource, error) {
 	isClassicNetwork, err := m.IsInClassicNetwork()
 	if err != nil {
 		return nil, errors.Wrap(err, "check is in classic network")

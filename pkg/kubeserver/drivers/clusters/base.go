@@ -65,6 +65,10 @@ func (d *SBaseDriver) NeedCreateMachines() bool {
 	return true
 }
 
+func (d *SBaseDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig) ([]*models.ClusterHelmChartInstallOption, error) {
+	return nil, nil
+}
+
 func (d *SBaseDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig) (string, error) {
 	return "", nil
 }

@@ -48,18 +48,52 @@ func ApplyAddons(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig
 	if err != nil {
 		return err
 	}
+
+	drv := cluster.GetDriver()
+
+	// apply yaml manifests
 	cli, err := cmd.NewClientFromKubeconfig(kubeconfig)
 	if err != nil {
 		return err
 	}
-	manifest, err := cluster.GetDriver().GetAddonsManifest(cluster, conf)
+	manifest, err := drv.GetAddonsManifest(cluster, conf)
 	if err != nil {
 		return err
 	}
-	if len(manifest) == 0 {
-		return nil
+	if len(manifest) != 0 {
+		if err := cli.Apply(manifest); err != nil {
+			return errors.Wrap(err, "apply manifest")
+		}
 	}
-	return cli.Apply(manifest)
+	// apply helm charts
+	charts, err := drv.GetAddonsHelmCharts(cluster, conf)
+	if err != nil {
+		return errors.Wrap(err, "GetAddonsHelmCharts")
+	}
+	for _, chart := range charts {
+		if chart == nil {
+			continue
+		}
+		if err := chart.Validate(); err != nil {
+			return errors.Wrap(err, "chart is invalid")
+		}
+		man := models.NewHelmComponentManager(chart.Namespace, chart.ReleaseName, chart.EmbedChartName)
+		helmCli, err := man.NewHelmClient(cluster, chart.Namespace)
+		if err != nil {
+			return errors.Wrap(err, "NewHelmClient")
+		}
+		rls, _ := helmCli.Release().Get().Run(chart.ReleaseName)
+		if rls != nil {
+			if err := man.UpdateHelmResource(cluster, chart.Values); err != nil {
+				return errors.Wrapf(err, "Update helm addon %s", chart.EmbedChartName)
+			}
+		} else {
+			if err := man.CreateHelmResource(cluster, chart.Values); err != nil {
+				return errors.Wrapf(err, "Install helm addon %s", chart.EmbedChartName)
+			}
+		}
+	}
+	return nil
 }
 
 func (t *ClusterApplyAddonsTask) OnError(ctx context.Context, obj *models.SCluster, err jsonutils.JSONObject) {

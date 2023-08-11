@@ -13,6 +13,7 @@ CHARTS=(
     manifests/helm/minio
     manifests/helm/thanos
     manifests/helm/fluent-bit
+    manifests/helm/aws-load-balancer-controller
 )
 #readarray -d '' CHARTS < <(find "$HELM_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
 

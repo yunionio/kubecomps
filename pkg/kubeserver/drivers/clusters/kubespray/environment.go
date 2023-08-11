@@ -11,11 +11,20 @@ import (
 )
 
 const (
-	DockerVersion     = "19.03"
-	ContainerdVersion = "1.4.9"
+	DockerVersion_19_03   = "19.03"
+	DockerVersion_20_10   = "20.10"
+	ContainerdVersion     = "1.4.9"
+	NetworkPluginCalico   = "calico"
+	NetworkPluginCNI      = "cni"
+	CgroupDriver          = "systemd"
+	CloudProviderExternal = "external"
 )
 
-func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) KubesprayVars {
+type IDriver interface {
+	ChangeVars(vars *KubesprayVars)
+}
+
+func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig, drv IDriver) KubesprayVars {
 	vars := KubesprayVars{
 		DownloadRunOnce: false,
 		// YumRepo:                "http://mirrors.aliyun.com",
@@ -24,8 +33,8 @@ func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) Kubesp
 		KubeImageRepo:          "registry.aliyuncs.com/google_containers",
 		DockerRHRepoBaseUrl:    "https://mirrors.aliyun.com/docker-ce/linux/centos/{{ ansible_distribution_major_version }}/$basearch/stable",
 		DockerRHRepoGPGKey:     "https://mirrors.aliyun.com/docker-ce/linux/centos/gpg",
-		DockerVersion:          DockerVersion,
-		DockerCliVersion:       DockerVersion,
+		DockerVersion:          DockerVersion_19_03,
+		DockerCliVersion:       DockerVersion_19_03,
 		ContainerdVersion:      ContainerdVersion,
 		EnableNodelocalDNS:     true,
 		NodelocalDNSVersion:    "1.16.0",
@@ -61,13 +70,17 @@ func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) Kubesp
 		NginxImageTag:                   "1.19",
 		IngressNginxEnabled:             true,
 		IngressNginxControllerImageRepo: "{{ kube_image_repo }}/nginx-ingress-controller",
+		KubeNetworkPlugin:               NetworkPluginCalico,
+		KubeletCgroupDriver:             CgroupDriver,
+		DockerCgroupDriver:              CgroupDriver,
+		OverrideSystemHostname:          true,
 	}
 
 	if extraConf != nil {
 		vars.DockerInsecureRegistries = extraConf.DockerInsecureRegistries
 		vars.DockerRegistryMirrors = extraConf.DockerRegistryMirrors
 	}
-	vars.DockerOptions = "--bridge=none"
+	vars.DockerOptions = "--bridge=none --live-restore"
 
 	if strings.Compare(k8sVersion, "v1.21.0") >= 0 {
 		vars.CNIVersion = constants.CNI_VERSION_1_22_9
@@ -97,11 +110,12 @@ func NewDefaultVars(k8sVersion string, extraConf *api.ClusterExtraConfig) Kubesp
 		"ssl-ciphers":   "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA",
 		"ssl-protocols": "TLSv1.2 TLSv1.3",
 	}
+	drv.ChangeVars(&vars)
 	return vars
 }
 
-func NewOfflineVars(k8sVersion string, extraConf *api.ClusterExtraConfig) KubesprayVars {
-	vars := NewDefaultVars(k8sVersion, extraConf)
+func NewOfflineVars(k8sVersion string, extraConf *api.ClusterExtraConfig, drv IDriver) KubesprayVars {
+	vars := NewDefaultVars(k8sVersion, extraConf, drv)
 	globalOpt := options.Options
 
 	registryUrl := globalOpt.OfflineRegistryServiceURL
