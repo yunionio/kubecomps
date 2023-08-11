@@ -157,3 +157,31 @@ func (c *YunionHostPluginsConfig) GenerateYAML() (string, error) {
 	}
 	return allConfig.GenerateYAML()
 }
+
+type AwsVMPluginsConfig struct {
+	*YunionCommonPluginsConfig
+	*AwsVPCCNIConfig
+	*CloudProviderAwsConfig
+}
+
+func (c *AwsVMPluginsConfig) GenerateYAML() (string, error) {
+	allConfig, err := c.YunionCommonPluginsConfig.GetAllConfig()
+	if err != nil {
+		return "", errors.Wrap(err, "get allConfig")
+	}
+	if c.AwsVPCCNIConfig != nil {
+		ret, err := c.AwsVPCCNIConfig.GenerateYAML()
+		if err != nil {
+			return "", errors.Wrap(err, "Generate aws vpc cni")
+		}
+		allConfig.CNIPlugin = ret
+	}
+	if c.CloudProviderAwsConfig != nil {
+		ret, err := c.CloudProviderAwsConfig.GenerateYAML()
+		if err != nil {
+			return "", errors.Wrap(err, "Generate aws cloud provider")
+		}
+		allConfig.CloudProviderPlugin = ret
+	}
+	return allConfig.GenerateYAML()
+}

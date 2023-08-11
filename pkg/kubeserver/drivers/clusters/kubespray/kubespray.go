@@ -68,24 +68,26 @@ type KubesprayVars struct {
 	DockerCliVersion         string   `json:"docker_cli_version"`
 	ContainerManager         string   `json:"container_manager"`
 	ContainerdVersion        string   `json:"containerd_version,omitempty"`
+	EtcdDeploymentType       string   `json:"etcd_deployment_type,omitempty"`
 
 	// kubespray etcd cluster not support kubeadm managed very well currently
 	// EtcdKubeadmEnabled     bool   `json:"etcd_kubeadm_enabled"`
 	KubeVersion            string `json:"kube_version"`
 	CNIVersion             string `json:"cni_version"`
 	EnableNodelocalDNS     bool   `json:"enable_nodelocaldns"`
+	CloudProvider          string `json:"cloud_provider,omitempty"`
 	NodelocalDNSVersion    string `json:"nodelocaldns_version"`
 	NodelocalDNSImageRepo  string `json:"nodelocaldns_image_repo"`
 	DNSAutoscalerImageRepo string `json:"dnsautoscaler_image_repo"`
 	// KubeletDownloadUrl: https://storage.googleapis.com/kubernetes-release/release/{{ kube_version  }}/bin/linux/{{ image_arch }}/kubelet
-	KubeletDownloadUrl string `json:"kubelet_download_url"`
+	KubeletDownloadUrl string `json:"kubelet_download_url,omitempty"`
 	// KubectlDownloadUrl: https://storage.googleapis.com/kubernetes-release/release/{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl
-	KubectlDownloadUrl string `json:"kubectl_download_url"`
+	KubectlDownloadUrl string `json:"kubectl_download_url,omitempty"`
 	// KubeadmDownloadUrl: https://storage.googleapis.com/kubernetes-release/release/{{ kubeadm_version }}/bin/linux/{{ image_arch }}/kubeadm
-	KubeadmDownloadUrl string `json:"kubeadm_download_url"`
+	KubeadmDownloadUrl string `json:"kubeadm_download_url,omitempty"`
 	// CNIDownloadUrl: https://github.com/containernetworking/plugins/releases/download/{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz
-	CNIDownloadUrl    string `json:"cni_download_url"`
-	CNIBinaryChecksum string `json:"cni_binary_checksum"`
+	CNIDownloadUrl    string `json:"cni_download_url,omitempty"`
+	CNIBinaryChecksum string `json:"cni_binary_checksum,omitempty"`
 	// CrictlDownloadUrl: https://iso.yunion.cn/binaries/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz
 	CrictlDownloadUrl string `json:"crictl_download_url"`
 
@@ -97,10 +99,10 @@ type KubesprayVars struct {
 	// Calico related vars
 	// CalicoctlDownloadUrl: https://iso.yunion.cn/binaries/calicoctl/releases/download/v3.16.5/calicoctl-linux-amd64
 	CalicoVersion                 string `json:"calico_version"`
-	CalicoctlDownloadUrl          string `json:"calicoctl_download_url"`
-	CalicoctlAlternateDownloadUrl string `json:"calicoctl_alternate_download_url"`
+	CalicoctlDownloadUrl          string `json:"calicoctl_download_url,omitempty"`
+	CalicoctlAlternateDownloadUrl string `json:"calicoctl_alternate_download_url,omitempty"`
 	// https://github.com/projectcalico/calico/archive/{{ calico_version }}.tar.gz
-	CalicoCRDsDownloadUrl  string `json:"calico_crds_download_url"`
+	CalicoCRDsDownloadUrl  string `json:"calico_crds_download_url,omitempty"`
 	CalicoNodeImageRepo    string `json:"calico_node_image_repo"`
 	CalicoNodeImageTag     string `json:"calico_node_image_tag"`
 	CalicoCNIImageRepo     string `json:"calico_cni_image_repo"`
@@ -157,6 +159,15 @@ type KubesprayVars struct {
 	// - k8s v1.20 => v1.0.0
 	IngressNginxControllerImageTag string            `json:"ingress_nginx_controller_image_tag"`
 	IngressNginxConfigmap          map[string]string `json:"ingress_nginx_configmap"`
+	KubeNetworkPlugin              string            `json:"kube_network_plugin,omitempty"`
+	KubeletCgroupDriver            string            `json:"kubelet_cgroup_driver"`
+	DockerCgroupDriver             string            `json:"docker_cgroup_driver"`
+	OverrideSystemHostname         bool              `json:"override_system_hostname"`
+
+	// k8s services options
+	KubeletPreferredAddressTypes   string            `json:"kubelet_preferred_address_types,omitempty"`
+	KubeKubeadmApiserverExtraArgs  map[string]string `json:"kube_kubeadm_apiserver_extra_args,omitempty"`
+	KubeKubeadmControllerExtraArgs map[string]string `json:"kube_kubeadm_controller_extra_args,omitempty"`
 }
 
 func (v KubesprayVars) Validate() error {
@@ -171,6 +182,7 @@ func (v KubesprayVars) Validate() error {
 
 type KubesprayInventoryHost struct {
 	Hostname       string
+	AliasName      string
 	AnsibleHost    string
 	User           string
 	Ip             string
@@ -209,6 +221,10 @@ func NewKubesprayInventoryHost(
 		// AccessIp:    accessIP,
 		// Ip:          privateIp,
 	}, nil
+}
+
+func (h *KubesprayInventoryHost) SetAliasName(name string) {
+	h.AliasName = name
 }
 
 func (h KubesprayInventoryHost) IsEtcdMember() bool {

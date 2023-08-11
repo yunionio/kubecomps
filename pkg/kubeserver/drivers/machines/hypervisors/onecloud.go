@@ -17,13 +17,11 @@ func init() {
 }
 
 func newOnecloud() machines.IYunionVmHypervisor {
-	return new(onecloud)
+	return &onecloud{newBaseHypervisor(api.ProviderTypeOnecloud)}
 }
 
-type onecloud struct{}
-
-func (_ onecloud) GetHypervisor() api.ProviderType {
-	return api.ProviderTypeOnecloud
+type onecloud struct {
+	*baseHypervisor
 }
 
 func (_ onecloud) FindSystemDiskImage(s *mcclient.ClientSession, zoneId string) (jsonutils.JSONObject, error) {
@@ -48,13 +46,11 @@ func (_ onecloud) FindSystemDiskImage(s *mcclient.ClientSession, zoneId string) 
 }
 
 func newOnecloudKvm() machines.IYunionVmHypervisor {
-	return new(onecloudKvm)
+	return &onecloudKvm{
+		onecloud: onecloud{newBaseHypervisor(api.ProviderTypeOnecloudKvm)},
+	}
 }
 
 type onecloudKvm struct {
 	onecloud
-}
-
-func (_ onecloudKvm) GetHypervisor() api.ProviderType {
-	return api.ProviderTypeOnecloudKvm
 }

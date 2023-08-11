@@ -13,13 +13,13 @@ func init() {
 }
 
 func newAliyun() machines.IYunionVmHypervisor {
-	return new(aliyun)
+	return &aliyun{
+		newBaseHypervisor(api.ProviderTypeAliyun),
+	}
 }
 
-type aliyun struct{}
-
-func (_ aliyun) GetHypervisor() api.ProviderType {
-	return api.ProviderTypeAliyun
+type aliyun struct {
+	*baseHypervisor
 }
 
 func (_ aliyun) FindSystemDiskImage(s *mcclient.ClientSession, zoneId string) (jsonutils.JSONObject, error) {
