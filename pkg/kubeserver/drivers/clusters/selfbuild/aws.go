@@ -91,6 +91,7 @@ func (s *sAwsDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.Clust
 	commonConf.IngressControllerYunionConfig = nil
 	commonConf.CSIYunionConfig = nil
 	commonConf.MetricsPluginConfig = nil
+	commonConf.CSIRancherLocalPathConfig.Image = "registry.cn-beijing.aliyuncs.com/yunionio/local-path-provisioner:v0.0.24"
 
 	reg, err := cluster.GetImageRepository()
 	if err != nil {
