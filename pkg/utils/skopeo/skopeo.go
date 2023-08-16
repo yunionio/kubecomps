@@ -1,9 +1,7 @@
 package skopeo
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -82,38 +80,12 @@ func (s *skopeo) execute(command string, args ...string) error {
 
 	log.Debugf("execute command: %s %v", command, args)
 
-	cmd := exec.Command(command, args...)
-	cmdReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return errors.Wrapf(err, "create %s stdout pipe", command)
-	}
-	defer func() {
-		err := cmdReader.Close()
-		if err != nil {
-			log.Errorf("%s %v command reader close: %v", command, err)
-		}
-	}()
-
 	timeInit := time.Now()
-	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "start command %s", command)
-	}
-
-	go func() {
-		w := os.Stdout
-		scanner := bufio.NewScanner(cmdReader)
-		for scanner.Scan() {
-			fmt.Fprintf(w, scanner.Text())
-		}
-		execDoneChan <- int8(0)
-	}()
-
-	select {
-	case <-execDoneChan:
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return errors.Wrapf(err, "wait %s command", command)
+	cmd := exec.Command(command, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("execute cmd: %s \n output: %s", cmd.String(), output)
+		return errors.Wrapf(err, "command output: %s", output)
 	}
 
 	elapsedTime := time.Since(timeInit)
