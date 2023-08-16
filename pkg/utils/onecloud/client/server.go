@@ -132,6 +132,7 @@ func (h *ServerHelper) ListServerNetworks(id string) ([]*api.SGuestnetwork, erro
 	params := jsonutils.NewDict()
 	params.Add(jsonutils.JSONTrue, "system")
 	params.Add(jsonutils.JSONTrue, "admin")
+	params.Add(jsonutils.NewString("asc"), "order")
 	ret, err := modules.Servernetworks.ListDescendent(h.session, id, params)
 	if err != nil {
 		return nil, err
