@@ -50,7 +50,7 @@ func (s *sAwsDriver) ChangeKubesprayVars(vars *kubespray.KubesprayVars) {
 	vars.DockerCliVersion = kubespray.DockerVersion_20_10
 	vars.KubeNetworkPlugin = kubespray.NetworkPluginCNI
 	vars.IngressNginxEnabled = false
-	vars.EnableNodelocalDNS = false
+	// vars.EnableNodelocalDNS = false
 	// vars.OverrideSystemHostname = false
 
 	// List of the preferred NodeAddressTypes to use for kubelet connections.
