@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	ocapis "yunion.io/x/onecloud/pkg/apis"
@@ -60,7 +63,8 @@ type SMachine struct {
 	// Private IP address
 	Address string `width:"16" charset:"ascii" nullable:"true" list:"user"`
 	// Hypervisor in onecloud server
-	Hypervisor string `width:"16" charset:"ascii" nullable:"true" list:"user" create:"optional"`
+	Hypervisor    string               `width:"16" charset:"ascii" nullable:"true" list:"user" create:"optional"`
+	K8sNodeConfig jsonutils.JSONObject `nullable:"true" create:"optional" update:"admin" list:"user"`
 }
 
 func (man *SMachineManager) GetCluster(userCred mcclient.TokenCredential, clusterId string) (*SCluster, error) {
@@ -143,6 +147,15 @@ func (man *SMachineManager) CreateMachineNoHook(ctx context.Context, cluster *SC
 	m := obj.(*SMachine)
 	err = m.SetMetadata(ctx, api.MachineMetadataCreateParams, input.String(), userCred)
 	return m, err
+}
+
+func (m *SMachine) GetK8sNodeConfig() *api.K8sNodeConfig {
+	if m.K8sNodeConfig == nil {
+		return nil
+	}
+	cfg := new(api.K8sNodeConfig)
+	m.K8sNodeConfig.Unmarshal(cfg)
+	return cfg
 }
 
 func (m *SMachine) LogPrefix() string {
@@ -726,4 +739,45 @@ func (m *SMachine) GetKubernetesVersion() (string, error) {
 func (m *SMachine) PerformPostPrepareResource(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
 	drv := m.GetDriver()
 	return drv.PostPrepareResource(ctx, userCred, m, data)
+}
+
+func (m *SMachine) matchK8sNode(nodes []v1.Node) *v1.Node {
+	for _, node := range nodes {
+		addrs := node.Status.Addresses
+		for _, addr := range addrs {
+			if addr.Address == m.Address {
+				tmp := node
+				return &tmp
+			}
+		}
+	}
+	return nil
+}
+
+func (m *SMachine) SyncK8sConfig(ctx context.Context, cli *kubernetes.Clientset) error {
+	cfg := m.GetK8sNodeConfig()
+	if cfg == nil {
+		return nil
+	}
+	nCli := cli.CoreV1().Nodes()
+	nodes, err := nCli.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return errors.Wrap(err, "List nodes from k8s")
+	}
+	node := m.matchK8sNode(nodes.Items)
+	if node == nil {
+		return errors.Errorf("Not found k8s node for machine %s", m.GetName())
+	}
+	if len(cfg.Labels) != 0 {
+		if node.Labels == nil {
+			node.Labels = make(map[string]string)
+		}
+		for _, l := range cfg.Labels {
+			node.Labels[l.Key] = l.Value
+		}
+	}
+	if _, err := nCli.Update(ctx, node, metav1.UpdateOptions{}); err != nil {
+		return errors.Wrapf(err, "update machine's %s k8s node %s", m.GetName(), node.GetName())
+	}
+	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
@@ -57,6 +58,7 @@ type IMachine interface {
 	SetPrivateIP(address string) error
 	GetRole() string
 	SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSession) error
+	SyncK8sConfig(context.Context, *kubernetes.Clientset) error
 }
 
 type IMachineManager interface {

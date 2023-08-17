@@ -268,7 +268,11 @@ func (d *sYunionVMDriver) getServerCreateInput(machine *models.SMachine, prepare
 	input.Name = machine.Name
 	input.DomainId = machine.DomainId
 	input.ProjectId = machine.ProjectId
-	input.Description = fmt.Sprintf("K8s node of cluster %s", cluster.GetName())
+	if config.Description != "" {
+		input.Description = config.Description
+	} else {
+		input.Description = fmt.Sprintf("K8s node of cluster %s", cluster.GetName())
+	}
 	input.IsSystem = &machine.IsSystem
 	input.Hypervisor = config.Hypervisor
 	input.Disks = config.Disks
