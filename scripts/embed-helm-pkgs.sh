@@ -14,6 +14,7 @@ CHARTS=(
     manifests/helm/thanos
     manifests/helm/fluent-bit
     manifests/helm/aws-load-balancer-controller
+    manifests/helm/aws-ebs-csi-driver
 )
 #readarray -d '' CHARTS < <(find "$HELM_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
 
