@@ -78,6 +78,26 @@ func (s *sAwsDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.Clu
 				"clusterName":  cluster.GetName(),
 			},
 		},
+		{
+			EmbedChartName: embed.AWS_EBS_CSI_DRIVER_2_22_0_TGZ,
+			ReleaseName:    "aws-ebs-csi-driver",
+			Namespace:      "kube-system",
+			Values: map[string]interface{}{
+				"storageClasses": []map[string]interface{}{
+					{
+						"name": "gp2",
+						"annotations": map[string]interface{}{
+							"storageclass.kubernetes.io/is-default-class": "false",
+						},
+						"reclaimPolicy":     "Delete",
+						"volumeBindingMode": "WaitForFirstConsumer",
+						"parameters": map[string]interface{}{
+							"type": "gp2",
+						},
+					},
+				},
+			},
+		},
 	}
 	return charts, nil
 }
