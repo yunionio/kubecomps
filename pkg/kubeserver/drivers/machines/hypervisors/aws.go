@@ -91,6 +91,7 @@ func (_ aws) PostPrepareServerResource(ctx context.Context, s *mcclient.ClientSe
 		"cni":      EC2_VPC_CNI_POLICY,
 		"provider": EC2_CLOUD_PROVIDER_POLICY,
 		"lb":       EC2_LB_CONTROLLER_POLICY,
+		"csi":      EC2_EBS_CSI_POLICY,
 	} {
 		policyName := fmt.Sprintf("kubeserver_%s", key)
 		policyObj, err := clirc.IAMEnsurePolicy(policyName, content, pathName)
