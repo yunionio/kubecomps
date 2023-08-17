@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 	"yunion.io/x/pkg/errors"
@@ -46,6 +47,9 @@ func (t *ClusterSyncTask) OnInit(ctx context.Context, obj db.IStandaloneModel, d
 			}
 		}
 		// do sync
+		if err := cluster.SyncK8sMachinesConfig(ctx, t.UserCred); err != nil {
+			log.Warningf("cluster %s sync machines config: %s", cluster.GetName(), err)
+		}
 		if err := cluster.SyncCallSyncTask(ctx, t.UserCred); err != nil {
 			return nil, errors.Wrap(err, "SyncCallSyncTask")
 		}

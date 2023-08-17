@@ -159,16 +159,26 @@ type ImageRepository struct {
 	Insecure bool `json:"insecure"`
 }
 
+type K8sLabel struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type K8sNodeConfig struct {
+	Labels []*K8sLabel `json:"labels"`
+}
+
 type CreateMachineData struct {
-	Name         string               `json:"name"`
-	ClusterId    string               `json:"cluster_id"`
-	Role         string               `json:"role"`
-	Provider     string               `json:"provider"`
-	ResourceType string               `json:"resource_type"`
-	ResourceId   string               `json:"resource_id"`
-	Address      string               `json:"address"`
-	FirstNode    bool                 `json:"first_node"`
-	Config       *MachineCreateConfig `json:"config"`
+	Name          string               `json:"name"`
+	ClusterId     string               `json:"cluster_id"`
+	Role          string               `json:"role"`
+	Provider      string               `json:"provider"`
+	ResourceType  string               `json:"resource_type"`
+	ResourceId    string               `json:"resource_id"`
+	Address       string               `json:"address"`
+	FirstNode     bool                 `json:"first_node"`
+	Config        *MachineCreateConfig `json:"config"`
+	K8sNodeConfig *K8sNodeConfig       `json:"k8s_node_config"`
 
 	ZoneId    string `json:"zone_id"`
 	NetworkId string `json:"network_id"`
@@ -224,8 +234,8 @@ type ClusterListInput struct {
 	apis.StatusDomainLevelResourceListInput
 	FederatedResourceUsedInput
 
-	ManagerId              string   `json:"manager_id"`
-	Manager                string   `json:"manager" yunion-deprecated-by:"manager_id"`
+	ManagerId              []string `json:"manager_id"`
+	Manager                []string `json:"manager" yunion-deprecated-by:"manager_id"`
 	ExternalClusterId      string   `json:"external_cluster_id"`
 	ExternalCloudClusterId string   `json:"external_cloud_cluster_id"`
 	CloudregionId          string   `json:"cloudregion_id"`
