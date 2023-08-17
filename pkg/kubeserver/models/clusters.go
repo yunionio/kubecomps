@@ -440,8 +440,8 @@ func (m *SClusterManager) ListItemFilter(
 		}
 	}
 
-	if input.ManagerId != "" {
-		q = q.Equals("manager_id", input.ManagerId)
+	if len(input.ManagerId) != 0 {
+		q = q.In("manager_id", input.ManagerId)
 	}
 	if input.CloudregionId != "" {
 		q = q.Equals("cloudregion_id", input.CloudregionId)
@@ -2562,4 +2562,22 @@ func (c *SCluster) IsInClassicNetwork() bool {
 
 func (c *SCluster) IsSystemCluster() bool {
 	return c.Provider == string(api.ProviderTypeSystem) && c.GetName() == SystemClusterName
+}
+
+func (c *SCluster) SyncK8sMachinesConfig(ctx context.Context, cred mcclient.TokenCredential) error {
+	ms, err := c.GetMachines()
+	if err != nil {
+		return errors.Wrap(err, "GetMachines")
+	}
+	errs := []error{}
+	cli, err := c.GetK8sClient()
+	if err != nil {
+		return errors.Wrap(err, "Get k8s client")
+	}
+	for _, m := range ms {
+		if err := m.SyncK8sConfig(ctx, cli); err != nil {
+			errs = append(errs, errors.Wrapf(err, "sync machine %s k8s config", m.GetName()))
+		}
+	}
+	return errors.NewAggregate(errs)
 }

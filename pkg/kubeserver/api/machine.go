@@ -49,6 +49,7 @@ type MachineCreateVMConfig struct {
 	PreferWire       string `json:"prefer_wire_id"`
 	PreferHost       string `json:"prefer_host_id"`
 	PreferBackupHost string `json:"prefer_backup_host"`
+	Description      string `json:"description"`
 
 	Disks           []*api.DiskConfig           `json:"disks"`
 	Networks        []*api.NetworkConfig        `json:"nets"`
