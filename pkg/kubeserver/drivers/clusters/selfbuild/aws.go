@@ -89,8 +89,9 @@ func (s *sAwsDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.Clu
 						"annotations": map[string]interface{}{
 							"storageclass.kubernetes.io/is-default-class": "false",
 						},
-						"reclaimPolicy":     "Delete",
-						"volumeBindingMode": "WaitForFirstConsumer",
+						"reclaimPolicy":        "Delete",
+						"volumeBindingMode":    "WaitForFirstConsumer",
+						"allowVolumeExpansion": "true",
 						"parameters": map[string]interface{}{
 							"type": "gp2",
 						},
