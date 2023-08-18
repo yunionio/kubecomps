@@ -23,35 +23,35 @@ func init() {
 	taskman.RegisterTask(ClusterDeployMachinesTask{})
 }
 
-func (t *ClusterDeployMachinesTask) getAddMachines() (api.ClusterDeployAction, []manager.IMachine, error) {
+func (t *ClusterDeployMachinesTask) getAddMachines() (api.ClusterDeployAction, []manager.IMachine, bool, error) {
 	action, err := models.GetDataDeployAction(t.Params)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "get deploy action")
+		return "", nil, false, errors.Wrap(err, "get deploy action")
 	}
 	msIds, err := models.GetDataDeployMachineIds(t.Params)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "get deploy machine ids")
+		return "", nil, false, errors.Wrap(err, "get deploy machine ids")
 	}
 	ms := make([]manager.IMachine, 0)
 	for _, id := range msIds {
 		m, err := models.MachineManager.FetchMachineById(id)
 		if err != nil {
-			return "", nil, err
+			return "", nil, false, err
 		}
 		ms = append(ms, m)
 	}
-	return action, ms, nil
+	return action, ms, models.GetDataDeploySkipDownloads(t.Params), nil
 }
 
 func (t *ClusterDeployMachinesTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
-	action, ms, err := t.getAddMachines()
+	action, ms, skipDownloads, err := t.getAddMachines()
 	if err != nil {
 		t.SetFailed(ctx, cluster, jsonutils.NewString(err.Error()))
 		return
 	}
 	t.SetStage("OnDeployMachines", nil)
-	if err := cluster.GetDriver().RequestDeployMachines(ctx, t.UserCred, cluster, action, ms, t); err != nil {
+	if err := cluster.GetDriver().RequestDeployMachines(ctx, t.UserCred, cluster, action, ms, skipDownloads, t); err != nil {
 		t.SetFailed(ctx, cluster, jsonutils.NewString(err.Error()))
 		return
 	}

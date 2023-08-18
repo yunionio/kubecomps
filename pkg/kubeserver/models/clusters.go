@@ -1635,7 +1635,7 @@ func (c *SCluster) PerformDeploy(ctx context.Context, userCred mcclient.TokenCre
 	}) {
 		return nil, httperrors.NewInputParameterError("Unsupported action %s", action)
 	}
-	return nil, c.StartDeployMachinesTask(ctx, userCred, action, mIds, "")
+	return nil, c.StartDeployMachinesTask(ctx, userCred, action, mIds, "", input.SkipDownloads)
 }
 
 func (c *SCluster) AllowPerformAddMachines(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
@@ -1860,7 +1860,7 @@ func (c *SCluster) CreateMachines(ctx context.Context, userCred mcclient.TokenCr
 	return RunBatchTask(ctx, machines, userCred, data, "MachineBatchCreateTask", task.GetTaskId())
 }
 
-func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclient.TokenCredential, action api.ClusterDeployAction, machineIds []string, parentTaskId string) error {
+func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclient.TokenCredential, action api.ClusterDeployAction, machineIds []string, parentTaskId string, skipDownloads bool) error {
 	if err := c.SetStatus(userCred, api.ClusterStatusDeploying, ""); err != nil {
 		return err
 	}
@@ -1868,6 +1868,7 @@ func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclien
 	data := jsonutils.NewDict()
 	SetDataDeployMachineIds(data, machineIds...)
 	SetDataDeployAction(data, action)
+	SetDataDeploySkipDownloads(data, skipDownloads)
 
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterDeployMachinesTask", c, userCred, data, parentTaskId, "", nil)
 	if err != nil {

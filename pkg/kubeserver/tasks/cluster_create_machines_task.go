@@ -93,7 +93,7 @@ func (t *ClusterCreateMachinesTask) OnMachinesCreated(ctx context.Context, clust
 	}
 
 	t.SetStage("OnMachinesDeployed", nil)
-	cluster.StartDeployMachinesTask(ctx, t.GetUserCred(), action, mIds, t.GetTaskId())
+	cluster.StartDeployMachinesTask(ctx, t.GetUserCred(), action, mIds, t.GetTaskId(), false)
 }
 
 func (t *ClusterCreateMachinesTask) OnMachinesCreatedFailed(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {

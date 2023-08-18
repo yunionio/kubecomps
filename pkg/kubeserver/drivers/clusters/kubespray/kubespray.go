@@ -47,6 +47,7 @@ type KubesprayVars struct {
 	// and then push them to the cluster nodes. The default download delegate node is the
 	// first `kube-master`
 	DownloadRunOnce bool `json:"download_run_once"`
+	SkipDownloads   bool `json:"skip_downloads"`
 	// YumRepo for rpm: http://mirrors.aliyun.com
 	YumRepo string `json:"yum_repo"`
 	// GCRImageRepo: gcr.azk8s.cn
