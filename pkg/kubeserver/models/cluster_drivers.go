@@ -57,7 +57,7 @@ type IClusterDriverMethods interface {
 
 	ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerProjId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ClusterCreateInput) error
 	// RequestDeployMachines run ansible deploy machines as kubernetes nodes
-	RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, action api.ClusterDeployAction, machines []manager.IMachine, task taskman.ITask) error
+	RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *SCluster, action api.ClusterDeployAction, machines []manager.IMachine, skipDownloads bool, task taskman.ITask) error
 	GetKubesprayConfig(ctx context.Context, cluster *SCluster) (*api.ClusterKubesprayConfig, error)
 
 	ValidateDeleteCondition() error

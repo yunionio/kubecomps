@@ -401,9 +401,9 @@ func (d *selfBuildDriver) GetUsableInstances(s *mcclient.ClientSession) ([]api.U
 	return nil, httperrors.NewInputParameterError("Can't get UsableInstances")
 }
 
-func (d *selfBuildDriver) RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine, task taskman.ITask) error {
+func (d *selfBuildDriver) RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine, skipDownloads bool, task taskman.ITask) error {
 	taskman.LocalTaskRun(task, func() (jsonutils.JSONObject, error) {
-		if err := d.requestDeployMachines(ctx, userCred, cluster, action, ms); err != nil {
+		if err := d.requestDeployMachines(ctx, userCred, cluster, action, ms, skipDownloads); err != nil {
 			if err != nil {
 				return nil, errors.Wrapf(err, "requestDeployMachines by action %q", action)
 			}
@@ -417,7 +417,7 @@ func (d *selfBuildDriver) RequestDeployMachines(ctx context.Context, userCred mc
 				}
 			}
 			if existMaster {
-				if err := d.requestDeployMachines(ctx, userCred, cluster, api.ClusterDeployActionUpgradeMasterConfig, ms); err != nil {
+				if err := d.requestDeployMachines(ctx, userCred, cluster, api.ClusterDeployActionUpgradeMasterConfig, ms, skipDownloads); err != nil {
 					return nil, errors.Wrapf(err, "requestDeployMachines when upgrade master's configuration")
 				}
 			}
@@ -428,13 +428,13 @@ func (d *selfBuildDriver) RequestDeployMachines(ctx context.Context, userCred mc
 	return nil
 }
 
-func (d *selfBuildDriver) requestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine) error {
+func (d *selfBuildDriver) requestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine, skipDownloads bool) error {
 	s, err := models.GetClusterManager().GetSession()
 	if err != nil {
 		return errors.Wrap(err, "get onecloud client session")
 	}
 	cli := onecloudcli.NewClientSets(s)
-	return d.deployCluster(ctx, cli, cluster, action, ms)
+	return d.deployCluster(ctx, cli, cluster, action, ms, skipDownloads)
 }
 
 func (d *selfBuildDriver) GetKubesprayVars(cluster *models.SCluster) (*kubespray.KubesprayRunVars, error) {
@@ -550,11 +550,12 @@ func (d *selfBuildDriver) GetKubesprayConfig(ctx context.Context, cluster *model
 	return conf, nil
 }
 
-func (d *selfBuildDriver) deployCluster(ctx context.Context, cli onecloudcli.IClient, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine) error {
+func (d *selfBuildDriver) deployCluster(ctx context.Context, cli onecloudcli.IClient, cluster *models.SCluster, action api.ClusterDeployAction, ms []manager.IMachine, skipDownloads bool) error {
 	vars, err := d.GetKubesprayVars(cluster)
 	if err != nil {
 		return errors.Wrap(err, "get kubespray vars")
 	}
+	vars.SkipDownloads = skipDownloads
 
 	switch action {
 	case api.ClusterDeployActionCreate, api.ClusterDeployActionRun:
