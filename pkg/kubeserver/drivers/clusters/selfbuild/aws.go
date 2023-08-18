@@ -34,6 +34,13 @@ func (s *sAwsDriver) GetK8sVersions() []string {
 
 func (s *sAwsDriver) ChangeKubesprayVars(vars *kubespray.KubesprayVars) {
 	// change aws download_url
+	vars.KubeImageRepo = "k8s.gcr.io"
+	vars.NodelocalDNSImageRepo = ""
+	vars.DNSAutoscalerImageRepo = ""
+	vars.NginxImageRepo = ""
+	vars.IngressNginxControllerImageRepo = ""
+	vars.CorednsImageIsNamespaced = true
+
 	vars.KubeletDownloadUrl = ""
 	vars.KubectlDownloadUrl = ""
 	vars.KubeadmDownloadUrl = ""
@@ -91,7 +98,7 @@ func (s *sAwsDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.Clu
 						},
 						"reclaimPolicy":        "Delete",
 						"volumeBindingMode":    "WaitForFirstConsumer",
-						"allowVolumeExpansion": "true",
+						"allowVolumeExpansion": true,
 						"parameters": map[string]interface{}{
 							"type": "gp2",
 						},
