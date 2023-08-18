@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	machinesDeployIdsKey   = "machineIds"
-	clusterDeployActionKey = "action"
+	machinesDeployIdsKey       = "machineIds"
+	clusterDeployActionKey     = "action"
+	clusterDeploySkipDownloads = "skipDownloads"
 )
 
 func SetDataDeployMachineIds(data *jsonutils.JSONDict, ids ...string) error {
@@ -62,4 +63,13 @@ func GetDataDeployAction(data *jsonutils.JSONDict) (api.ClusterDeployAction, err
 		return "", err
 	}
 	return api.ClusterDeployAction(action), nil
+}
+
+func SetDataDeploySkipDownloads(data *jsonutils.JSONDict, skipDownloads bool) {
+	data.Add(jsonutils.NewBool(skipDownloads), clusterDeploySkipDownloads)
+}
+
+func GetDataDeploySkipDownloads(data *jsonutils.JSONDict) bool {
+	skipDownloads, _ := data.Bool(clusterDeploySkipDownloads)
+	return skipDownloads
 }

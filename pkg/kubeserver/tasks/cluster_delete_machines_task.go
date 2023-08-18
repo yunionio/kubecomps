@@ -63,7 +63,7 @@ func (t *ClusterDeleteMachinesTask) OnInit(ctx context.Context, obj db.IStandalo
 		return
 	} else {
 		t.SetStage("OnClusterNodeRemoved", nil)
-		cluster.StartDeployMachinesTask(ctx, t.GetUserCred(), api.ClusterDeployActionRemoveNode, mIds, t.GetTaskId())
+		cluster.StartDeployMachinesTask(ctx, t.GetUserCred(), api.ClusterDeployActionRemoveNode, mIds, t.GetTaskId(), false)
 	}
 }
 

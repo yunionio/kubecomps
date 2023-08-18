@@ -252,7 +252,8 @@ type ClusterDeployInput struct {
 	// Force deploy
 	Force bool `json:"force"`
 	// Action can be 'run' or 'upgrade'
-	Action ClusterDeployAction `json:"action"`
+	Action        ClusterDeployAction `json:"action"`
+	SkipDownloads bool                `json:"skip_downloads"`
 }
 
 type IClusterRemoteResource interface {
