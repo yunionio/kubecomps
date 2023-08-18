@@ -120,7 +120,7 @@ func (d *SBaseDriver) RequestDeleteMachines(ctx context.Context, userCred mcclie
 	return nil
 }
 
-func (d *SBaseDriver) RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, machines []manager.IMachine, task taskman.ITask) error {
+func (d *SBaseDriver) RequestDeployMachines(ctx context.Context, userCred mcclient.TokenCredential, cluster *models.SCluster, action api.ClusterDeployAction, machines []manager.IMachine, skipDownloads bool, task taskman.ITask) error {
 	return nil
 }
 
