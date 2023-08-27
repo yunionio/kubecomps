@@ -555,7 +555,9 @@ func (d *selfBuildDriver) deployCluster(ctx context.Context, cli onecloudcli.ICl
 	if err != nil {
 		return errors.Wrap(err, "get kubespray vars")
 	}
-	vars.SkipDownloads = skipDownloads
+	if skipDownloads {
+		vars.SkipDownloads = &skipDownloads
+	}
 
 	switch action {
 	case api.ClusterDeployActionCreate, api.ClusterDeployActionRun:
