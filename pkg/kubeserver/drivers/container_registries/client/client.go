@@ -13,12 +13,14 @@ import (
 	"github.com/regclient/regclient"
 	"github.com/regclient/regclient/config"
 	"github.com/regclient/regclient/types/ref"
+	"golang.org/x/sync/errgroup"
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/util/httputils"
 
+	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/request"
 	"yunion.io/x/kubecomps/pkg/utils/registry"
 )
@@ -26,7 +28,7 @@ import (
 type Client interface {
 	Ping(ctx context.Context) error
 
-	ListImages(ctx context.Context) (jsonutils.JSONObject, error)
+	ListImages(ctx context.Context, input *api.ContainerRegistryListImagesInput) (jsonutils.JSONObject, error)
 
 	ListImageTags(ctx context.Context, image string) (jsonutils.JSONObject, error)
 
@@ -123,10 +125,11 @@ func (c client) Ping(ctx context.Context) error {
 }
 
 type CatalogResult struct {
-	Repositories []string `json:"repositories"`
+	Repositories []string          `json:"repositories"`
+	Details      []*ImageTagResult `json:"details"`
 }
 
-func (c client) ListImages(ctx context.Context) (jsonutils.JSONObject, error) {
+func (c client) ListImages(ctx context.Context, input *api.ContainerRegistryListImagesInput) (jsonutils.JSONObject, error) {
 	catalogUrl := "/v2/_catalog"
 	resp, err := c.Get(ctx, catalogUrl, nil, nil)
 	if err != nil {
@@ -152,8 +155,29 @@ func (c client) ListImages(ctx context.Context) (jsonutils.JSONObject, error) {
 		}
 	}
 	result.Repositories = newRepos
+	if input.Details {
+		result.Details = make([]*ImageTagResult, 0)
+		var errgrp errgroup.Group
+		for _, r := range result.Repositories {
+			tmpR := r
+			errgrp.Go(func() error {
+				tags, err := c.ListImageTags(ctx, tmpR)
+				if err != nil {
+					return errors.Wrapf(err, "List image tags: %s", r)
+				}
+				detail := new(ImageTagResult)
+				if err := tags.Unmarshal(detail); err != nil {
+					return errors.Wrapf(err, "Unmarshal %#v", tags)
+				}
+				result.Details = append(result.Details, detail)
+				return nil
+			})
+		}
+		if err := errgrp.Wait(); err != nil {
+			return nil, err
+		}
+	}
 	resp = jsonutils.Marshal(result)
-	log.Errorf("resp images: %s", resp.PrettyString())
 	return resp, nil
 }
 
