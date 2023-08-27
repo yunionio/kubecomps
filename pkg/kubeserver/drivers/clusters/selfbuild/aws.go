@@ -142,6 +142,7 @@ func (s *sAwsDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.Clust
 func (s *sAwsDriver) GetKubesprayHostname(info *onecloudcli.ServerSSHLoginInfo) (string, error) {
 	// name format is: ip-<a-b-c-d>.<region>.compute.internal
 	// e.g.: ip-10-1-22-51.ap-southeast-1.compute.internal
+	// and us-east-1 region is:ip-<a-b-c-d>.ec2.internal
 	ipFmt := strings.ReplaceAll(info.PrivateIP, ".", "-")
 	regionId := info.CloudregionExternalId
 	parts := strings.Split(regionId, "/")
@@ -149,5 +150,8 @@ func (s *sAwsDriver) GetKubesprayHostname(info *onecloudcli.ServerSSHLoginInfo) 
 		return "", errors.Errorf("Invalid cloudregion external_id %q", regionId)
 	}
 	awsRegion := parts[1]
+	if awsRegion == "us-east-1" {
+		return fmt.Sprintf("ip-%s.ec2.internal", ipFmt), nil
+	}
 	return fmt.Sprintf("ip-%s.%s.compute.internal", ipFmt, awsRegion), nil
 }
