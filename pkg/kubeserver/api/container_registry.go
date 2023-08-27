@@ -63,3 +63,7 @@ type ContainerRegistryDownloadImageInput struct {
 	ImageName string `json:"image_name"`
 	Tag       string `json:"tag"`
 }
+
+type ContainerRegistryListImagesInput struct {
+	Details bool `json:"details"`
+}

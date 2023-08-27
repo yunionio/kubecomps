@@ -163,12 +163,12 @@ func (m *SContainerRegistryManager) getImages(ctx context.Context, w http.Respon
 	log.Errorln("==============getImages called")
 }
 
-func (r *SContainerRegistry) GetDetailsImages(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+func (r *SContainerRegistry) GetDetailsImages(ctx context.Context, userCred mcclient.TokenCredential, input *api.ContainerRegistryListImagesInput) (jsonutils.JSONObject, error) {
 	rgCli, err := r.GetDockerRegistryClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "GetDockerRegistryClient")
 	}
-	return rgCli.ListImages(ctx)
+	return rgCli.ListImages(ctx, input)
 }
 
 func (r *SContainerRegistry) GetDetailsImageTags(ctx context.Context, userCred mcclient.TokenCredential, query *api.ContainerRegistryGetImageTagsInput) (jsonutils.JSONObject, error) {
