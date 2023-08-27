@@ -46,8 +46,8 @@ type KubesprayVars struct {
 	// DownloadRunOnce will make kubespray download container images and binaries only once
 	// and then push them to the cluster nodes. The default download delegate node is the
 	// first `kube-master`
-	DownloadRunOnce bool `json:"download_run_once"`
-	SkipDownloads   bool `json:"skip_downloads"`
+	DownloadRunOnce bool  `json:"download_run_once"`
+	SkipDownloads   *bool `json:"skip_downloads,omitempty"`
 	// YumRepo for rpm: http://mirrors.aliyun.com
 	YumRepo string `json:"yum_repo"`
 	// GCRImageRepo: gcr.azk8s.cn
