@@ -59,6 +59,13 @@ type ContainerRegistryGetImageTagsInput struct {
 	Repository string `json:"repository"`
 }
 
+type ContainerRegistryManagerDownloadImageInput struct {
+	Insecure bool   `json:"insecure"`
+	Image    string `json:"image"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type ContainerRegistryDownloadImageInput struct {
 	ImageName string `json:"image_name"`
 	Tag       string `json:"tag"`
