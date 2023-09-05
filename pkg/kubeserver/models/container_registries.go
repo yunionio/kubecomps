@@ -186,7 +186,7 @@ func (m *SContainerRegistryManager) CustomizeHandlerInfo(info *appsrv.SHandlerIn
 	m.SStatusInfrasResourceBaseManager.CustomizeHandlerInfo(info)
 
 	switch info.GetName(nil) {
-	case "perform_action", "get_specific":
+	case "perform_action", "get_specific", "get_property", "get_details":
 		info.SetProcessTimeout(time.Minute * 120).SetWorkerManager(imgStreamingWorkerMan)
 	}
 }
@@ -280,16 +280,57 @@ func (r *SContainerRegistry) uploadImage(ctx context.Context, imgPath string, in
 	return meta, nil
 }
 
+func (man *SContainerRegistryManager) GetPropertyDownloadImage(ctx context.Context, userCred mcclient.TokenCredential, query api.ContainerRegistryManagerDownloadImageInput) (jsonutils.JSONObject, error) {
+	if query.Image == "" {
+		return nil, httperrors.NewNotEmptyError("image is not provided")
+	}
+	imgParts := strings.Split(query.Image, "/")
+	lastPart := imgParts[len(imgParts)-1]
+	lastParts := strings.Split(lastPart, ":")
+	if len(lastParts) != 2 {
+		return nil, httperrors.NewInputParameterError("invalid image: %s, last part is %s", query.Image, lastPart)
+	}
+	imgTag := lastParts[1]
+	imgPath := strings.TrimSuffix(query.Image, ":"+imgTag)
+	proto := "https"
+	if query.Insecure {
+		proto = "http"
+	}
+	drv, _ := man.GetDriver(api.ContainerRegistryTypeCommon)
+	conf := &api.ContainerRegistryConfig{
+		Common: &api.ContainerRegistryConfigCommon{
+			Username: query.Username,
+			Password: query.Password,
+		},
+	}
+	imgPathParts := strings.Split(imgPath, "/")
+	imgName := imgPathParts[len(imgPathParts)-1]
+	regUrl := fmt.Sprintf("%s://%s", proto, strings.TrimSuffix(imgPath, imgName))
+	input := api.ContainerRegistryDownloadImageInput{
+		ImageName: imgName,
+		Tag:       imgTag,
+	}
+	return man.downloadImage(ctx, userCred, drv, conf, regUrl, input)
+}
+
 func (r *SContainerRegistry) GetDetailsDownloadImage(ctx context.Context, userCred mcclient.TokenCredential, query api.ContainerRegistryDownloadImageInput) (jsonutils.JSONObject, error) {
+	drv := r.GetDriver()
+	conf, _ := r.GetConfig()
+	return GetContainerRegistryManager().downloadImage(ctx, userCred, drv, conf, r.Url, query)
+}
+
+func (r *SContainerRegistryManager) downloadImage(ctx context.Context, userCred mcclient.TokenCredential,
+	drv IContainerRegistryDriver,
+	conf *api.ContainerRegistryConfig,
+	regUrl string,
+	query api.ContainerRegistryDownloadImageInput) (jsonutils.JSONObject, error) {
 	if query.ImageName == "" {
 		return nil, httperrors.NewNotEmptyError("image name required")
 	}
 	if query.Tag == "" {
 		return nil, httperrors.NewNotEmptyError("image tag required")
 	}
-	drv := r.GetDriver()
-	conf, _ := r.GetConfig()
-	savedPath, err := drv.DownloadImage(ctx, r.Url, conf, query)
+	savedPath, err := drv.DownloadImage(ctx, regUrl, conf, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "download image")
 	}
