@@ -75,7 +75,31 @@ build_image() {
     local tag=$1
     local file=$2
     local path=$3
-    docker build -t "$tag" -f "$2" "$3"
+    local arch
+    if [[ "$tag" == *:5000/* ]]; then
+        arch=$(arch)
+        case $arch in
+        x86_64)
+            docker buildx build -t "$tag" -f "$2" "$3" --output type=docker --platform linux/amd64
+            ;;
+        aarch64)
+            docker buildx build -t "$tag" -f "$2" "$3" --output type=docker --platform linux/arm64
+            ;;
+        *)
+            echo wrong arch
+            exit 1
+            ;;
+        esac
+    else
+        if [[ "$tag" == *"amd64" || "$ARCH" == "" || "$ARCH" == "amd64" || "$ARCH" == "x86_64" || "$ARCH" == "x86" ]]; then
+            docker buildx build -t "$tag" -f "$file" "$path" --push --platform linux/amd64
+        elif [[ "$tag" == *"arm64" || "$ARCH" == "arm64" ]]; then
+            docker buildx build -t "$tag" -f "$file" "$path" --push --platform linux/arm64
+        else
+            docker buildx build -t "$tag" -f "$file" "$path" --push
+        fi
+        docker pull "$tag"
+    fi
 }
 
 buildx_and_push() {
@@ -83,13 +107,12 @@ buildx_and_push() {
     local file=$2
     local path=$3
     local arch=$4
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[$(readlink -f ${BASH_SOURCE}):${LINENO} ${FUNCNAME[0]}] return for DRY_RUN"
+        return
+    fi
     docker buildx build -t "$tag" --platform "linux/$arch" -f "$2" "$3" --push
-    docker pull "$tag"
-}
-
-push_image() {
-    local tag=$1
-    docker push "$tag"
+    docker pull --platform "linux/$arch" "$tag"
 }
 
 get_image_name() {
@@ -112,7 +135,6 @@ build_process() {
     build_bin $component
 
     build_image $img_name $DOCKER_DIR/Dockerfile.$component $SRC_DIR
-    push_image "$img_name"
 }
 
 build_process_with_buildx() {
@@ -154,11 +176,12 @@ make_manifest_image() {
         echo "[$(readlink -f ${BASH_SOURCE}):${LINENO} ${FUNCNAME[0]}] return for DRY_RUN"
         return
     fi
-    docker manifest create --amend $img_name \
+
+    docker buildx imagetools create -t $img_name \
         $img_name-amd64 \
         $img_name-arm64
-    docker manifest annotate $img_name $img_name-arm64 --arch arm64
-    docker manifest push $img_name
+    docker manifest inspect ${img_name} | grep -wq amd64
+    docker manifest inspect ${img_name} | grep -wq arm64
 }
 
 ALL_COMPONENTS=$(ls cmd | grep -v '.*cli$' | xargs)
