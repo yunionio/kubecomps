@@ -81,8 +81,9 @@ func (s *sAwsDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.Clu
 			ReleaseName:    "aws-load-balancer-controller",
 			Namespace:      "kube-system",
 			Values: map[string]interface{}{
-				"replicaCount": 1,
-				"clusterName":  cluster.GetName(),
+				"replicaCount":                1,
+				"clusterName":                 cluster.GetName(),
+				"enableServiceMutatorWebhook": false,
 			},
 		},
 		{

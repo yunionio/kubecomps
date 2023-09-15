@@ -561,7 +561,12 @@ func syncClusterResources(
 	for i := 0; i < len(added); i += 1 {
 		newObj, err := NewFromRemoteObject(ctx, userCred, man, cluster, added[i])
 		if err != nil {
-			syncResult.AddError(errors.Wrapf(err, "add object"))
+			if man.IsNamespaceScope() {
+				log.Warningf("sync namespace object error: %s, maybe namespace is not sync to local yet.", err)
+				continue
+			} else {
+				syncResult.AddError(errors.Wrapf(err, "add object"))
+			}
 		} else {
 			localObjs = append(localObjs, newObj)
 			remoteObjs = append(remoteObjs, added[i])
