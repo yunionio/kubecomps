@@ -95,16 +95,16 @@ func (c RepoClient) Add(entry *repo.Entry) error {
 		defer fileLock.Unlock()
 	}
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Try lock context file lock: %s", repoFile)
 	}
 	b, err := ioutil.ReadFile(repoFile)
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return errors.Wrapf(err, "read repo file %s", repoFile)
 	}
 
 	var f repo.File
 	if err := yaml.Unmarshal(b, &f); err != nil {
-		return err
+		return errors.Wrapf(err, "unmarshal %s to repo.File", b)
 	}
 
 	if f.Has(entry.Name) {
@@ -113,7 +113,7 @@ func (c RepoClient) Add(entry *repo.Entry) error {
 
 	r, err := repo.NewChartRepository(entry, getter.All(c.GetSetting()))
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "NewChartRepository")
 	}
 
 	if _, err := r.DownloadIndexFile(); err != nil {
@@ -123,7 +123,7 @@ func (c RepoClient) Add(entry *repo.Entry) error {
 	f.Update(entry)
 
 	if err := f.WriteFile(c.RepositoryConfig, 0644); err != nil {
-		return err
+		return errors.Wrapf(err, "write repo config")
 	}
 	log.Infof("%q has been added to your repositories", entry.Name)
 	return nil
