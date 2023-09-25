@@ -174,20 +174,20 @@ func (man *SRepoManager) ValidateCreateData(ctx context.Context, userCred mcclie
 	}
 	data, err = drv.ValidateCreateData(ctx, userCred, ownerId, query, data)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "driver %s ValidateCreateData", drv.GetBackend())
 	}
 
 	entry := man.ToEntry(data.Name, data.Url, data.Username, data.Password)
 	cli, err := man.GetClient(ownerId.GetProjectDomainId())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "GetClient by domainId: %s", ownerId.GetProjectDomainId())
 	}
 	if err := cli.Add(entry); err != nil {
 		log.Errorf("Add helm entry %#v error: %v", entry, err)
 		if errors.Cause(err) == helm.ErrRepoAlreadyExists {
 			return nil, httperrors.NewDuplicateResourceError("Backend helm repo name %s already exists, please specify a different name", data.Name)
 		}
-		return nil, httperrors.NewNotAcceptableError("Add helm repo %s failed", entry.URL)
+		return nil, httperrors.NewNotAcceptableError("Add helm repo %s failed: %v", entry.URL, err)
 	}
 
 	return data, nil
