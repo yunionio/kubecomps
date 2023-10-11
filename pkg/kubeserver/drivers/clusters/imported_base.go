@@ -119,6 +119,9 @@ func (d *sImportBaseDriver) ValidateCreateData(ctx context.Context, userCred mcc
 	apiServer := importData.ApiServer
 	kubeconfig := importData.Kubeconfig
 	newKubeconfig, restConfig, cli, err := d.getKubeClientByConfig(apiServer, kubeconfig)
+	if err != nil {
+		return httperrors.NewNotSupportedError("get kubernetes client by config: %v", err)
+	}
 	importData.Kubeconfig = string(newKubeconfig)
 	importData.ApiServer = restConfig.Host
 	version, err := cli.Discovery().ServerVersion()
