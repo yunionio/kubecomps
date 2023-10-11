@@ -120,20 +120,23 @@ func (s *sAwsDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.Clust
 	commonConf.IngressControllerYunionConfig = nil
 	commonConf.CSIYunionConfig = nil
 	commonConf.MetricsPluginConfig = nil
-	commonConf.CSIRancherLocalPathConfig.Image = "registry.cn-beijing.aliyuncs.com/yunionio/local-path-provisioner:v0.0.24"
+	// commonConf.CSIRancherLocalPathConfig.Image = "registry.cn-beijing.aliyuncs.com/yunionio/local-path-provisioner:v0.0.24"
+	commonConf.CSIRancherLocalPathConfig.Image = "rancher/local-path-provisioner:v0.0.24"
+	commonConf.CSIRancherLocalPathConfig.HelperImage = "busybox:latest"
 
-	reg, err := cluster.GetImageRepository()
-	if err != nil {
-		return "", errors.Wrap(err, "get cluster image_repository")
-	}
+	// reg, err := cluster.GetImageRepository()
+	// if err != nil {
+	// 	return "", errors.Wrap(err, "get cluster image_repository")
+	// }
 
 	cniVersion := "v1.13.3"
+	cniUrl := "registry.us-west-1.aliyuncs.com/yunion-dev"
 
 	pluginConf := &addons.AwsVMPluginsConfig{
 		YunionCommonPluginsConfig: commonConf,
 		AwsVPCCNIConfig: &addons.AwsVPCCNIConfig{
-			Image:     registry.MirrorImage(reg.Url, "amazon-k8s-cni", cniVersion, ""),
-			InitImage: registry.MirrorImage(reg.Url, "amazon-k8s-cni-init", cniVersion, ""),
+			Image:     registry.MirrorImage(cniUrl, "amazon-k8s-cni", cniVersion, ""),
+			InitImage: registry.MirrorImage(cniUrl, "amazon-k8s-cni-init", cniVersion, ""),
 		},
 		CloudProviderAwsConfig: &addons.CloudProviderAwsConfig{},
 	}
