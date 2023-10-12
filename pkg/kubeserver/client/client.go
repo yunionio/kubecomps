@@ -128,7 +128,7 @@ func GetManager(cluster string) (*ClusterManager, error) {
 func BuildClientConfig(master string, kubeconfig string) (*rest.Config, *clientcmdapi.Config, error) {
 	configInternal, err := clientcmd.Load([]byte(kubeconfig))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "Load kubeconfig")
 	}
 	curCtxName := configInternal.CurrentContext
 	curCtx, ok := configInternal.Contexts[curCtxName]
@@ -139,6 +139,9 @@ func BuildClientConfig(master string, kubeconfig string) (*rest.Config, *clientc
 	cls, ok := configInternal.Clusters[ctxClsName]
 	if !ok {
 		return nil, nil, errors.Errorf("Not found cluster %q", ctxClsName)
+	}
+	if master == "" {
+		master = cls.Server
 	}
 	cls.Server = master
 	configInternal.Clusters[ctxClsName] = cls
