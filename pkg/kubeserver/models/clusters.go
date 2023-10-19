@@ -594,8 +594,13 @@ func (m *SClusterManager) ValidateCreateData(ctx context.Context, userCred mccli
 		}
 	}
 
+	drvHint := fmt.Sprintf("%s/%s/%s", input.Mode, input.Provider, input.ResourceType)
 	if err := driver.ValidateCreateData(ctx, userCred, ownerId, query, input); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "driver %s ValidateCreateData", drvHint)
+	}
+
+	if err := driver.SetDefaultCreateData(ctx, userCred, ownerId, query, input); err != nil {
+		return nil, errors.Wrapf(err, "driver %s SetDefaultCreateData", drvHint)
 	}
 
 	versions := driver.GetK8sVersions()
