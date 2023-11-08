@@ -546,7 +546,7 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 					DefaultDatasourceEnabled: true,
 				},
 			},
-			Image: mi("grafana", "6.7.1"),
+			Image: mi("grafana", "7.5.17"),
 			Service: &components.Service{
 				Type: string(v1.ServiceTypeClusterIP),
 			},
