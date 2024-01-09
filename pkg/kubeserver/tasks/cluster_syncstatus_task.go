@@ -2,6 +2,9 @@ package tasks
 
 import (
 	"context"
+	"time"
+
+	"k8s.io/apimachinery/pkg/version"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
@@ -22,6 +25,18 @@ type ClusterSyncstatusTask struct {
 	taskman.STask
 }
 
+func getClusterVersion(cluster *models.SCluster) (*version.Info, error) {
+	k8sCli, err := cluster.GetK8sClient()
+	if err != nil {
+		return nil, errors.Wrap(err, "GetK8sClient")
+	}
+	info, err := k8sCli.Discovery().ServerVersion()
+	if err != nil {
+		return nil, errors.Wrap(err, "Discovery server version")
+	}
+	return info, nil
+}
+
 func (t *ClusterSyncstatusTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
 	mCnt, err := cluster.GetMachinesCount()
@@ -37,20 +52,23 @@ func (t *ClusterSyncstatusTask) OnInit(ctx context.Context, obj db.IStandaloneMo
 
 	t.SetStage("OnSyncStatus", nil)
 	taskman.LocalTaskRun(t, func() (jsonutils.JSONObject, error) {
-		k8sCli, err := cluster.GetK8sClient()
-		if err != nil {
-			return nil, err
+		var err error
+		for i := 0; i < 30; i++ {
+			info, vErr := getClusterVersion(cluster)
+			if vErr != nil {
+				err = vErr
+				log.Warningf("check cluster %q version: %v", cluster.GetName(), vErr)
+				time.Sleep(10 * time.Second)
+			} else {
+				log.Infof("Get %s cluster k8s version: %#v", cluster.GetName(), info)
+				if err := cluster.SetStatus(t.UserCred, api.ClusterStatusRunning, ""); err != nil {
+					return nil, errors.Wrap(err, "set status to running")
+				}
+				cluster.SetK8sVersion(ctx, info.String())
+				return nil, nil
+			}
 		}
-		info, err := k8sCli.Discovery().ServerVersion()
-		if err != nil {
-			return nil, err
-		}
-		log.Infof("Get %s cluster k8s version: %#v", cluster.GetName(), info)
-		if err := cluster.SetStatus(t.UserCred, api.ClusterStatusRunning, ""); err != nil {
-			return nil, errors.Wrap(err, "set status to running")
-		}
-		cluster.SetK8sVersion(ctx, info.String())
-		return nil, nil
+		return nil, err
 	})
 }
 
