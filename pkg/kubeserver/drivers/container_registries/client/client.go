@@ -154,7 +154,17 @@ func (c client) ListImages(ctx context.Context, input *api.ContainerRegistryList
 			newRepos = result.Repositories
 		}
 	}
-	result.Repositories = newRepos
+	if input.RepositoryName != "" {
+		filterRepos := []string{}
+		for _, name := range newRepos {
+			if strings.Contains(name, input.RepositoryName) {
+				filterRepos = append(filterRepos, name)
+			}
+		}
+		result.Repositories = filterRepos
+	} else {
+		result.Repositories = newRepos
+	}
 	if input.Details {
 		result.Details = make([]*ImageTagResult, 0)
 		var errgrp errgroup.Group
