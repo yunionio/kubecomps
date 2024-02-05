@@ -37,7 +37,7 @@ type IFedModel interface {
 	GetJointModelManager() IFedJointClusterManager
 	ValidateAttachCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	ValidateDetachCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
-	SetStatus(userCred mcclient.TokenCredential, status string, reason string) error
+	SetStatus(ctx context.Context, userCred mcclient.TokenCredential, status string, reason string) error
 	LogPrefix() string
 }
 
@@ -159,7 +159,7 @@ func (obj *SFedResourceBase) GetClustersCount() (int, error) {
 
 func (obj *SFedResourceBase) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
 	obj.SStatusDomainLevelResourceBase.PostCreate(ctx, userCred, ownerId, query, data)
-	obj.SetStatus(userCred, api.FederatedResourceStatusActive, "post create")
+	obj.SetStatus(ctx, userCred, api.FederatedResourceStatusActive, "post create")
 }
 
 func (obj *SFedResourceBase) GetDetails(base interface{}, isList bool) interface{} {

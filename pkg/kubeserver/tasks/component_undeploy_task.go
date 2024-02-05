@@ -2,13 +2,13 @@ package tasks
 
 import (
 	"context"
-	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
+	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 )
 
 func init() {
@@ -40,13 +40,13 @@ func (t *ComponentUndeployTask) OnInit(ctx context.Context, obj db.IStandaloneMo
 		t.onError(ctx, comp, err)
 		return
 	}
-	comp.SetStatus(t.UserCred, api.ComponentStatusInit, "")
+	comp.SetStatus(ctx, t.UserCred, api.ComponentStatusInit, "")
 	comp.SetEnabled(false)
 	t.SetStageComplete(ctx, nil)
 }
 
 func (t *ComponentUndeployTask) onError(ctx context.Context, obj *models.SComponent, err error) {
 	reason := err.Error()
-	obj.SetStatus(t.UserCred, api.ComponentStatusUndeployFail, reason)
+	obj.SetStatus(ctx, t.UserCred, api.ComponentStatusUndeployFail, reason)
 	t.STask.SetStageFailed(ctx, jsonutils.NewString(err.Error()))
 }

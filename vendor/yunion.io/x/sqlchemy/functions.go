@@ -323,6 +323,11 @@ func TIMESTAMPADD(name string, field IQueryField, offsetSeconds int) IQueryField
 	return getFieldBackend(field).TIMESTAMPADD(name, field, offsetSeconds)
 }
 
+// DATE_FORMAT represents a SQL function DATE_FORMAT
+func DATE_FORMAT(name string, field IQueryField, format string) IQueryField {
+	return getFieldBackend(field).DATE_FORMAT(name, field, format)
+}
+
 // CAST represents a SQL function cast types
 func CAST(field IQueryField, typeStr string, fieldname string) IQueryField {
 	return getFieldBackend(field).CAST(field, typeStr, fieldname)
@@ -359,4 +364,8 @@ func DIV(name string, fields ...IQueryField) IQueryField {
 
 func DATEDIFF(unit string, field1, field2 IQueryField) IQueryField {
 	return getFieldBackend(field1).DATEDIFF(unit, field1, field2)
+}
+
+func ABS(name string, field IQueryField) IQueryField {
+	return NewFunctionField(name, "ABS(%s)", field)
 }

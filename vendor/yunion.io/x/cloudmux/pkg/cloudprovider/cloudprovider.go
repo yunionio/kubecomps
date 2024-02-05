@@ -90,6 +90,10 @@ type SCloudaccountCredential struct {
 	// Google服务账号秘钥 (gcp)
 	GCPPrivateKey string `json:"gcp_private_key"`
 
+	OracleTenancyOCID string `json:"oracle_tenancy_ocid"`
+	OracleUserOCID    string `json:"oracle_user_ocid"`
+	OraclePrivateKey  string `json:"oracle_private_key"`
+
 	// 默认区域Id, Apara及HCSO需要此参数
 	// example: cn-north-2
 	// required: true
@@ -97,9 +101,6 @@ type SCloudaccountCredential struct {
 
 	// Huawei Cloud Stack Online
 	*SHCSOEndpoints
-
-	// ctyun crm account extra info
-	*SCtyunExtraOptions
 }
 
 type SCloudaccount struct {
@@ -247,6 +248,12 @@ type ICloudProviderFactory interface {
 	GetAccountIdEqualizer() func(origin, now string) bool
 }
 
+type SBalanceInfo struct {
+	Currency string
+	Amount   float64
+	Status   string
+}
+
 type ICloudProvider interface {
 	GetFactory() ICloudProviderFactory
 
@@ -261,7 +268,7 @@ type ICloudProvider interface {
 
 	GetOnPremiseIRegion() (ICloudRegion, error)
 
-	GetBalance() (float64, string, error)
+	GetBalance() (*SBalanceInfo, error)
 
 	GetSubAccounts() ([]SSubAccount, error)
 	GetAccountId() string
@@ -380,6 +387,10 @@ func IsSupportMongoDB(prod ICloudProvider) bool {
 
 func IsSupportElasticSearch(prod ICloudProvider) bool {
 	return IsSupportCapability(prod, CLOUD_CAPABILITY_ES)
+}
+
+func IsSupportSSLCertificate(prod ICloudProvider) bool {
+	return IsSupportCapability(prod, CLOUD_CAPABILITY_CERT)
 }
 
 func IsSupportKafka(prod ICloudProvider) bool {

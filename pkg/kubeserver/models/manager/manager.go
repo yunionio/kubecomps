@@ -17,7 +17,7 @@ type ICluster interface {
 	GetName() string
 	GetId() string
 	RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error
-	SetStatus(userCred mcclient.TokenCredential, status string, reason string) error
+	SetStatus(ctx context.Context, userCred mcclient.TokenCredential, status string, reason string) error
 	//SetKubeconfig(kubeconfig string) error
 	GetAPIServer() (string, error)
 	GetKubeconfig() (string, error)
@@ -54,7 +54,7 @@ type IMachine interface {
 	GetEIP() (string, error)
 	RealDelete(ctx context.Context, userCred mcclient.TokenCredential) error
 	GetStatus() string
-	SetStatus(userCred mcclient.TokenCredential, status string, reason string) error
+	SetStatus(ctx context.Context, userCred mcclient.TokenCredential, status string, reason string) error
 	SetPrivateIP(address string) error
 	GetRole() string
 	SyncInfoFromCloud(ctx context.Context, s *mcclient.ClientSession) error

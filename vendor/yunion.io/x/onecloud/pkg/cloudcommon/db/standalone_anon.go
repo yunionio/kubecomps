@@ -30,7 +30,6 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
-	"yunion.io/x/onecloud/pkg/mcclient/auth"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
 	"yunion.io/x/onecloud/pkg/util/tagutils"
 )
@@ -48,7 +47,7 @@ type SStandaloneAnonResourceBase struct {
 	Id string `width:"128" charset:"ascii" primary:"true" list:"user" create:"optional" json:"id"`
 
 	// 资源描述信息
-	Description string `width:"256" charset:"utf8" get:"user" list:"user" update:"user" create:"optional" json:"description"`
+	Description string `length:"0" charset:"utf8" get:"user" list:"user" update:"user" create:"optional" json:"description"`
 
 	// 是否是模拟资源, 部分从公有云上同步的资源并不真实存在, 例如宿主机
 	// list 接口默认不会返回这类资源，除非显示指定 is_emulate=true 过滤参数
@@ -322,19 +321,29 @@ func (model *SStandaloneAnonResourceBase) SetUserMetadataAll(ctx context.Context
 	return nil
 }
 
-func (model *SStandaloneAnonResourceBase) SetCloudMetadataAll(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential) error {
+func (model *SStandaloneAnonResourceBase) SetCloudMetadataAll(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential, readOnly bool) error {
 	var err error
 	dictStore, err := ensurePrefixString(dictstore, CLOUD_TAG_PREFIX)
 	if err != nil {
 		return errors.Wrap(err, "ensurePrefix")
 	}
-	err = Metadata.SetAll(ctx, model, dictStore, userCred, CLOUD_TAG_PREFIX)
-	if err != nil {
-		return errors.Wrap(err, "SetAll")
+	if readOnly {
+		err = Metadata.SetAllWithoutDelelte(ctx, model, dictStore, userCred)
+		if err != nil {
+			return errors.Wrap(err, "SetAll")
+		}
+	} else {
+		err = Metadata.SetAll(ctx, model, dictStore, userCred, CLOUD_TAG_PREFIX)
+		if err != nil {
+			return errors.Wrap(err, "SetAll")
+		}
 	}
 	userTags := map[string]interface{}{}
 	for k, v := range dictstore {
 		userTags[strings.Replace(k, CLOUD_TAG_PREFIX, USER_TAG_PREFIX, 1)] = v
+	}
+	if readOnly {
+		return Metadata.SetAllWithoutDelelte(ctx, model, userTags, userCred)
 	}
 	return Metadata.SetAll(ctx, model, userTags, userCred, USER_TAG_PREFIX)
 }
@@ -393,8 +402,8 @@ func (model *SStandaloneAnonResourceBase) SetClassMetadataAll(ctx context.Contex
 	return nil
 }
 
-func (model *SStandaloneAnonResourceBase) InheritTo(ctx context.Context, dest IClassMetadataSetter) error {
-	return InheritFromTo(ctx, model, dest)
+func (model *SStandaloneAnonResourceBase) InheritTo(ctx context.Context, userCred mcclient.TokenCredential, dest IClassMetadataSetter) error {
+	return InheritFromTo(ctx, userCred, model, dest)
 }
 
 type IClassMetadataSetter interface {
@@ -404,7 +413,7 @@ type IClassMetadataSetter interface {
 	SetClassMetadataAll(context.Context, map[string]string, mcclient.TokenCredential) error
 }
 
-func InheritFromTo(ctx context.Context, src IClassMetadataOwner, dest IClassMetadataSetter) error {
+func InheritFromTo(ctx context.Context, userCred mcclient.TokenCredential, src IClassMetadataOwner, dest IClassMetadataSetter) error {
 	metadata, err := src.GetAllClassMetadata()
 	if err != nil {
 		return errors.Wrap(err, "GetAllClassMetadata")
@@ -422,15 +431,17 @@ func InheritFromTo(ctx context.Context, src IClassMetadataOwner, dest IClassMeta
 			if sv, ok := metadata[k]; ok {
 				if sv != v {
 					// duplicate value for identical key
-					return errors.Wrapf(httperrors.ErrConflict, "destination has another value for class key %s", k)
+					// return errors.Wrapf(httperrors.ErrConflict, "destination has another value for class key %s", k)
+					log.Warningf("replace class metadata %s from %s to %s", k, v, sv)
 				}
 			} else {
 				// no such class key
-				return errors.Wrapf(httperrors.ErrConflict, "destination has extra class key %s", k)
+				metadata[k] = "None"
+				// return errors.Wrapf(httperrors.ErrConflict, "destination has extra class key %s", k)
 			}
 		}
 	}
-	userCred := auth.AdminCredential()
+	// userCred := auth.AdminCredential()
 	return dest.SetClassMetadataAll(ctx, metadata, userCred)
 }
 
@@ -493,12 +504,16 @@ func (model *SStandaloneAnonResourceBase) IsInSameClass(ctx context.Context, pMo
 	return IsInSameClass(ctx, model, pModel)
 }
 
-func (model *SStandaloneAnonResourceBase) SetSysCloudMetadataAll(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential) error {
+func (model *SStandaloneAnonResourceBase) SetSysCloudMetadataAll(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential, readOnly bool) error {
 	dictStore, err := ensurePrefixString(dictstore, SYS_CLOUD_TAG_PREFIX)
 	if err != nil {
 		return errors.Wrap(err, "ensurePrefixString")
 	}
-	err = Metadata.SetAll(ctx, model, dictStore, userCred, SYS_CLOUD_TAG_PREFIX)
+	if readOnly {
+		err = Metadata.SetAllWithoutDelelte(ctx, model, dictStore, userCred)
+	} else {
+		err = Metadata.SetAll(ctx, model, dictStore, userCred, SYS_CLOUD_TAG_PREFIX)
+	}
 	if err != nil {
 		return errors.Wrap(err, "SetAll")
 	}
@@ -684,24 +699,21 @@ type sPolicyTags struct {
 func (model *SStandaloneAnonResourceBase) PostUpdate(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) {
 	model.SResourceBase.PostUpdate(ctx, userCred, query, data)
 
-	meta := make(map[string]string)
-	err := data.Unmarshal(&meta, "__meta__")
-	if err == nil {
-		model.PerformMetadata(ctx, userCred, nil, meta)
-	}
-
-	model.applyPolicyTags(ctx, userCred, data)
+	model.TrySaveMetadataInput(ctx, userCred, data)
 }
 
 func (model *SStandaloneAnonResourceBase) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
 	model.SResourceBase.PostCreate(ctx, userCred, ownerId, query, data)
 
+	model.TrySaveMetadataInput(ctx, userCred, data)
+}
+
+func (model *SStandaloneAnonResourceBase) TrySaveMetadataInput(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) {
 	meta := make(map[string]string)
 	err := data.Unmarshal(&meta, "__meta__")
 	if err == nil {
 		model.PerformMetadata(ctx, userCred, nil, meta)
 	}
-
 	model.applyPolicyTags(ctx, userCred, data)
 }
 
@@ -710,12 +722,12 @@ func (model *SStandaloneAnonResourceBase) applyPolicyTags(ctx context.Context, u
 	data.Unmarshal(&tags)
 	log.Debugf("applyPolicyTags: %s", jsonutils.Marshal(tags))
 	if len(tags.PolicyObjectTags) > 0 {
-		model.PerformMetadata(ctx, userCred, nil, tagutils.Tagset2MapString(tags.PolicyObjectTags.Flattern()))
+		model.PerformMetadata(ctx, userCred, nil, tagutils.TagsetMap2MapString(tags.PolicyObjectTags.Flattern()))
 	}
 	if model.Keyword() == "project" && len(tags.PolicyProjectTags) > 0 {
-		model.PerformMetadata(ctx, userCred, nil, tagutils.Tagset2MapString(tags.PolicyProjectTags.Flattern()))
+		model.PerformMetadata(ctx, userCred, nil, tagutils.TagsetMap2MapString(tags.PolicyProjectTags.Flattern()))
 	} else if model.Keyword() == "domain" && len(tags.PolicyDomainTags) > 0 {
-		model.PerformMetadata(ctx, userCred, nil, tagutils.Tagset2MapString(tags.PolicyDomainTags.Flattern()))
+		model.PerformMetadata(ctx, userCred, nil, tagutils.TagsetMap2MapString(tags.PolicyDomainTags.Flattern()))
 	}
 }
 

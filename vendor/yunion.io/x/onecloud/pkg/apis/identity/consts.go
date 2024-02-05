@@ -84,6 +84,8 @@ const (
 	IdentitySyncStatusIdle    = "idle"
 
 	MinimalSyncIntervalSeconds = 5 * 60 // 5 minutes
+
+	AUTH_TOKEN_LENGTH = 64
 )
 
 var (
@@ -95,13 +97,13 @@ var (
 	}
 
 	SensitiveDomainConfigMap = map[string][]string{
-		"ldap": []string{
+		"ldap": {
 			"password",
 		},
 	}
 
 	CommonWhitelistOptionMap = map[string][]string{
-		"default": []string{
+		"default": {
 			"enable_quota_check",
 			"default_quota_value",
 			"non_default_domain_projects",
@@ -113,12 +115,13 @@ var (
 			"global_https_proxy",
 			"ignore_nonrunning_guests",
 			"platform_name",
+			"enable_cloud_shell",
 			"platform_names",
 		},
 	}
 
 	ServiceBlacklistOptionMap = map[string][]string{
-		"default": []string{
+		"default": {
 			// ############################
 			// common blacklist options
 			// ############################
@@ -151,6 +154,7 @@ var (
 
 			"is_slave_node",
 			"config_sync_period_seconds",
+			"enable_app_profiling",
 
 			// ############################
 			// db blacklist options
@@ -207,6 +211,7 @@ var (
 			"force_dhcp_probe_ipmi",
 			"tftp_block_size_in_bytes",
 			"tftp_max_timeout_retries",
+			"enable_grub_tftp_download",
 			"lengthy_worker_count",
 			"short_worker_count",
 			// "default_ipmi_password",

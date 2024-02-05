@@ -68,7 +68,7 @@ func (t *MachinePrepareTask) doPrepare(ctx context.Context, obj db.IStandaloneMo
 	if err := machine.SetPrivateIP(ip); err != nil {
 		return errors.Wrapf(err, "Set machine private ip %s", ip)
 	}
-	machine.SetStatus(t.UserCred, api.MachineStatusRunning, "")
+	machine.SetStatus(ctx, t.UserCred, api.MachineStatusRunning, "")
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (t *MachinePrepareTask) OnPreparedFailed(ctx context.Context, machine *mode
 }
 
 func (t *MachinePrepareTask) OnError(ctx context.Context, machine *models.SMachine, err error) {
-	machine.SetStatus(t.UserCred, api.MachineStatusPrepareFail, err.Error())
+	machine.SetStatus(ctx, t.UserCred, api.MachineStatusPrepareFail, err.Error())
 	t.SetStageFailed(ctx, jsonutils.NewString(err.Error()))
 	logclient.LogWithStartable(t, machine, logclient.ActionMachinePrepare, err.Error(), t.UserCred, false)
 }

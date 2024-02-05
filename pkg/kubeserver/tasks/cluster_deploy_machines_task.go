@@ -88,7 +88,7 @@ func (t *ClusterDeployMachinesTask) OnSyncCompleteFailed(ctx context.Context, cl
 
 func (t *ClusterDeployMachinesTask) SetFailed(ctx context.Context, obj db.IStandaloneModel, reason jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
-	cluster.SetStatus(t.UserCred, api.ClusterStatusDeployingFail, reason.String())
+	cluster.SetStatus(ctx, t.UserCred, api.ClusterStatusDeployingFail, reason.String())
 	t.STask.SetStageFailed(ctx, reason)
 	logclient.LogWithStartable(t, obj, logclient.ActionClusterDeploy, reason, t.UserCred, false)
 }

@@ -36,7 +36,7 @@ func (t *ClusterSyncTask) OnInit(ctx context.Context, obj db.IStandaloneModel, d
 			if err := client.GetClustersManager().UpdateClient(cluster, true); err != nil {
 				return nil, errors.Wrap(err, "update cluster to client manager")
 			}
-			if err := cluster.SetStatus(t.GetUserCred(), api.ClusterStatusRunning, "by syncing"); err != nil {
+			if err := cluster.SetStatus(ctx, t.GetUserCred(), api.ClusterStatusRunning, "by syncing"); err != nil {
 				return nil, errors.Wrap(err, "change cluster status to running")
 			}
 		} else {

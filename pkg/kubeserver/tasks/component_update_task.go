@@ -45,7 +45,7 @@ func (t *ComponentUpdateTask) OnInit(ctx context.Context, obj db.IStandaloneMode
 }
 
 func (t *ComponentUpdateTask) OnUpdateComplete(ctx context.Context, obj *models.SComponent, data jsonutils.JSONObject) {
-	obj.SetStatus(t.UserCred, api.ComponentStatusDeployed, "")
+	obj.SetStatus(ctx, t.UserCred, api.ComponentStatusDeployed, "")
 	t.SetStageComplete(ctx, nil)
 }
 
@@ -55,6 +55,6 @@ func (t *ComponentUpdateTask) OnUpdateCompleteFailed(ctx context.Context, obj *m
 
 func (t *ComponentUpdateTask) onError(ctx context.Context, obj *models.SComponent, err error) {
 	reason := err.Error()
-	obj.SetStatus(t.UserCred, api.ComponentStatusUpdateFail, reason)
+	obj.SetStatus(ctx, t.UserCred, api.ComponentStatusUpdateFail, reason)
 	t.STask.SetStageFailed(ctx, jsonutils.NewString(err.Error()))
 }
