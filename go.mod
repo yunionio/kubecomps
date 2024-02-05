@@ -6,6 +6,8 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/ceph/go-ceph v0.0.0-20181217221554-e32f9f0f2e94
+	github.com/containernetworking/cni v1.0.0
+	github.com/containernetworking/plugins v0.8.7
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/flock v0.8.0
