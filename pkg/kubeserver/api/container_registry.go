@@ -72,5 +72,6 @@ type ContainerRegistryDownloadImageInput struct {
 }
 
 type ContainerRegistryListImagesInput struct {
-	Details bool `json:"details"`
+	Details        bool   `json:"details"`
+	RepositoryName string `json:"repository_name"`
 }
