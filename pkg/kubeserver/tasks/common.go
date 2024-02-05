@@ -12,12 +12,12 @@ import (
 type IStatusStandaloneModel interface {
 	db.IStandaloneModel
 
-	SetStatus(userCred mcclient.TokenCredential, status string, reason string) error
+	SetStatus(ctx context.Context, userCred mcclient.TokenCredential, status string, reason string) error
 }
 
 func SetObjectTaskFailed(ctx context.Context, task taskman.ITask, obj IStatusStandaloneModel, status, reason string) {
 	if len(status) > 0 {
-		obj.SetStatus(task.GetUserCred(), status, reason)
+		obj.SetStatus(ctx, task.GetUserCred(), status, reason)
 	}
 	task.SetStageFailed(ctx, jsonutils.NewString(reason))
 }

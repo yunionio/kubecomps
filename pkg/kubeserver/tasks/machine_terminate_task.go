@@ -37,6 +37,6 @@ func (t *MachineTerminateTask) OnInit(ctx context.Context, obj db.IStandaloneMod
 }
 
 func (t *MachineTerminateTask) OnError(ctx context.Context, machine *models.SMachine, err error) {
-	machine.SetStatus(t.UserCred, api.MachineStatusTerminateFail, err.Error())
+	machine.SetStatus(ctx, t.UserCred, api.MachineStatusTerminateFail, err.Error())
 	t.SetStageFailed(ctx, jsonutils.NewString(err.Error()))
 }

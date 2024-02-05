@@ -21,7 +21,7 @@ func InitHandlers(app *appsrv.Application) {
 	apiPrefix := "/api"
 	taskman.AddTaskHandler(apiPrefix, app)
 	usages.AddUsageHandler(apiPrefix, app)
-	appsrv.AddPProfHandler(apiPrefix, app)
+	app.EnableProfiling()
 
 	for _, man := range []db.IModelManager{
 		taskman.TaskManager,

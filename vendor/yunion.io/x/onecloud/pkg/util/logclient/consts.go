@@ -59,6 +59,8 @@ const (
 	ACT_VM_SRC_CHECK                 = "vm_src_check"
 	ACT_VM_START                     = "vm_start"
 	ACT_VM_STOP                      = "vm_stop"
+	ACT_VM_START_RESCUE              = "vm_start_rescue"
+	ACT_VM_STOP_RESCUE               = "vm_stop_rescue"
 	ACT_VM_SUSPEND                   = "vm_suspend"
 	ACT_VM_RESTART                   = "vm_restart"
 	ACT_VM_RESUME                    = "vm_resume"
@@ -206,8 +208,8 @@ const (
 	ACT_SEND_VERIFICATION = "send_verification"
 	ACT_REPULL_SUBCONTACT = "repull_subcontact"
 
-	ACT_SYNC_VPCS        = "sync_vpcs"
-	ACT_SYNC_RECORD_SETS = "sync_record_sets"
+	ACT_ADD_VPCS    = "add_vpcs"
+	ACT_REMOVE_VPCS = "remove_vpcs"
 
 	ACT_DETACH_ALERTRESOURCE          = "detach_alertresoruce"
 	ACT_NETWORK_ADD_VPC               = "network_add_vpc"
@@ -227,6 +229,10 @@ const (
 
 	ACT_RESTART_NETWORK = "restart_network"
 
+	ACT_QGA_NETWORK_INPUT   = "qga_network_input"
+	ACT_QGA_STATUS_UPDATE   = "qga_status_update"
+	ACT_QGA_NETWORK_SUCCESS = "qga_network_success"
+
 	ACT_RECOVERY = "recovery"
 	ACT_PACK     = "pack"
 	ACT_UNPACK   = "unpack"
@@ -238,6 +244,8 @@ const (
 	ACT_CONSOLE           = "console"
 	ACT_WEBSSH            = "webssh"
 	ACT_SET_USER_PASSWORD = "set_user_password"
+
+	ACT_SYNC_OS_INFO = "sync_os_info"
 
 	ACT_PANIC = "panic"
 
@@ -255,5 +263,22 @@ const (
 	ACT_DISSOCIATE = "dissociate"
 
 	ACT_BIND     = "bind"
+	ACT_UNBIND   = "unbind"
 	ACT_PROGRESS = "progress"
+
+	ACT_ADD_BASTION_SERVER = "add_bastion_server"
+
+	ACT_SYNC_TRAFFIC_LIMIT = "sync_traffic_limit"
+
+	ACT_GENERATE_REPORT     = "generate_report"
+	ACT_REPORT_COLLECT_DATA = "report_collect_data"
+	ACT_REPORT_SEND         = "report_send"
+	ACT_REPORT_TEMPLATE     = "report_template"
+
+	ACT_CREATE_SECURITY_GROUP_RULE = "create_security_group_rule"
+	ACT_DELETE_SECURITY_GROUP_RULE = "delete_security_group_rule"
+
+	ACT_CLEAN_PROJECT = "clean_project"
+
+	ACT_COLLECT_METRICS = "collect_metrics"
 )

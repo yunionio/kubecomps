@@ -40,7 +40,7 @@ type ClusterResourceCreateTask struct {
 
 func (t *ClusterResourceCreateTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	resObj, resMan := t.getModelManager(obj)
-	resObj.SetStatus(t.UserCred, api.ClusterResourceStatusCreating, "create resource")
+	resObj.SetStatus(ctx, t.UserCred, api.ClusterResourceStatusCreating, "create resource")
 	t.SetStage("OnCreateComplete", nil)
 	taskman.LocalTaskRun(t, func() (jsonutils.JSONObject, error) {
 		obj, err := models.CreateRemoteObject(ctx, t.UserCred, resMan, resObj, t.GetParams())
@@ -81,7 +81,7 @@ type ClusterResourceUpdateTask struct {
 
 func (t *ClusterResourceUpdateTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	resObj, _ := t.getModelManager(obj)
-	resObj.SetStatus(t.UserCred, api.ClusterResourceStatusUpdating, "update resource")
+	resObj.SetStatus(ctx, t.UserCred, api.ClusterResourceStatusUpdating, "update resource")
 	t.SetStage("OnUpdateComplete", nil)
 	taskman.LocalTaskRun(t, func() (jsonutils.JSONObject, error) {
 		obj, err := models.UpdateRemoteObject(ctx, t.UserCred, resObj, t.GetParams())
@@ -109,7 +109,7 @@ type ClusterResourceDeleteTask struct {
 
 func (t *ClusterResourceDeleteTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	resObj, resMan := t.getModelManager(obj)
-	resObj.SetStatus(t.UserCred, api.ClusterResourceStatusDeleting, "delete resource")
+	resObj.SetStatus(ctx, t.UserCred, api.ClusterResourceStatusDeleting, "delete resource")
 	t.SetStage("OnDeleteComplete", nil)
 	taskman.LocalTaskRun(t, func() (jsonutils.JSONObject, error) {
 		err := models.DeleteRemoteObject(ctx, t.UserCred, resMan, resObj, t.Params)

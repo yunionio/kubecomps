@@ -20,6 +20,7 @@ import (
 	"yunion.io/x/jsonutils"
 
 	"yunion.io/x/onecloud/pkg/apis"
+	"yunion.io/x/onecloud/pkg/util/tagutils"
 )
 
 const (
@@ -59,7 +60,10 @@ func IsValidOrgType(orgType TOrgType) bool {
 }
 
 type OrganizationListInput struct {
-	apis.EnabledStatusInfrasResourceBaseListInput
+	EnabledIdentityBaseResourceListInput
+	apis.SharableResourceBaseListInput
+	apis.StatusResourceBaseListInput
+	// apis.EnabledStatusInfrasResourceBaseListInput
 
 	Type []TOrgType `json:"type"`
 
@@ -67,7 +71,10 @@ type OrganizationListInput struct {
 }
 
 type OrganizationCreateInput struct {
-	apis.EnabledStatusInfrasResourceBaseCreateInput
+	EnabledIdentityBaseResourceCreateInput
+	apis.SharableResourceBaseCreateInput
+	apis.StatusBaseResourceCreateInput
+	// apis.EnabledStatusInfrasResourceBaseCreateInput
 
 	Type TOrgType `json:"type"`
 
@@ -96,7 +103,10 @@ func (info *SOrganizationInfo) String() string {
 }
 
 type OrganizationUpdateInput struct {
-	apis.EnabledStatusInfrasResourceBaseUpdateInput
+	EnabledIdentityBaseUpdateInput
+	// apis.SharableResourceBaseUpdateInput
+	// apis.StatusResourceBaseUpdateInput
+	// apis.EnabledStatusInfrasResourceBaseUpdateInput
 }
 
 type OrganizationPerformAddLevelsInput struct {
@@ -106,8 +116,9 @@ type OrganizationPerformAddLevelsInput struct {
 }
 
 type OrganizationPerformAddNodeInput struct {
-	Tags   map[string]string
-	Weight int
+	Tags        map[string]string
+	Weight      int
+	Description string
 }
 
 type OrganizationPerformSyncInput struct {
@@ -181,4 +192,16 @@ type SProjectOrganization struct {
 type SProjectOrganizationNode struct {
 	Id     string
 	Labels []string
+}
+
+type SOrganizationNodeDetails struct {
+	apis.StandaloneResourceDetails
+
+	SOrganizationNode
+
+	Tags tagutils.TTagSet `json:"tags"`
+
+	Organization string `json:"organization"`
+
+	Type TOrgType `json:"type"`
 }

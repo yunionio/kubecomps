@@ -28,6 +28,8 @@ const (
 	ErrUnauthorized        = errors.Error("UnauthorizedError")
 	ErrNoPermission        = errors.Error("NoPermission")
 	ErrNoSuchProvder       = errors.Error("no such provider")
+	ErrTooManyRequests     = errors.Error("TooManyRequests")
+	ErrInvalidSku          = errors.Error("InvalidSku")
 
 	ErrNotFound        = errors.ErrNotFound
 	ErrDuplicateId     = errors.ErrDuplicateId

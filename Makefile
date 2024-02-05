@@ -26,7 +26,7 @@ LDFLAGS := "-w \
 
 export GO111MODULE:=on
 export GOPROXY:=direct
-RELEASE_BRANCH:=master
+RELEASE_BRANCH:=release/3.11
 GO_BUILD := go build -mod vendor -buildvcs=false -ldflags $(LDFLAGS)
 
 CMDS := $(shell find $(ROOT_DIR)/cmd -mindepth 1 -maxdepth 1 -type d)
@@ -52,7 +52,7 @@ prepare_dir:
 
 mod:
 	GOPROXY=$(GOPROXY) GONOSUMDB=yunion.io/x go get yunion.io/x/onecloud@$(RELEASE_BRANCH)
-	GOPROXY=$(GOPROXY) GONOSUMDB=yunion.io/x go get $(patsubst %,%@master,$(shell GO111MODULE=on go mod edit -print | sed -n -e 's|.*\(yunion.io/x/[a-z].*\) v.*|\1|p' | grep -v '/onecloud$$'))
+	#GOPROXY=$(GOPROXY) GONOSUMDB=yunion.io/x go get $(patsubst %,%@master,$(shell GO111MODULE=on go mod edit -print | sed -n -e 's|.*\(yunion.io/x/[a-z].*\) v.*|\1|p' | grep -v '/onecloud$$'))
 	go mod tidy
 	go mod vendor -v
 

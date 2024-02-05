@@ -149,7 +149,7 @@ func (obj *SDeployment) SetStatusByRemoteObject(ctx context.Context, userCred mc
 		return errors.Wrap(err, "get pod info")
 	}
 	deployStatus := getters.GetDeploymentStatus(podInfo, *deploy)
-	return obj.SetStatus(userCred, deployStatus.Status, "update from remote")
+	return obj.SetStatus(ctx, userCred, deployStatus.Status, "update from remote")
 }
 
 func (obj *SDeployment) GetRawReplicaSets(cli *client.ClusterManager, deploy *apps.Deployment) ([]*apps.ReplicaSet, error) {

@@ -23,7 +23,7 @@ type ClusterResourceSyncTask struct {
 
 func (t *ClusterResourceSyncTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	resObj, _ := t.getModelManager(obj)
-	resObj.SetStatus(t.UserCred, api.ClusterResourceStatusSyncing, "sync resource")
+	resObj.SetStatus(ctx, t.UserCred, api.ClusterResourceStatusSyncing, "sync resource")
 	t.SetStage("OnSyncComplete", nil)
 	taskman.LocalTaskRun(t, func() (jsonutils.JSONObject, error) {
 		cAPI := models.GetClusterResAPI()

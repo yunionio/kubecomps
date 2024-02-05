@@ -170,7 +170,7 @@ func (obj *SDaemonSet) SetStatusByRemoteObject(ctx context.Context, userCred mcc
 		return errors.Wrap(err, "get pod info")
 	}
 	status := getters.GetDaemonsetStatus(podInfo, *ds)
-	return obj.SetStatus(userCred, status.Status, "update from remote")
+	return obj.SetStatus(ctx, userCred, status.Status, "update from remote")
 }
 
 func (obj *SDaemonSet) NewRemoteObjectForUpdate(cli *client.ClusterManager, remoteObj interface{}, data jsonutils.JSONObject) (interface{}, error) {
