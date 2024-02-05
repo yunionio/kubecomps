@@ -1643,7 +1643,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
-# yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20230714020436-02f1bfcc8e8e
+# yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20240204082701-44d14a9946c9
 ## explicit; go 1.18
 yunion.io/x/cloudmux/pkg/apis
 yunion.io/x/cloudmux/pkg/apis/billing
@@ -1659,14 +1659,14 @@ yunion.io/x/code-generator/pkg/swagger-gen/generators
 ## explicit; go 1.12
 yunion.io/x/executor/apis
 yunion.io/x/executor/client
-# yunion.io/x/jsonutils v1.0.1-0.20230613121553-0f3b41e2ef19
+# yunion.io/x/jsonutils v1.0.1-0.20240203102553-4096f103b401
 ## explicit; go 1.18
 yunion.io/x/jsonutils
 # yunion.io/x/log v1.0.1-0.20230411060016-feb3f46ab361
 ## explicit; go 1.12
 yunion.io/x/log
 yunion.io/x/log/hooks
-# yunion.io/x/onecloud v0.0.0-20230718094204-288bb6d900db
+# yunion.io/x/onecloud v0.0.0-20240205032410-08f92a8d89aa
 ## explicit; go 1.18
 yunion.io/x/onecloud/locales
 yunion.io/x/onecloud/pkg/apis
@@ -1711,15 +1711,17 @@ yunion.io/x/onecloud/pkg/mcclient/modules/identity
 yunion.io/x/onecloud/pkg/mcclient/modules/image
 yunion.io/x/onecloud/pkg/mcclient/modules/logger
 yunion.io/x/onecloud/pkg/mcclient/modules/notify
+yunion.io/x/onecloud/pkg/mcclient/modules/yunionconf
 yunion.io/x/onecloud/pkg/mcclient/options
 yunion.io/x/onecloud/pkg/mcclient/options/identity
 yunion.io/x/onecloud/pkg/monitor/notifydrivers/feishu
 yunion.io/x/onecloud/pkg/proxy
 yunion.io/x/onecloud/pkg/util/ansible
 yunion.io/x/onecloud/pkg/util/atexit
-yunion.io/x/onecloud/pkg/util/bitmap
 yunion.io/x/onecloud/pkg/util/choices
 yunion.io/x/onecloud/pkg/util/ctx
+yunion.io/x/onecloud/pkg/util/dbutils
+yunion.io/x/onecloud/pkg/util/fileutils2
 yunion.io/x/onecloud/pkg/util/hashcache
 yunion.io/x/onecloud/pkg/util/iproute2
 yunion.io/x/onecloud/pkg/util/logclient
@@ -1727,12 +1729,13 @@ yunion.io/x/onecloud/pkg/util/netutils2
 yunion.io/x/onecloud/pkg/util/nopanic
 yunion.io/x/onecloud/pkg/util/procutils
 yunion.io/x/onecloud/pkg/util/rbacutils
+yunion.io/x/onecloud/pkg/util/regutils2
 yunion.io/x/onecloud/pkg/util/seclib2
 yunion.io/x/onecloud/pkg/util/splitable
 yunion.io/x/onecloud/pkg/util/ssh
 yunion.io/x/onecloud/pkg/util/stringutils2
 yunion.io/x/onecloud/pkg/util/tagutils
-# yunion.io/x/pkg v1.0.1-0.20230711090507-0aafe0f0c9db
+# yunion.io/x/pkg v1.10.1-0.20240127153242-cdf9dc071f4f
 ## explicit; go 1.18
 yunion.io/x/pkg/appctx
 yunion.io/x/pkg/errors
@@ -1765,6 +1768,7 @@ yunion.io/x/pkg/util/seclib
 yunion.io/x/pkg/util/secrules
 yunion.io/x/pkg/util/sets
 yunion.io/x/pkg/util/signalutils
+yunion.io/x/pkg/util/sortutils
 yunion.io/x/pkg/util/streamutils
 yunion.io/x/pkg/util/stringutils
 yunion.io/x/pkg/util/timeutils
@@ -1775,14 +1779,14 @@ yunion.io/x/pkg/utils
 # yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e
 ## explicit; go 1.12
 yunion.io/x/s3cli
-# yunion.io/x/sqlchemy v1.1.2-0.20230712025503-b1892bc5944c
+# yunion.io/x/sqlchemy v1.1.3-0.20240103021517-2be4fb49bd3b
 ## explicit; go 1.17
 yunion.io/x/sqlchemy
 yunion.io/x/sqlchemy/backends
 yunion.io/x/sqlchemy/backends/clickhouse
 yunion.io/x/sqlchemy/backends/mysql
 yunion.io/x/sqlchemy/backends/sqlite
-# yunion.io/x/structarg v0.0.0-20220312084958-9c6c79c7d1c6
+# yunion.io/x/structarg v0.0.0-20231017124457-df4d5009457c
 ## explicit; go 1.12
 yunion.io/x/structarg
 # github.com/go-logr/logr => github.com/go-logr/logr v0.4.0

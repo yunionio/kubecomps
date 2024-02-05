@@ -21,10 +21,8 @@ import (
 	"time"
 
 	"yunion.io/x/jsonutils"
-	"yunion.io/x/pkg/util/rbacscope"
 
 	api "yunion.io/x/onecloud/pkg/apis/identity"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 )
 
 type KeystoneEndpointV2 struct {
@@ -62,7 +60,8 @@ type KeystoneUserV2 struct {
 	// 用户名
 	Name string `json:"name"`
 	// 用户username
-	Username string `json:"username"`
+	Username        string `json:"username"`
+	IsSystemAccount bool   `json:"is_system_account"`
 	// 用户角色列表
 	Roles []KeystoneRoleV2 `json:"roles"`
 }
@@ -163,6 +162,10 @@ func (token *TokenCredentialV2) GetUserId() string {
 	return token.User.Id
 }
 
+func (token *TokenCredentialV2) IsSystemAccount() bool {
+	return token.User.IsSystemAccount
+}
+
 func (token *TokenCredentialV2) GetRoles() []string {
 	roles := make([]string, 0)
 	for i := 0; i < len(token.User.Roles); i++ {
@@ -208,7 +211,7 @@ func (this *TokenCredentialV2) HasSystemAdminPrivilege() bool {
 	return this.IsAdmin() && this.GetTenantName() == "system"
 }
 
-func (this *TokenCredentialV2) IsAllow(scope rbacscope.TRbacScope, service string, resource string, action string, extra ...string) rbacutils.SPolicyResult {
+/*func (this *TokenCredentialV2) IsAllow(scope rbacscope.TRbacScope, service string, resource string, action string, extra ...string) rbacutils.SPolicyResult {
 	if this.isAllow(scope, service, resource, action, extra...) {
 		return rbacutils.PolicyAllow
 	} else {
@@ -222,7 +225,7 @@ func (this *TokenCredentialV2) isAllow(scope rbacscope.TRbacScope, service strin
 	} else {
 		return true
 	}
-}
+}*/
 
 func (this *TokenCredentialV2) Len() int {
 	return this.ServiceCatalog.Len()

@@ -51,7 +51,7 @@ func (t *MachineCreateTask) OnMachinePreparedFailed(ctx context.Context, obj db.
 }
 
 func (t *MachineCreateTask) OnError(ctx context.Context, machine *models.SMachine, err error) {
-	machine.SetStatus(t.UserCred, api.MachineStatusCreateFail, err.Error())
+	machine.SetStatus(ctx, t.UserCred, api.MachineStatusCreateFail, err.Error())
 	t.SetStageFailed(ctx, jsonutils.NewString(err.Error()))
 	logclient.LogWithStartable(t, machine, logclient.ActionMachineCreate, err.Error(), t.UserCred, false)
 }

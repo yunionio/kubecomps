@@ -63,7 +63,7 @@ func (t *FedResourceSyncTask) OnInit(ctx context.Context, obj db.IStandaloneMode
 	t.SetStage("OnSyncComplete", nil)
 	fedApi := models.GetFedResAPI()
 	fedObj := obj.(models.IFedModel)
-	fedObj.SetStatus(t.GetUserCred(), api.FederatedResourceStatusSyncing, "start syncing")
+	fedObj.SetStatus(ctx, t.GetUserCred(), api.FederatedResourceStatusSyncing, "start syncing")
 	taskman.LocalTaskRun(t, func() (jsonutils.JSONObject, error) {
 		clusters, err := fedApi.GetAttachedClusters(fedObj)
 		if err != nil {
@@ -82,7 +82,7 @@ func (t *FedResourceSyncTask) OnInit(ctx context.Context, obj db.IStandaloneMode
 }
 
 func (t *FedResourceSyncTask) OnSyncComplete(ctx context.Context, obj models.IFedModel, data jsonutils.JSONObject) {
-	obj.SetStatus(t.GetUserCred(), api.FederatedResourceStatusActive, "sync complete")
+	obj.SetStatus(ctx, t.GetUserCred(), api.FederatedResourceStatusActive, "sync complete")
 	t.SetStageComplete(ctx, nil)
 	logclient.LogWithStartable(t, obj, logclient.ActionResourceSync, nil, t.GetUserCred(), true)
 }
