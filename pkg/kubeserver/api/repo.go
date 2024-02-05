@@ -44,6 +44,7 @@ type RepoListInput struct {
 	apis.StatusInfrasResourceBaseListInput
 
 	Type string `json:"type"`
+	Url  string `json:"url"`
 }
 
 type RepoDetail struct {
