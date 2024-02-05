@@ -97,6 +97,9 @@ func (man *SRepoManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery,
 	if input.Type != "" {
 		q = q.Equals("type", input.Type)
 	}
+	if input.Url != "" {
+		q = q.Equals("url", input.Url)
+	}
 	return q, nil
 }
 
