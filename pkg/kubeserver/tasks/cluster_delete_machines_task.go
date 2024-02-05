@@ -107,7 +107,7 @@ func (t *ClusterDeleteMachinesTask) OnSyncStatusFailed(ctx context.Context, clus
 }
 
 func (t *ClusterDeleteMachinesTask) OnError(ctx context.Context, cluster *models.SCluster, err string) {
-	cluster.SetStatus(t.UserCred, api.ClusterStatusError, err)
+	cluster.SetStatus(ctx, t.UserCred, api.ClusterStatusError, err)
 	t.SetStageFailed(ctx, jsonutils.NewString(err))
 	logclient.LogWithStartable(t, cluster, logclient.ActionClusterDeleteMachine, err, t.UserCred, false)
 }

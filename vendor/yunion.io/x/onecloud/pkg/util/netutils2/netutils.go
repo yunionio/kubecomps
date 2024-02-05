@@ -130,42 +130,44 @@ func Netlen2Mask(netmasklen int) string {
 	return netutils.Netlen2Mask(netmasklen)
 }
 
-func addRoute(routes *[][]string, net, gw string) {
-	for _, rt := range *routes {
+func addRoute(routes [][]string, net, gw string) [][]string {
+	for _, rt := range routes {
 		if rt[0] == net {
-			return
+			return routes
 		}
 	}
-	*routes = append(*routes, []string{net, gw})
+	return append(routes, []string{net, gw})
 }
 
-func extendRoutes(routes *[][]string, nicRoutes []types.SRoute) error {
+func extendRoutes(routes [][]string, nicRoutes []types.SRoute) [][]string {
 	for i := 0; i < len(nicRoutes); i++ {
-		addRoute(routes, nicRoutes[i][0], nicRoutes[i][1])
+		routes = addRoute(routes, nicRoutes[i][0], nicRoutes[i][1])
 	}
-	return nil
+	return routes
 }
 
 func isExitAddress(ip string) bool {
 	ipv4, err := netutils.NewIPV4Addr(ip)
 	if err != nil {
+		log.Errorf("NewIPV4Addr %s fail %s", ip, err)
 		return false
 	}
-	return !netutils.IsPrivate(ipv4) || netutils.IsHostLocal(ipv4) || netutils.IsLinkLocal(ipv4)
+	return netutils.IsExitAddress(ipv4)
 }
 
-func AddNicRoutes(routes *[][]string, nicDesc *types.SServerNic, mainIp string, nicCnt int, privatePrefixes []string) {
+func AddNicRoutes(routes [][]string, nicDesc *types.SServerNic, mainIp string, nicCnt int) [][]string {
 	if mainIp == nicDesc.Ip {
-		return
+		return routes
 	}
 	if len(nicDesc.Routes) > 0 {
-		extendRoutes(routes, nicDesc.Routes)
+		routes = extendRoutes(routes, nicDesc.Routes)
 	} else if len(nicDesc.Gateway) > 0 && !isExitAddress(nicDesc.Ip) &&
 		nicCnt == 2 && nicDesc.Ip != mainIp && isExitAddress(mainIp) {
-		for _, pref := range GetPrivatePrefixes(privatePrefixes) {
-			addRoute(routes, pref, nicDesc.Gateway)
+		for _, pref := range netutils.GetPrivateIPRanges() {
+			routes = addRoute(routes, pref.String(), nicDesc.Gateway)
 		}
 	}
+	return routes
 }
 
 func GetNicDns(nicdesc *types.SServerNic) []string {
@@ -192,9 +194,15 @@ type SNetInterface struct {
 	name string
 	Addr string
 	Mask net.IPMask
-	Mac  string
+	mac  string
 
 	Mtu int
+
+	VlanId     int
+	VlanParent *SNetInterface
+
+	BondingMode   int
+	BondingSlaves []*SNetInterface
 }
 
 var (
@@ -243,7 +251,7 @@ func (n *SNetInterface) FetchConfig() {
 func (n *SNetInterface) fetchConfig(expectIp string) {
 	n.Addr = ""
 	n.Mask = nil
-	n.Mac = ""
+	n.mac = ""
 	// n.Mtu = 0
 	inter := n.FetchInter()
 	if inter == nil {
@@ -252,7 +260,7 @@ func (n *SNetInterface) fetchConfig(expectIp string) {
 
 	n.Mtu = inter.MTU
 
-	n.Mac = inter.HardwareAddr.String()
+	n.mac = inter.HardwareAddr.String()
 	addrs, err := inter.Addrs()
 	if err == nil {
 		for _, addr := range addrs {
@@ -270,6 +278,43 @@ func (n *SNetInterface) fetchConfig(expectIp string) {
 		}
 	}
 
+	// check vlanId
+	vlanConf := getVlanConfig(n.name)
+	if vlanConf != nil {
+		n.VlanId = vlanConf.VlanId
+		n.VlanParent = NewNetInterface(vlanConf.Parent)
+	} else {
+		n.VlanId = 1
+		n.VlanParent = nil
+	}
+
+	// check bonding
+	bondingConf := getBondingConfig(n.name)
+	if bondingConf != nil {
+		n.BondingMode = bondingConf.Mode
+		for _, slave := range bondingConf.Slaves {
+			n.BondingSlaves = append(n.BondingSlaves, NewNetInterface(slave))
+		}
+	}
+}
+
+func (n *SNetInterface) GetMac() string {
+	return n.mac
+}
+
+func (n *SNetInterface) GetAllMacs() []string {
+	macs := make([]string, 0, len(n.BondingSlaves)+1)
+	find := false
+	for _, inf := range n.BondingSlaves {
+		macs = append(macs, inf.GetMac())
+		if n.mac == inf.GetMac() {
+			find = true
+		}
+	}
+	if !find {
+		macs = append(macs, n.mac)
+	}
+	return macs
 }
 
 // https://kris.io/2015/10/01/kvm-network-performance-tso-and-gso-turn-it-off/

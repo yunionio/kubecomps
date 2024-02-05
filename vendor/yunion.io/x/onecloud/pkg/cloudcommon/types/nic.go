@@ -17,32 +17,45 @@ package types
 import (
 	"net"
 
+	"yunion.io/x/cloudmux/pkg/apis/compute"
 	"yunion.io/x/pkg/util/netutils"
 )
 
 type SNic struct {
-	Type    string   `json:"nic_type"`
+	Type compute.TNicType `json:"nic_type"`
+
 	Domain  string   `json:"domain"`
 	Wire    string   `json:"wire"`
 	IpAddr  string   `json:"ip_addr"`
 	WireId  string   `json:"wire_id"`
 	NetId   string   `json:"net_id"`
-	Rate    int64    `json:"rate"`
-	Mtu     int64    `json:"mtu"`
+	Rate    int      `json:"rate"`
+	Mtu     int16    `json:"mtu"`
 	Mac     string   `json:"mac"`
 	Dns     string   `json:"dns"`
 	Ntp     string   `json:"ntp"`
-	MaskLen int8     `json:"masklen"`
+	Masklen int8     `json:"masklen"`
 	Net     string   `json:"net"`
 	Gateway string   `json:"gateway"`
 	LinkUp  bool     `json:"link_up"`
 	Routes  []SRoute `json:"routes,omitempty"`
+
+	Ip6Addr  string `json:"ip6_addr"`
+	Masklen6 uint8  `json:"masklen6"`
+	Gateway6 string `json:"gateway6"`
+
+	Interface string `json:"interface"`
+	Bridge    string `json:"bridge"`
+
+	VlanId int `json:"vlan_id"`
+
+	Bandwidth int `json:"bandwidth"`
 }
 
 type SRoute []string
 
 func (n SNic) GetNetMask() string {
-	return netutils.Masklen2Mask(n.MaskLen).String()
+	return netutils.Masklen2Mask(n.Masklen).String()
 }
 
 func (n SNic) GetMac() net.HardwareAddr {
@@ -64,7 +77,7 @@ type SServerNic struct {
 	NetId     string   `json:"net_id"`
 	Mac       string   `json:"mac"`
 	BandWidth int      `json:"bw"`
-	Mtu       int      `json:"mtu,omitempty"`
+	Mtu       int16    `json:"mtu,omitempty"`
 	Dns       string   `json:"dns"`
 	Ntp       string   `json:"ntp"`
 	Net       string   `json:"net"`
@@ -72,9 +85,17 @@ type SServerNic struct {
 	Gateway   string   `json:"gateway"`
 	Ifname    string   `json:"ifname"`
 	Routes    []SRoute `json:"routes,omitempty"`
-	NicType   string   `json:"nic_type,omitempty"`
-	LinkUp    bool     `json:"link_up,omitempty"`
-	TeamWith  string   `json:"team_with,omitempty"`
+
+	Ip6      string `json:"ip6"`
+	Masklen6 int    `json:"masklen6"`
+	Gateway6 string `json:"gateway6"`
+
+	IsDefault bool `json:"is_default"`
+
+	NicType compute.TNicType `json:"nic_type,omitempty"`
+
+	LinkUp   bool   `json:"link_up,omitempty"`
+	TeamWith string `json:"team_with,omitempty"`
 
 	TeamingMaster *SServerNic   `json:"-"`
 	TeamingSlaves []*SServerNic `json:"-"`
@@ -98,11 +119,15 @@ func (n SServerNic) ToNic() SNic {
 		Mac:     n.Mac,
 		Dns:     n.Dns,
 		Ntp:     n.Ntp,
-		MaskLen: int8(n.Masklen),
+		Masklen: int8(n.Masklen),
 		Net:     n.Net,
 		Gateway: n.Gateway,
 		Routes:  n.Routes,
 		LinkUp:  n.LinkUp,
-		Mtu:     int64(n.Mtu),
+		Mtu:     n.Mtu,
+
+		Ip6Addr:  n.Ip6,
+		Masklen6: uint8(n.Masklen6),
+		Gateway6: n.Gateway6,
 	}
 }

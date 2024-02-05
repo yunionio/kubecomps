@@ -375,7 +375,7 @@ func (m *SMachine) PostCreate(ctx context.Context, userCred mcclient.TokenCreden
 }
 
 func (m *SMachine) StartMachineCreateTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	if err := m.SetStatus(userCred, api.MachineStatusCreating, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.MachineStatusCreating, ""); err != nil {
 		return errors.Wrapf(err, "set status to %s", api.MachineStatusCreating)
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "MachineCreateTask", m, userCred, data, parentTaskId, "", nil)
@@ -454,7 +454,7 @@ func (m *SMachine) ValidatePrepareCondition(ctx context.Context, userCred mcclie
 }
 
 func (m *SMachine) StartPrepareTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	if err := m.SetStatus(userCred, api.MachineStatusPrepare, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.MachineStatusPrepare, ""); err != nil {
 		return err
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "MachinePrepareTask", m, userCred, data, parentTaskId, "", nil)
@@ -523,7 +523,7 @@ func (m *SMachine) PerformTerminate(ctx context.Context, userCred mcclient.Token
 
 // StartTerminateTask invoke by MachineBatchDeleteTask
 func (m *SMachine) StartTerminateTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	if err := m.SetStatus(userCred, api.MachineStatusTerminating, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.MachineStatusTerminating, ""); err != nil {
 		return err
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "MachineTerminateTask", m, userCred, data, parentTaskId, "", nil)

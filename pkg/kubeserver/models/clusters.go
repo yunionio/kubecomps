@@ -29,7 +29,6 @@ import (
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/lockman"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db/taskman"
-	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
@@ -781,10 +780,6 @@ func (m *SClusterManager) PerformPreCheck(ctx context.Context, userCred mcclient
 	return driver.PreCheck(s, data)
 }
 
-func (m *SClusterManager) AllowGetPropertyUsableInstances(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return userCred.IsAllow(rbacscope.ScopeSystem, m.KeywordPlural(), policy.PolicyActionGet, "usable-instances").Result.IsAllow()
-}
-
 func (m *SClusterManager) GetPropertyUsableInstances(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
 	driver, err := m.GetDriverByQuery(query)
 	if err != nil {
@@ -912,14 +907,14 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 		if err := c.IsHealthy(); err == nil {
 			prevStatus := c.GetStatus()
 			if c.GetStatus() != api.ClusterStatusRunning {
-				if err := c.SetStatus(userCred, api.ClusterStatusRunning, "by health check cronjob"); err != nil {
+				if err := c.SetStatus(ctx, userCred, api.ClusterStatusRunning, "by health check cronjob"); err != nil {
 					log.Errorf("Set cluster %s status to running error: %v", c.GetName(), err)
 				} else {
 					c.Status = api.ClusterStatusRunning
 				}
 				if err := client.GetClustersManager().UpdateClient(c, false); err != nil {
 					log.Errorf("Update cluster %s client error: %v", c.GetName(), err)
-					c.SetStatus(userCred, prevStatus, err.Error())
+					c.SetStatus(ctx, userCred, prevStatus, err.Error())
 				} else {
 					if err := c.StartSyncTask(ctx, userCred, nil, ""); err != nil {
 						log.Errorf("cluster %s StartSyncTask when health check error: %v", c.GetId(), err)
@@ -928,7 +923,7 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 			}
 			continue
 		} else {
-			c.SetStatus(userCred, api.ClusterStatusLost, err.Error())
+			c.SetStatus(ctx, userCred, api.ClusterStatusLost, err.Error())
 			client.GetClustersManager().RemoveClient(c.GetId())
 		}
 	}
@@ -1079,7 +1074,7 @@ func (c *SCluster) PostCreate(ctx context.Context, userCred mcclient.TokenCreden
 }
 
 func (c *SCluster) StartClusterCreateTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	c.SetStatus(userCred, api.ClusterStatusCreating, "")
+	c.SetStatus(ctx, userCred, api.ClusterStatusCreating, "")
 	task, err := taskman.TaskManager.NewTask(ctx, "ClusterCreateTask", c, userCred, data, parentTaskId, "", nil)
 	if err != nil {
 		return err
@@ -1195,7 +1190,7 @@ func (c *SCluster) CustomizeDelete(ctx context.Context, userCred mcclient.TokenC
 }
 
 func (c *SCluster) StartClusterDeleteTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	if err := c.SetStatus(userCred, api.ClusterStatusDeleting, ""); err != nil {
+	if err := c.SetStatus(ctx, userCred, api.ClusterStatusDeleting, ""); err != nil {
 		return err
 	}
 	if err := client.GetClustersManager().RemoveClient(c.GetId()); err != nil {
@@ -1500,10 +1495,6 @@ func (c *SCluster) PerformApplyAddons(ctx context.Context, userCred mcclient.Tok
 		return nil, err
 	}
 	return nil, nil
-}
-
-func (c *SCluster) AllowGetDetailsAddons(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return c.AllowGetDetails(ctx, userCred, query)
 }
 
 func (c *SCluster) genAddonsManifestConfigByQuery(query api.ClusterGetAddonsInput) *api.ClusterAddonsManifestConfig {
@@ -1867,7 +1858,7 @@ func (c *SCluster) CreateMachines(ctx context.Context, userCred mcclient.TokenCr
 }
 
 func (c *SCluster) StartDeployMachinesTask(ctx context.Context, userCred mcclient.TokenCredential, action api.ClusterDeployAction, machineIds []string, parentTaskId string, skipDownloads bool) error {
-	if err := c.SetStatus(userCred, api.ClusterStatusDeploying, ""); err != nil {
+	if err := c.SetStatus(ctx, userCred, api.ClusterStatusDeploying, ""); err != nil {
 		return err
 	}
 
@@ -1931,7 +1922,7 @@ func (c *SCluster) StartDeleteMachinesTask(ctx context.Context, userCred mcclien
 	}
 	mids := []jsonutils.JSONObject{}
 	for _, m := range ms {
-		m.SetStatus(userCred, api.MachineStatusDeleting, "ClusterDeleteMachinesTask")
+		m.SetStatus(ctx, userCred, api.MachineStatusDeleting, "ClusterDeleteMachinesTask")
 		mids = append(mids, jsonutils.NewString(m.GetId()))
 	}
 	data.Set("machines", jsonutils.NewArray(mids...))
@@ -2099,7 +2090,7 @@ func (c *SCluster) ReRunDeployingComponents() error {
 		comp := comps[i]
 		errgrp.Go(func() error {
 			if comp.GetStatus() == api.ComponentStatusDeploying {
-				if err := comp.StartSelfUpdate(GetAdminCred(), c); err != nil {
+				if err := comp.StartSelfUpdate(context.Background(), GetAdminCred(), c); err != nil {
 					return errors.Wrap(err, "start component self update")
 				}
 			}

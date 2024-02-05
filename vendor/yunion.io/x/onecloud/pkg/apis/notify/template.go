@@ -101,18 +101,18 @@ const (
 	PWD_EXPIRE_SOON_TITLE_EN = `{{- $d := .resource_details -}}
 	{{ $d.account }}:Your password is valid and will expire soon`
 	PWD_EXPIRE_SOON_CONTENT_CN = `{{- $d := .resource_details -}}
-	{{ $d.account }}:您的密码有效期将过，请及时登录平台更新密码。`
+	{{ $d.account }}:您的密码将在{{ .advance_days }} 天后失效，请及时登录平台更新密码。`
 	PWD_EXPIRE_SOON_CONTENT_EN = `{{- $d := .resource_details -}}
-	{{ $d.account }}:Your password is valid and will expire soon. Please log in to the platform in time to update your password.`
+	{{ $d.account }}:Your password will expire in {{ .advance_days }} days. Please log in to the platform in time to update your password.`
 )
 
 // 资源即将到期通知
 const (
 	EXPIRED_RELEASE_TITLE_CN = `{{- $d := .resource_details -}}
 	{{ $d.project }}项目的
-	{{ .resource_type_display }}{{ $d.name }}到期前{{ .advance_days }}天通知`
+	{{ .resource_type_display }}{{ $d.name }}即将到期`
 	EXPIRED_RELEASE_TITLE_EN = `{{- $d := .resource_details -}}
-	{{ .advance_days }} days notice before {{ .resource_type }} {{ $d.name }} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} expiration`
+	{{ .resource_type }} {{ $d.name }} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} expiration`
 	EXPIRED_RELEASE_CONTENT_CN = `{{- $d := .resource_details -}}
 	您在{{ $d.project }}项目的
 	{{- if $d.brand -}}
@@ -126,7 +126,7 @@ const (
 	{{- if $d.public_dns -}}
 	，外网地址为{{ $d.public_dns }}:{{ $d.public_connect_port }}的
 	{{- end -}}
-	{{ .resource_type_display }}{{ $d.name }}还有{{ .advance_days }}天就要到期释放，{{ if $d.auto_renew }}到期已开启自动续费，{{ end }}如有其它变更，请尽快前往控制台处理`
+	{{ .resource_type_display }}{{ $d.name }}将在{{ .advance_days }}天后到期释放，{{ if $d.auto_renew }}到期已开启自动续费，{{ end }}如有其它变更，请尽快前往控制台处理`
 	EXPIRED_RELEASE_CONTENT_EN = `{{- $d := .resource_details -}}
 	Your {{ if $d.brand -}} {{ $d.brand }} {{ end -}} {{ .resource_type }} {{ $d.name }} {{ if $d.public_dns -}} with external address {{ $d.public_dns }}:{{ $d.public_connect_port }} {{ end -}} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} will expire and be released in {{ .advance_days }} days. {{ if $d.auto_renew }}It has turned on automatic renewal. {{ end }}If there are other changes, please go to the console as soon as possible.`
 )
@@ -226,7 +226,7 @@ const (
 	，请尽快前往控制台进行处理
 	{{- end -}}`
 	COMMON_CONTENT_EN = `{{- $d := .resource_details -}}
-	Your {{ if $d.brand -}} {{ $d.brand }} {{ end -}} {{ .resource_type_display }} {{ $d.name }} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} has been {{ .action_display }} {{ .result_display }}
+	Your {{- if $d.brand -}} {{ $d.brand }} {{ end -}} {{ .resource_type_display }} {{ $d.name }} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} has been {{ .action_display }} {{ .result_display }}
 	{{- if eq .result "failed" -}}
 	. And please go to the console as soon as possible to process.
 	{{- end -}}`
@@ -432,7 +432,7 @@ const (
 // 资源变更通知
 const (
 	UPDATE_TITLE_CN = `{{- $d := .resource_details -}}
-	if {{ $d.project }}
+	 {{- if $d.project -}}
 	{{ $d.project }}项目的
 	{{- end -}}
 	{{ .resource_type_display }}{{ $d.name }}{{ .action_display }}成功`
@@ -440,7 +440,7 @@ const (
 	The {{ .resource_type }} {{ $d.name }} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} {{ .action_display }} successfully`
 	UPDATE_CONTENT_CN = `{{- $d := .resource_details -}}
 	您
-	if {{$d.project }}
+	 {{- if $d.project -}}
 	在{{ $d.project }}项目
 	{{- end -}}
 	{{- if $d.brand -}}
@@ -501,4 +501,33 @@ const (
 	服务{{ d.service_name}} worker阻塞半小时，请及时检查。`
 	WORK_BLOCK_CONTENT_EN = `{{- $d := .resource_details -}}
 	The service: {{ d.service_name}} worker has been block 30 minutes.Please verify the service in time.`
+)
+
+// TODO
+// 资源挂载\卸载通知
+const (
+// ACTION_ATTACH_TITLE_CN = `{{- $d := .resource_details -}}
+// 操作日志超出设置数量{{ $d.exceed_count }}条，当前{{ $d.current_count }}条`
+// ACTION_ATTACH_TITLE_EN = `{{- $d := .resource_details -}}
+// Action logs excced expected count {{ $d.exceed_count }}, current count is {{ $d.current_count }}`
+// ACTION_ATTACH_CONTENT_CN = `{{- $d := .resource_details.action -}}
+// 当前日志 ID: {{ $d.id }}`
+// ACTION_ATTACH_CONTENT_EN = `{{- $d := .resource_details.action -}}
+// Current log ID: {{ $d.id }}`
+)
+
+const (
+	STATUS_CHANGED_TITLE_CN = `{{- $d := .resource_details -}}
+		{{ $d.project }}项目的
+		{{ .resource_type_display }}{{ $d.name }}状态发生变更`
+	STATUS_CHANGED_TITLE_EN = `{{- $d := .resource_details -}}
+		{{ .resource_type }} {{ $d.name }} {{ if $d.project -}} in project {{ $d.project }} {{ end -}} status changed`
+	STATUS_CHANGED_CONTENT_CN = `{{- $d := .resource_details -}}
+		您在{{ $d.project }}项目的
+		{{- if $d.brand -}}
+		{{ $d.brand }}平台
+		{{- end -}}
+		{{ .resource_type_display }}{{ $d.name }}状态发生变更,原状态为:{{ $d.old_status }},变更后状态为{{$d.new_status }}`
+	STATUS_CHANGED_CONTENT_EN = `{{- $d := .resource_details -}}
+		Your {{ if $d.brand -}} {{ $d.brand }} {{ end -}} {{ .resource_type }} {{ $d.name }} status has changed,old status: {{ $d.old_status }},new_status: {{$d.new_status }}{{ if $d.project -}} in project {{ $d.project }} {{ end -}} `
 )

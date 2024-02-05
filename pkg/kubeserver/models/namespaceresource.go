@@ -214,15 +214,17 @@ func (m *SNamespaceResourceBaseManager) GetGCQuery() *sqlchemy.SQuery {
 }
 
 func (m *SNamespaceResourceBaseManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, input *api.NamespaceResourceListInput) (*sqlchemy.SQuery, error) {
+	log.Infof("=====namespace list input: %s", jsonutils.Marshal(input))
 	q, err := m.SClusterResourceBaseManager.ListItemFilter(ctx, q, userCred, &input.ClusterResourceListInput)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "SClusterResourceBaseManager.ListItemFilter with input: %s", jsonutils.Marshal(input.ClusterResourceListInput))
 	}
 	if input.Namespace != "" {
 		ns, err := GetNamespaceManager().GetByIdOrName(userCred, input.Cluster, input.Namespace)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "Not found namespace %s by cluster %s", input.Namespace, input.Cluster)
 		}
+		log.Infof("=====get ns %s of id: %s", ns.GetName(), ns.GetId())
 		q = q.Equals("namespace_id", ns.GetId())
 	}
 	return q, nil

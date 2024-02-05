@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 
 	"yunion.io/x/jsonutils"
@@ -45,7 +46,7 @@ func (t *ComponentDeployTask) OnInit(ctx context.Context, obj db.IStandaloneMode
 }
 
 func (t *ComponentDeployTask) OnDeployComplete(ctx context.Context, obj *models.SComponent, data jsonutils.JSONObject) {
-	obj.SetStatus(t.UserCred, api.ComponentStatusDeployed, "")
+	obj.SetStatus(ctx, t.UserCred, api.ComponentStatusDeployed, "")
 	t.SetStageComplete(ctx, nil)
 }
 
@@ -55,6 +56,6 @@ func (t *ComponentDeployTask) OnDeployCompleteFailed(ctx context.Context, obj *m
 
 func (t *ComponentDeployTask) onError(ctx context.Context, obj *models.SComponent, err error) {
 	reason := err.Error()
-	obj.SetStatus(t.UserCred, api.ComponentStatusDeployFail, reason)
+	obj.SetStatus(ctx, t.UserCred, api.ComponentStatusDeployFail, reason)
 	t.STask.SetStageFailed(ctx, jsonutils.NewString(err.Error()))
 }

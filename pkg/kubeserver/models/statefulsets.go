@@ -194,5 +194,5 @@ func (obj *SStatefulSet) SetStatusByRemoteObject(ctx context.Context, userCred m
 		return errors.Wrap(err, "get pod info")
 	}
 	statefulSetStatus := *getters.GetStatefulSetStatus(podInfo, *ss)
-	return obj.SetStatus(userCred, statefulSetStatus.Status, "update from remote")
+	return obj.SetStatus(ctx, userCred, statefulSetStatus.Status, "update from remote")
 }

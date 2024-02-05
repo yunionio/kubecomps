@@ -45,7 +45,7 @@ func (t *ClusterSyncstatusTask) OnInit(ctx context.Context, obj db.IStandaloneMo
 		return
 	}
 	if mCnt == 0 && cluster.GetDriver().NeedCreateMachines() {
-		cluster.SetStatus(t.UserCred, api.ClusterStatusInit, "")
+		cluster.SetStatus(ctx, t.UserCred, api.ClusterStatusInit, "")
 		t.SetStageComplete(ctx, nil)
 		return
 	}
@@ -61,7 +61,7 @@ func (t *ClusterSyncstatusTask) OnInit(ctx context.Context, obj db.IStandaloneMo
 				time.Sleep(10 * time.Second)
 			} else {
 				log.Infof("Get %s cluster k8s version: %#v", cluster.GetName(), info)
-				if err := cluster.SetStatus(t.UserCred, api.ClusterStatusRunning, ""); err != nil {
+				if err := cluster.SetStatus(ctx, t.UserCred, api.ClusterStatusRunning, ""); err != nil {
 					return nil, errors.Wrap(err, "set status to running")
 				}
 				cluster.SetK8sVersion(ctx, info.String())
@@ -88,6 +88,6 @@ func (t *ClusterSyncstatusTask) onError(ctx context.Context, cluster db.IStandal
 
 func (t *ClusterSyncstatusTask) SetFailed(ctx context.Context, obj db.IStandaloneModel, reason jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
-	cluster.SetStatus(t.UserCred, api.ClusterStatusUnknown, "")
+	cluster.SetStatus(ctx, t.UserCred, api.ClusterStatusUnknown, "")
 	t.STask.SetStageFailed(ctx, reason)
 }

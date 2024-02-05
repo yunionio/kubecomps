@@ -121,7 +121,7 @@ type IClusterModel interface {
 	GetClusterId() string
 	GetCluster() (*SCluster, error)
 	SetCluster(userCred mcclient.TokenCredential, cluster *SCluster)
-	SetStatus(userCred mcclient.TokenCredential, status string, reason string) error
+	SetStatus(ctx context.Context, userCred mcclient.TokenCredential, status string, reason string) error
 	NewRemoteObjectForUpdate(cli *client.ClusterManager, remoteObj interface{}, data jsonutils.JSONObject) (interface{}, error)
 	SetStatusByRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, remoteObj interface{}) error
 	UpdateFromRemoteObject(ctx context.Context, userCred mcclient.TokenCredential, extObj interface{}) error

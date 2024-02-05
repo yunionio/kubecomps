@@ -417,7 +417,7 @@ func (m *SComponent) StartComponentDeployTask(ctx context.Context, userCred mccl
 	if err := m.SetEnabled(true); err != nil {
 		return err
 	}
-	if err := m.SetStatus(userCred, api.ComponentStatusDeploying, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.ComponentStatusDeploying, ""); err != nil {
 		return err
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "ComponentDeployTask", m, userCred, data, parentTaskId, "", nil)
@@ -429,7 +429,7 @@ func (m *SComponent) StartComponentDeployTask(ctx context.Context, userCred mccl
 }
 
 func (m *SComponent) StartComponentUndeployTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	if err := m.SetStatus(userCred, api.ComponentStatusUndeploying, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.ComponentStatusUndeploying, ""); err != nil {
 		return err
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "ComponentUndeployTask", m, userCred, data, parentTaskId, "", nil)
@@ -479,7 +479,7 @@ func (m *SComponent) StartComponentDeleteTask(ctx context.Context, userCred mccl
 	if err := m.SetEnabled(false); err != nil {
 		return err
 	}
-	if err := m.SetStatus(userCred, api.ComponentStatusDeleting, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.ComponentStatusDeleting, ""); err != nil {
 		return err
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "ComponentDeleteTask", m, userCred, data, parentTaskId, "", nil)
@@ -562,7 +562,7 @@ func (m *SComponent) DoUpdate(ctx context.Context, userCred mcclient.TokenCreden
 	return m.StartComponentUpdateTask(ctx, userCred, input.JSON(input), "")
 }
 
-func (m *SComponent) StartSelfUpdate(userCred mcclient.TokenCredential, cls *SCluster) error {
+func (m *SComponent) StartSelfUpdate(ctx context.Context, userCred mcclient.TokenCredential, cls *SCluster) error {
 	settings, err := m.GetSettings()
 	if err != nil {
 		return errors.Wrap(err, "GetSettings")
@@ -581,15 +581,15 @@ func (m *SComponent) StartSelfUpdate(userCred mcclient.TokenCredential, cls *SCl
 	}
 	if err := drv.DoUpdate(cls, settings); err != nil {
 		msg := fmt.Sprintf("Start component %s self update error: %v", m.Type, err)
-		m.SetStatus(userCred, api.ComponentStatusUpdateFail, msg)
+		m.SetStatus(ctx, userCred, api.ComponentStatusUpdateFail, msg)
 		return errors.Error(msg)
 	}
-	m.SetStatus(userCred, api.ComponentStatusDeployed, "")
+	m.SetStatus(ctx, userCred, api.ComponentStatusDeployed, "")
 	return nil
 }
 
 func (m *SComponent) StartComponentUpdateTask(ctx context.Context, userCred mcclient.TokenCredential, data *jsonutils.JSONDict, parentTaskId string) error {
-	if err := m.SetStatus(userCred, api.ComponentStatusUpdating, ""); err != nil {
+	if err := m.SetStatus(ctx, userCred, api.ComponentStatusUpdating, ""); err != nil {
 		return err
 	}
 	task, err := taskman.TaskManager.NewTask(ctx, "ComponentUpdateTask", m, userCred, data, parentTaskId, "", nil)

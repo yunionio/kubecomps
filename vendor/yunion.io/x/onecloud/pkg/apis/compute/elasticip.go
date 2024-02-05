@@ -113,7 +113,7 @@ func (self ElasticipDetails) GetMetricTags() map[string]string {
 		"ip_addr":        self.IpAddr,
 		"external_id":    self.ExternalId,
 	}
-	return ret
+	return AppendMetricTags(ret, self.MetadataResourceInfo, self.ProjectizedResourceInfo)
 }
 
 type ElasticipSyncstatusInput struct {
@@ -142,4 +142,9 @@ type ElasticDissociateInput struct {
 	// 是否解绑后自动删除弹性公网IP
 	// default: false
 	AutoDelete bool `json:"auto_delete"`
+}
+
+type ElasticipRemoteUpdateInput struct {
+	// 是否覆盖替换所有标签
+	ReplaceTags *bool `json:"replace_tags" help:"replace all remote tags"`
 }

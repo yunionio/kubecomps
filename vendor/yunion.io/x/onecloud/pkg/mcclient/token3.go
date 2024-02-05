@@ -22,12 +22,10 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/pkg/errors"
-	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/utils"
 
 	api "yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/httperrors"
-	"yunion.io/x/onecloud/pkg/util/rbacutils"
 )
 
 const REGION_ZONE_SEP = '-'
@@ -89,6 +87,8 @@ type KeystoneUserV3 struct {
 	Domain KeystoneDomainV3
 	// 用户密码过期时间
 	PasswordExpiresAt time.Time
+	// 是否为系统账号
+	IsSystemAccount bool
 
 	// 用户的显式名称，通常为中文名
 	Displayname string
@@ -195,6 +195,10 @@ func (token *TokenCredentialV3) GetUserId() string {
 	return token.Token.User.Id
 }
 
+func (token *TokenCredentialV3) IsSystemAccount() bool {
+	return token.Token.User.IsSystemAccount
+}
+
 func (token *TokenCredentialV3) GetRoles() []string {
 	roles := make([]string, 0)
 	for i := 0; i < len(token.Token.Roles); i++ {
@@ -236,7 +240,7 @@ func (this *TokenCredentialV3) HasSystemAdminPrivilege() bool {
 	return this.IsAdmin() && this.GetTenantName() == "system"
 }
 
-func (this *TokenCredentialV3) IsAllow(scope rbacscope.TRbacScope, service string, resource string, action string, extra ...string) rbacutils.SPolicyResult {
+/*func (this *TokenCredentialV3) IsAllow(scope rbacscope.TRbacScope, service string, resource string, action string, extra ...string) rbacutils.SPolicyResult {
 	if this.isAllow(scope, service, resource, action, extra...) {
 		return rbacutils.PolicyAllow
 	} else {
@@ -250,7 +254,7 @@ func (this *TokenCredentialV3) isAllow(scope rbacscope.TRbacScope, service strin
 	} else {
 		return true
 	}
-}
+}*/
 
 func (this *TokenCredentialV3) GetRegions() []string {
 	return this.Token.Catalog.getRegions()

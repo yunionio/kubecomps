@@ -19,6 +19,8 @@ const (
 	STATUS_DELETE_FAILED = "delete_failed"
 	STATUS_CREATING      = "creating"
 	STATUS_CREATE_FAILED = "create_failed"
+	STATUS_AVAILABLE     = "available"
+	STATUS_UNKNOWN       = "unknown"
 
 	USER_TAG_PREFIX = "user:"
 

@@ -142,7 +142,7 @@ func (t *ClusterCreateTask) onError(ctx context.Context, cluster db.IStandaloneM
 
 func (t *ClusterCreateTask) SetFailed(ctx context.Context, obj db.IStandaloneModel, reason jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
-	cluster.SetStatus(t.UserCred, api.ClusterStatusCreateFail, reason.String())
+	cluster.SetStatus(ctx, t.UserCred, api.ClusterStatusCreateFail, reason.String())
 	t.STask.SetStageFailed(ctx, reason)
 	logclient.LogWithStartable(t, obj, logclient.ActionClusterCreate, reason, t.UserCred, false)
 }

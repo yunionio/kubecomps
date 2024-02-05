@@ -28,12 +28,15 @@ import (
 	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/version"
 	"yunion.io/x/sqlchemy"
+	"yunion.io/x/sqlchemy/backends/clickhouse"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/appsrv"
+	"yunion.io/x/onecloud/pkg/cloudcommon/consts"
 	"yunion.io/x/onecloud/pkg/cloudcommon/policy"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	"yunion.io/x/onecloud/pkg/util/dbutils"
 	"yunion.io/x/onecloud/pkg/util/logclient"
 	"yunion.io/x/onecloud/pkg/util/splitable"
 	"yunion.io/x/onecloud/pkg/util/stringutils2"
@@ -77,6 +80,29 @@ func NewModelBaseManagerWithSplitableDBName(model interface{}, tableName string,
 	ts := newTableSpec(model, tableName, indexField, dateField, maxDuration, maxSegments, dbName)
 	modelMan := SModelBaseManager{
 		tableSpec:     ts,
+		keyword:       keyword,
+		keywordPlural: keywordPlural,
+	}
+	return modelMan
+}
+
+func NewModelBaseManagerWithClickhouseMapping(manager IModelManager, keyword, keywordPlural string) SModelBaseManager {
+	ots := manager.TableSpec()
+	var extraOpts sqlchemy.TableExtraOptions
+	switch consts.DefaultDBDialect() {
+	case "mysql":
+		cfg := dbutils.ParseMySQLConnStr(consts.DefaultDBConnStr())
+		err := cfg.Validate()
+		if err != nil {
+			panic(fmt.Sprintf("invalid mysql connection string %s", consts.DefaultDBConnStr()))
+		}
+		extraOpts = clickhouse.MySQLExtraOptions(cfg.Hostport, cfg.Database, ots.Name(), cfg.Username, cfg.Password)
+	default:
+		panic(fmt.Sprintf("unsupport dialect %s to be backend of clickhouse", consts.DefaultDBDialect()))
+	}
+	nts := newClickhouseTableSpecFromMySQL(ots, ots.Name(), ClickhouseDB, extraOpts)
+	modelMan := SModelBaseManager{
+		tableSpec:     nts,
 		keyword:       keyword,
 		keywordPlural: keywordPlural,
 	}
@@ -271,12 +297,8 @@ func (manager *SModelBaseManager) ValidateCreateData(ctx context.Context, userCr
 	return input, nil
 }
 
-func (manager *SModelBaseManager) OnCreateComplete(ctx context.Context, items []IModel, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
+func (manager *SModelBaseManager) OnCreateComplete(ctx context.Context, items []IModel, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data []jsonutils.JSONObject) {
 	// do nothing
-}
-
-func (manager *SModelBaseManager) AllowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return false
 }
 
 func (manager *SModelBaseManager) PerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -530,10 +552,6 @@ func (manager *SModelBaseManager) GetPropertySplitableExport(ctx context.Context
 	return nil, httperrors.NewResourceNotFoundError("table %s not found", input.Table)
 }
 
-func (manager *SModelBaseManager) AllowPerformPurgeSplitable(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return true
-}
-
 func (manager *SModelBaseManager) PerformPurgeSplitable(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, input apis.PurgeSplitTableInput) (jsonutils.JSONObject, error) {
 	splitable := manager.GetIModelManager().GetImmutableInstance(ctx, userCred, query).GetSplitTable()
 	if splitable == nil {
@@ -606,11 +624,6 @@ func (model *SModelBase) GetShortDescV2(ctx context.Context) *apis.ModelBaseShor
 	return &apis.ModelBaseShortDescDetail{ResName: model.Keyword()}
 }
 
-// get hooks
-func (model *SModelBase) AllowGetDetails(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) bool {
-	return false
-}
-
 func (model *SModelBase) GetExtraDetailsHeaders(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) map[string]string {
 	return nil
 }
@@ -622,10 +635,6 @@ func (model *SModelBase) CustomizeCreate(ctx context.Context, userCred mcclient.
 
 func (model *SModelBase) PostCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) {
 
-}
-
-func (model *SModelBase) AllowPerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) bool {
-	return false
 }
 
 func (model *SModelBase) PerformAction(ctx context.Context, userCred mcclient.TokenCredential, action string, query jsonutils.JSONObject, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
@@ -701,6 +710,14 @@ func (model *SModelBase) PostDelete(ctx context.Context, userCred mcclient.Token
 func (model *SModelBase) MarkDelete() error {
 	// do nothing
 	return nil
+}
+
+func (model *SModelBase) MarkPendingDeleted() {
+	return
+}
+
+func (model *SModelBase) CancelPendingDeleted() {
+	return
 }
 
 func (model *SModelBase) Delete(ctx context.Context, userCred mcclient.TokenCredential) error {
