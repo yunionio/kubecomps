@@ -7,6 +7,7 @@ import (
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
+	current "github.com/containernetworking/cni/pkg/types/040"
 	cniversion "github.com/containernetworking/cni/pkg/version"
 	"github.com/containernetworking/plugins/pkg/ns"
 
@@ -54,11 +55,10 @@ func loadNetConf(bytes []byte, envArgs string) (*NetConf, string, error) {
 }
 
 func cmdAdd(args *skel.CmdArgs) error {
-	n, cniVersion, err := loadNetConf(args.StdinData, args.Args)
+	_, cniVersion, err := loadNetConf(args.StdinData, args.Args)
 	if err != nil {
 		return errors.Wrap(err, "loadNetConf")
 	}
-	log.Infof("===args.Args: %s, n: %#v, cniVersion: %s", args.Args, n, cniVersion)
 	pod, err := NewCloudPodFromCNIArgs(args.Args)
 	if err != nil {
 		return errors.Wrap(err, "NewCloudPodFromCNIArgs")
@@ -75,15 +75,18 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return fmt.Errorf("Pod %s doesn't have nics", pod.Name)
 	}
 
-	for idx, nic := range nics {
-		defaultGw := false
-		if idx == 0 {
-			defaultGw = true
-		}
-		log.Infof("--nic: %#v, defaultGw: %v", nic, defaultGw)
+	result, err := GenerateNetworkResultByNics(nics)
+	if err != nil {
+		return errors.Wrap(err, "GenerateNetworkResultByNics")
 	}
 
-	return nil
+	for idx, nic := range nics {
+		if err := setupNic(idx, nic, netns); err != nil {
+			return errors.Wrap(err, "setupNic")
+		}
+	}
+
+	return types.PrintResult(result, cniVersion)
 }
 
 func cmdDel(args *skel.CmdArgs) error {

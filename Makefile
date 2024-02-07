@@ -52,6 +52,7 @@ prepare_dir:
 
 mod:
 	GOPROXY=$(GOPROXY) GONOSUMDB=yunion.io/x go get yunion.io/x/onecloud@$(RELEASE_BRANCH)
+	GOPROXY=$(GOPROXY) GONOSUMDB=yunion.io/x go get yunion.io/x/sdnagent@$(RELEASE_BRANCH)
 	#GOPROXY=$(GOPROXY) GONOSUMDB=yunion.io/x go get $(patsubst %,%@master,$(shell GO111MODULE=on go mod edit -print | sed -n -e 's|.*\(yunion.io/x/[a-z].*\) v.*|\1|p' | grep -v '/onecloud$$'))
 	go mod tidy
 	go mod vendor -v

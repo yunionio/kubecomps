@@ -8,7 +8,7 @@ require (
 	github.com/ceph/go-ceph v0.0.0-20181217221554-e32f9f0f2e94
 	github.com/containernetworking/cni v1.0.0
 	github.com/containernetworking/plugins v0.8.7
-	github.com/fsnotify/fsnotify v1.5.1
+	github.com/fsnotify/fsnotify v1.5.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/flock v0.8.0
 	github.com/goharbor/go-client v0.26.2
@@ -21,6 +21,7 @@ require (
 	github.com/regclient/regclient v0.4.8
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/stretchr/testify v1.8.1
+	github.com/vishvananda/netlink v1.1.0
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
 	golang.org/x/crypto v0.8.0
 	golang.org/x/sync v0.1.0
@@ -41,10 +42,11 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 	yunion.io/x/code-generator v0.0.0-20230130032150-a6851cfe4737
 	yunion.io/x/jsonutils v1.0.1-0.20240203102553-4096f103b401
-	yunion.io/x/log v1.0.1-0.20230411060016-feb3f46ab361
-	yunion.io/x/onecloud v0.0.0-20240305022950-ed2dd1f548c2
+	yunion.io/x/log v1.0.1-0.20240305175729-7cf2d6cd5a91
+	yunion.io/x/onecloud v0.0.0-20240312053540-299846783d7f
 	yunion.io/x/pkg v1.10.1-0.20240303050651-73685b15a96e
-	yunion.io/x/sqlchemy v1.1.3-0.20240304110946-16faa82225e6
+	yunion.io/x/sdnagent v1.2.10-0.20240129094758-082d26e0e076
+	yunion.io/x/sqlchemy v1.1.3-0.20240309151155-b34f29f02c79
 )
 
 require (
@@ -84,6 +86,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deislabs/oras v0.8.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/digitalocean/go-openvswitch v0.0.0-20190515160856-1141932ed5cf // indirect
 	github.com/docker/cli v0.0.0-20200130152716-5d0cf8839492 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v1.4.2-0.20200309214505-aa6a9891b09c // indirect
@@ -198,7 +201,6 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/tredoe/osutil/v2 v2.0.0-rc.16 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
-	github.com/vishvananda/netlink v1.1.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
@@ -241,13 +243,14 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
-	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20240304114831-feebc346e513 // indirect
+	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20240308095624-f1aeca8dcd51 // indirect
 	yunion.io/x/executor v0.0.0-20230705125604-c5ac3141db32 // indirect
 	yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e // indirect
 	yunion.io/x/structarg v0.0.0-20231017124457-df4d5009457c // indirect
 )
 
 replace (
+	github.com/digitalocean/go-openvswitch => github.com/yousong/go-openvswitch v0.0.0-20200422025222-6b2d502be872
 	github.com/go-logr/logr => github.com/go-logr/logr v0.4.0
 
 	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.8
