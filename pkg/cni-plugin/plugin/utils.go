@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/containernetworking/cni/pkg/types"
-	current "github.com/containernetworking/cni/pkg/types/040"
+	"github.com/containernetworking/cni/pkg/types/current"
+	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
 
-	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 )
 
@@ -97,6 +98,18 @@ func (p CloudPod) GetDesc() *PodDesc {
 	return p.desc
 }
 
+func GenerateNetworkResultByNic(index int, nic PodNic, defaultGw bool) (*current.Result, error) {
+	result := &current.Result{}
+	ctrIf, ipConfigs, routes, err := getNetworkConfig(index, nic, defaultGw)
+	if err != nil {
+		return nil, errors.Wrap(err, "getNetworkConfig")
+	}
+	result.Interfaces = []*current.Interface{ctrIf}
+	result.IPs = ipConfigs
+	result.Routes = routes
+	return result, nil
+}
+
 func GenerateNetworkResultByNics(nics []PodNic) (*current.Result, error) {
 	result := &current.Result{}
 	ipConfs := make([]*current.IPConfig, 0)
@@ -115,6 +128,9 @@ func GenerateNetworkResultByNics(nics []PodNic) (*current.Result, error) {
 		ifs = append(ifs, ctrIf)
 		ifRoutes = append(ifRoutes, routes...)
 	}
+	result.Interfaces = ifs
+	result.IPs = ipConfs
+	result.Routes = ifRoutes
 	return result, nil
 }
 
@@ -161,30 +177,29 @@ func getNetworkConfig(idx int, nic PodNic, defaultGw bool) (*current.Interface, 
 	return ctrIf, ipConfigs, routes, nil
 }
 
-func setupNic(index int, nic PodNic, netns ns.NetNS) error {
+func setupNic(index int, nic PodNic, netns ns.NetNS, result *current.Result) error {
 	// Create OVS client
 	ovsCli, err := NewOVSClient()
 	if err != nil {
 		return errors.Wrap(err, "NewOVSClient")
 	}
 
-	hostIfname := nic.Ifname
 	ctrIfname := nic.GetInterface(index)
-	ctrMac := nic.Mac
-	hostInterface, ctrInterface, err := setupVeth(ovsCli, index, netns, nic.Bridge)
+	//hostInterface, ctrInterface, err := setupVeth(ovsCli, index, netns, nic.Bridge)
+	_, _, err = setupVeth(ovsCli, index, nic, netns)
 	if err != nil {
 		return errors.Wrap(err, "setupVeth")
 	}
 
 	// Configure the container hardware address and IP address(es)
 	if err := netns.Do(func(_ ns.NetNS) error {
-		ctrVeth, err := net.InterfaceByName(ctrIfname)
+		_, err := net.InterfaceByName(ctrIfname)
 		if err != nil {
 			return errors.Wrapf(err, "net.InterfaceByName %q", ctrIfname)
 		}
 
 		// Add the IP to the interface
-		if err := ConfigureIface(ctrIfname, nic); err != nil {
+		if err := ConfigureIface(ctrIfname, result.IPs, result.Routes); err != nil {
 			return errors.Wrap(err, "ConfigureIface")
 		}
 		return nil
@@ -212,7 +227,7 @@ func setupVeth(
 		if err != nil {
 			return errors.Wrap(err, "setupYunionVeth")
 		}
-		log.Infof("makeVethPair hostVeth: %#v, containerVeth: %#v", hostVeth, ctrVeth)
+		//log.Infof("makeVethPair hostVeth: %#v, containerVeth: %#v", hostVeth, ctrVeth)
 
 		ctrIf.Name = ctrVeth.Name
 		ctrIf.Mac = ctrVeth.HardwareAddr.String()
@@ -220,7 +235,7 @@ func setupVeth(
 		hostIf.Name = hostVeth.Name
 
 		// ip link set lo up
-		if err := setLinkup("lo"); err != nil {
+		if err := setLinkUp("lo"); err != nil {
 			return errors.Wrap(err, "set loopback nic up")
 		}
 		return nil
@@ -238,7 +253,7 @@ func setupVeth(
 	if err := cli.AddPort(nic.Bridge, hostIf.Name); err != nil {
 		return nil, nil, errors.Wrapf(err, "Add port to OVS: %s -> %s", hostIf.Name, nic.Bridge)
 	}
-	log.Infof("Port %q added to %q", hostIf.Name, nic.Bridge)
+	//log.Infof("Port %q added to %q", hostIf.Name, nic.Bridge)
 	return hostIf, ctrIf, nil
 }
 
@@ -251,7 +266,7 @@ func ensureVethDeleted(name string) error {
 		}
 	}
 	if err != nil {
-		log.Warningf("delete %q peer veth err: %v", name, err)
+		//log.Warningf("delete %q peer veth err: %v", name, err)
 	}
 	return nil
 }
@@ -282,7 +297,7 @@ func setupYunionVeth(index int, hostVethName string, ctrIfName string, ctrMac st
 		return net.Interface{}, net.Interface{}, errors.Wrapf(err, "failed to move veth %q to host netns %#v", hostVeth, hostNS)
 	}
 
-	if err := hostNS.Do(func(_, ns.NetNS) error {
+	if err := hostNS.Do(func(_ ns.NetNS) error {
 		hostVeth, err := netlink.LinkByName(hostVethName)
 		if err != nil {
 			return errors.Wrapf(err, "failed to lookup host veth after moved: %q", hostVethName)
@@ -332,7 +347,7 @@ func setLinkUp(name string) error {
 	return netlink.LinkSetUp(iface)
 }
 
-func ConfigureIface(ifName string, nic PodNic) error {
+func ConfigureIface(ifName string, ipConfigs []*current.IPConfig, routes []*types.Route) error {
 	link, err := netlink.LinkByName(ifName)
 	if err != nil {
 		return errors.Wrap(err, "LinkByName")
@@ -343,7 +358,40 @@ func ConfigureIface(ifName string, nic PodNic) error {
 	}
 
 	var v4gw, v6gw net.IP
-	addr := &netlink.Addr{
-		IPNet: nic.Ip
+	for _, ipc := range ipConfigs {
+		addr := &netlink.Addr{IPNet: &ipc.Address, Label: ""}
+		if err = netlink.AddrAdd(link, addr); err != nil {
+			return fmt.Errorf("failed to add IP addr %v to %q: %v", ipc, ifName, err)
+		}
+
+		gwIsV4 := ipc.Gateway.To4() != nil
+		if gwIsV4 && v4gw == nil {
+			v4gw = ipc.Gateway
+		} else if !gwIsV4 && v6gw == nil {
+			v6gw = ipc.Gateway
+		}
 	}
+
+	ip.SettleAddresses(ifName, 10)
+
+	for _, r := range routes {
+		routeIsV4 := r.Dst.IP.To4() != nil
+		gw := r.GW
+		if gw == nil {
+			if routeIsV4 && v4gw != nil {
+				gw = v4gw
+			} else if !routeIsV4 && v6gw != nil {
+				gw = v6gw
+			}
+		}
+		if err = ip.AddRoute(&r.Dst, gw, link); err != nil {
+			// we skip over duplicate routes as we assume the first one wins
+			if !os.IsExist(err) {
+				return fmt.Errorf("failed to add route '%v via %v dev %v': %v", r.Dst, gw, ifName, err)
+			}
+		}
+	}
+
+	return nil
+
 }

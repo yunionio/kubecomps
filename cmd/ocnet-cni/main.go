@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-	log.Infof("-------start")
 	// Use the name of the binary to determine which routine to run.
 	_, filename := filepath.Split(os.Args[0])
 	switch filename {
