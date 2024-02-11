@@ -1,6 +1,11 @@
 package selfbuild
 
 import (
+	"context"
+
+	"yunion.io/x/jsonutils"
+	"yunion.io/x/onecloud/pkg/mcclient"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
 	"yunion.io/x/kubecomps/pkg/kubeserver/constants"
 	"yunion.io/x/kubecomps/pkg/kubeserver/drivers/clusters/addons"
@@ -43,6 +48,17 @@ func (s sBaseDriver) ChangeKubesprayVars(vars *kubespray.KubesprayVars) {
 
 func (s sBaseDriver) GetAddonsHelmCharts(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig) ([]*models.ClusterHelmChartInstallOption, error) {
 	return nil, nil
+}
+
+func (s sBaseDriver) SetDefaultCreateData(ctx context.Context, cred mcclient.TokenCredential, id mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.ClusterCreateInput) error {
+	if input.AddonsConfig == nil {
+		input.AddonsConfig = new(api.ClusterAddonsManifestConfig)
+	}
+	if input.AddonsConfig.Ingress.EnableNginx == nil {
+		defaultTrue := true
+		input.AddonsConfig.Ingress.EnableNginx = &defaultTrue
+	}
+	return nil
 }
 
 func (s sBaseDriver) GetAddonsManifest(cluster *models.SCluster, conf *api.ClusterAddonsManifestConfig) (string, error) {

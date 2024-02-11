@@ -51,6 +51,10 @@ func (d *SBaseDriver) ValidateCreateData(userCred mcclient.TokenCredential, owne
 	return nil
 }
 
+func (d *SBaseDriver) SetDefaultCreateData(ctx context.Context, cred mcclient.TokenCredential, id mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.ClusterCreateInput) error {
+	return nil
+}
+
 func (d *SBaseDriver) PreCheck(s *mcclient.ClientSession, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error) {
 	return &api.ClusterPreCheckResp{
 		Pass: true,

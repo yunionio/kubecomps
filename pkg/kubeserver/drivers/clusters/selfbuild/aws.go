@@ -38,7 +38,6 @@ func (s *sAwsDriver) ChangeKubesprayVars(vars *kubespray.KubesprayVars) {
 	vars.NodelocalDNSImageRepo = ""
 	vars.DNSAutoscalerImageRepo = ""
 	vars.NginxImageRepo = ""
-	vars.IngressNginxControllerImageRepo = ""
 	vars.CorednsImageIsNamespaced = true
 
 	vars.KubeletDownloadUrl = ""
@@ -56,6 +55,7 @@ func (s *sAwsDriver) ChangeKubesprayVars(vars *kubespray.KubesprayVars) {
 	vars.DockerVersion = kubespray.DockerVersion_20_10
 	vars.DockerCliVersion = kubespray.DockerVersion_20_10
 	vars.KubeNetworkPlugin = kubespray.NetworkPluginCNI
+	vars.IngressNginxControllerImageRepo = ""
 	vars.IngressNginxEnabled = false
 	// vars.EnableNodelocalDNS = false
 	// vars.OverrideSystemHostname = false

@@ -455,8 +455,13 @@ type ClusterAddonNetworkConfig struct {
 	EnableNativeIPAlloc bool `json:"enable_native_ip_alloc"`
 }
 
+type ClusterAddonIngressConfig struct {
+	EnableNginx *bool `json:"enable_nginx"`
+}
+
 type ClusterAddonsManifestConfig struct {
 	Network ClusterAddonNetworkConfig `json:"network"`
+	Ingress ClusterAddonIngressConfig `json:"ingress"`
 }
 
 type ClusterKubesprayConfig struct {

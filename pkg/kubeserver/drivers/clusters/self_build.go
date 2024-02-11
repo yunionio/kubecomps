@@ -59,7 +59,7 @@ func registerSelfBuildClusterDriver(driver selfbuild.ISelfBuildDriver) {
 	registerClusterDriver(newSelfBuildClusterDriver(driver))
 }
 
-func newSelfBuildClusterDriver(pDrv selfbuild.ISelfBuildDriver) models.IClusterDriver {
+func newSelfBuildClusterDriver(pDrv selfbuild.ISelfBuildDriver) *selfBuildClusterDriver {
 	drv := &selfBuildClusterDriver{
 		providerDriver: pDrv,
 	}
@@ -85,6 +85,10 @@ func (d *selfBuildClusterDriver) GetResourceType() api.ClusterResourceType {
 
 func (d *selfBuildClusterDriver) GetK8sVersions() []string {
 	return d.providerDriver.GetK8sVersions()
+}
+
+func (d *selfBuildClusterDriver) SetDefaultCreateData(ctx context.Context, cred mcclient.TokenCredential, id mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.ClusterCreateInput) error {
+	return d.providerDriver.SetDefaultCreateData(ctx, cred, id, query, input)
 }
 
 func (d *selfBuildClusterDriver) PreCheck(s *mcclient.ClientSession, data jsonutils.JSONObject) (*api.ClusterPreCheckResp, error) {
@@ -204,6 +208,10 @@ func (c *selfBuildDriver) ValidateCreateData(ctx context.Context, userCred mccli
 	input.Machines = ms
 
 	return nil
+}
+
+func (c *selfBuildDriver) SetDefaultCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, input *api.ClusterCreateInput) error {
+	return c.driver.SetDefaultCreateData(ctx, userCred, ownerId, query, input)
 }
 
 func getClusterMachineIndexs(cluster *models.SCluster, role string, count int) ([]int, error) {
