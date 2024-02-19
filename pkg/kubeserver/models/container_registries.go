@@ -75,6 +75,9 @@ func (man *SContainerRegistryManager) ListItemFilter(ctx context.Context, q *sql
 	if input.Type != "" {
 		q = q.Equals("type", input.Type)
 	}
+	if input.Url != "" {
+		q = q.Contains("url", input.Url)
+	}
 	return q, nil
 }
 
