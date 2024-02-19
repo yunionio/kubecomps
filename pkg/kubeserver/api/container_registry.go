@@ -15,6 +15,7 @@ type ContainerRegistryListInput struct {
 	apis.StatusInfrasResourceBaseListInput
 
 	Type string `json:"type"`
+	Url  string `json:"url"`
 }
 
 type ContainerRegistryConfigCommon struct {
