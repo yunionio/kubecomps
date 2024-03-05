@@ -40,13 +40,14 @@ require (
 	yunion.io/x/code-generator v0.0.0-20230130032150-a6851cfe4737
 	yunion.io/x/jsonutils v1.0.1-0.20240203102553-4096f103b401
 	yunion.io/x/log v1.0.1-0.20230411060016-feb3f46ab361
-	yunion.io/x/onecloud v0.0.0-20240205032410-08f92a8d89aa
-	yunion.io/x/pkg v1.10.1-0.20240127153242-cdf9dc071f4f
-	yunion.io/x/sqlchemy v1.1.3-0.20240103021517-2be4fb49bd3b
+	yunion.io/x/onecloud v0.0.0-20240305022950-ed2dd1f548c2
+	yunion.io/x/pkg v1.10.1-0.20240303050651-73685b15a96e
+	yunion.io/x/sqlchemy v1.1.3-0.20240304110946-16faa82225e6
 )
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
+	gitee.com/chunanyong/dm v1.8.14 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.1 // indirect
@@ -119,6 +120,7 @@ require (
 	github.com/golang-plus/uuid v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
@@ -237,7 +239,7 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
-	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20240204082701-44d14a9946c9 // indirect
+	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20240304114831-feebc346e513 // indirect
 	yunion.io/x/executor v0.0.0-20230705125604-c5ac3141db32 // indirect
 	yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e // indirect
 	yunion.io/x/structarg v0.0.0-20231017124457-df4d5009457c // indirect

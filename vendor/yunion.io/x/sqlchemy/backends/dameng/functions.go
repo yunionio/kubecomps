@@ -12,34 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compute
+package dameng
 
 import (
-	"yunion.io/x/onecloud/pkg/mcclient/modulebase"
-	"yunion.io/x/onecloud/pkg/mcclient/modules"
+	"fmt"
+
+	"yunion.io/x/sqlchemy"
 )
 
-type LoadbalancerCachedAclManager struct {
-	modulebase.ResourceManager
-}
-
-var (
-	LoadbalancerCachedAcls LoadbalancerCachedAclManager
-)
-
-func init() {
-	LoadbalancerCachedAcls = LoadbalancerCachedAclManager{
-		modules.NewComputeManager(
-			"cachedloadbalanceracl",
-			"cachedloadbalanceracls",
-			[]string{
-				"id",
-				"acl_id",
-				"name",
-				"acl_entries",
-			},
-			[]string{"tenant"},
-		),
-	}
-	modules.RegisterCompute(&LoadbalancerCachedAcls)
+// GROUP_CONCAT2 represents the SQL function GROUP_CONCAT
+func (mysql *SDamengBackend) GROUP_CONCAT2(name string, sep string, field sqlchemy.IQueryField) sqlchemy.IQueryField {
+	return sqlchemy.NewFunctionField(name, true, fmt.Sprintf("REPLACE(WM_CONCAT(%%s), ',', '%s')", sep), field)
 }
