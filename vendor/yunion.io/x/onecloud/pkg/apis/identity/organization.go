@@ -15,6 +15,7 @@
 package identity
 
 import (
+	"fmt"
 	"strings"
 
 	"yunion.io/x/jsonutils"
@@ -138,7 +139,9 @@ func IsValidLabel(val string) bool {
 }
 
 func trimLabel(label string) string {
-	return strings.Trim(label, OrganizationLabelSeparator+" ")
+	label = strings.Trim(label, OrganizationLabelSeparator+" ")
+	label = strings.ReplaceAll(label, "/", "\\/")
+	return label
 }
 
 func JoinLabels(seg ...string) string {
@@ -160,7 +163,12 @@ func SplitLabel(label string) []string {
 	for _, p := range parts {
 		p = trimLabel(p)
 		if len(p) > 0 {
-			ret = append(ret, p)
+			if len(ret) > 0 && strings.HasSuffix(ret[len(ret)-1], "\\") {
+				pref := ret[len(ret)-1]
+				ret[len(ret)-1] = fmt.Sprintf("%s/%s", pref[:len(pref)-1], p)
+			} else {
+				ret = append(ret, p)
+			}
 		}
 	}
 	return ret
@@ -180,6 +188,13 @@ type OrganizationNodeListInput struct {
 	OrgType TOrgType `json:"org_type"`
 
 	Level int `json:"level"`
+
+	// domain tags filter imposed by policy
+	PolicyDomainTags tagutils.TTagSetList `json:"policy_domain_tags"`
+	// project tags filter imposed by policy
+	PolicyProjectTags tagutils.TTagSetList `json:"policy_project_tags"`
+	// object tags filter imposed by policy
+	PolicyObjectTags tagutils.TTagSetList `json:"policy_object_tags"`
 }
 
 type SProjectOrganization struct {
@@ -204,4 +219,7 @@ type SOrganizationNodeDetails struct {
 	Organization string `json:"organization"`
 
 	Type TOrgType `json:"type"`
+}
+
+type OrganizationPerformCleanInput struct {
 }
