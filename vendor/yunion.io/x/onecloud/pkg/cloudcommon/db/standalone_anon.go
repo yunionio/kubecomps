@@ -100,13 +100,13 @@ func (manager *SStandaloneAnonResourceBaseManager) FilterByNotId(q *sqlchemy.SQu
 	return q.NotEquals("id", idStr)
 }
 
-func (manager *SStandaloneAnonResourceBaseManager) FilterByOwner(q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
+func (manager *SStandaloneAnonResourceBaseManager) FilterByOwner(ctx context.Context, q *sqlchemy.SQuery, man FilterByOwnerProvider, userCred mcclient.TokenCredential, owner mcclient.IIdentityProvider, scope rbacscope.TRbacScope) *sqlchemy.SQuery {
 	if userCred != nil {
 		result := policy.PolicyManager.Allow(scope, userCred, consts.GetServiceType(), man.KeywordPlural(), policy.PolicyActionList)
 		if !result.ObjectTags.IsEmpty() {
 			policyTagFilters := tagutils.STagFilters{}
 			policyTagFilters.AddFilters(result.ObjectTags)
-			q = ObjectIdQueryWithTagFilters(q, "id", man.Keyword(), policyTagFilters)
+			q = ObjectIdQueryWithTagFilters(ctx, q, "id", man.Keyword(), policyTagFilters)
 		}
 	}
 	return q
@@ -153,7 +153,7 @@ func (manager *SStandaloneAnonResourceBaseManager) ListItemFilter(
 		q = q.In("id", input.Ids)
 	}
 
-	q = manager.SMetadataResourceBaseModelManager.ListItemFilter(manager.GetIModelManager(), q, input.MetadataResourceListInput)
+	q = manager.SMetadataResourceBaseModelManager.ListItemFilter(ctx, manager.GetIModelManager(), q, input.MetadataResourceListInput)
 
 	return q, nil
 }
@@ -944,6 +944,7 @@ func (manager *SStandaloneAnonResourceBaseManager) GetPropertyTagValueTree(
 		manager.GetIStandaloneModelManager(),
 		manager.Keyword(),
 		"id",
+		"",
 		ctx,
 		userCred,
 		query,
@@ -954,6 +955,7 @@ func GetPropertyTagValueTree(
 	manager IModelManager,
 	tagObjType string,
 	tagIdField string,
+	sumField string,
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	query jsonutils.JSONObject,
@@ -964,7 +966,7 @@ func GetPropertyTagValueTree(
 		return nil, errors.Wrap(err, "Unmarshal")
 	}
 
-	valueMap, err := GetTagValueCountMap(manager, tagObjType, tagIdField, input.Keys, ctx, userCred, query)
+	valueMap, err := GetTagValueCountMap(manager, tagObjType, tagIdField, sumField, input.Keys, ctx, userCred, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "AllStringAmp")
 	}
@@ -981,21 +983,36 @@ func GetTagValueCountMap(
 	manager IModelManager,
 	tagObjType string,
 	tagIdField string,
+	sumField string,
 	keys []string,
 	ctx context.Context,
 	userCred mcclient.TokenCredential,
 	query jsonutils.JSONObject,
 ) ([]map[string]string, error) {
 	var err error
-	objSubQ := manager.Query().SubQuery()
-	objQ := objSubQ.Query(objSubQ.Field(tagIdField), sqlchemy.COUNT("_sub_count_"))
+	objQ := manager.NewQuery(ctx, userCred, query, false)
 	objQ, err = ListItemQueryFilters(manager, ctx, objQ, userCred, query, policy.PolicyActionList)
 	if err != nil {
 		return nil, errors.Wrap(err, "ListItemQueryFilters")
 	}
-	objQ = objQ.GroupBy(objSubQ.Field(tagIdField))
-	q := objQ.SubQuery().Query(sqlchemy.SUM(tagValueCountKey, objQ.Field("_sub_count_")))
-	metadataSQ := Metadata.Query().Equals("obj_type", tagObjType).In("key", keys).SubQuery()
+	objSubQ := objQ.SubQuery().Query()
+	objSubQ = objSubQ.AppendField(objSubQ.Field(tagIdField))
+	objSubQ = objSubQ.GroupBy(objSubQ.Field(tagIdField))
+	var sumFieldQ sqlchemy.IQueryField
+	if len(sumField) > 0 {
+		sumFieldQ = sqlchemy.SUM("_sub_count_", objSubQ.Field(sumField))
+	} else {
+		sumFieldQ = sqlchemy.COUNT("_sub_count_")
+	}
+	objSubQ = objSubQ.AppendField(sumFieldQ)
+
+	objSubQ.DebugQuery2("GetTagValueCountMap objSubQ")
+
+	q := objSubQ.SubQuery().Query()
+	q = q.AppendField(sqlchemy.SUM(tagValueCountKey, q.Field("_sub_count_")))
+
+	metadataMan := GetMetadaManagerInContext(ctx)
+	metadataSQ := metadataMan.Query().Equals("obj_type", tagObjType).In("key", keys).SubQuery()
 	groupBy := make([]interface{}, 0)
 	for i, key := range keys {
 		valueFieldName := TagValueKey(i)
@@ -1010,6 +1027,9 @@ func GetTagValueCountMap(
 		groupBy = append(groupBy, q.Field(valueFieldName))
 	}
 	q = q.GroupBy(groupBy...)
+
+	q.DebugQuery2("GetTagValueCountMap")
+
 	valueMap, err := q.AllStringMap()
 	if err != nil {
 		return nil, errors.Wrap(err, "AllStringAmp")

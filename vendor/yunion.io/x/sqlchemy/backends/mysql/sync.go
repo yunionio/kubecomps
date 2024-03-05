@@ -99,8 +99,13 @@ func (mysql *SMySQLBackend) CommitTableChangeSQL(ts sqlchemy.ITableSpec, changes
 		}
 	}
 	for _, cols := range changes.UpdatedColumns {
-		sql := fmt.Sprintf("MODIFY COLUMN %s", cols.NewCol.DefinitionString())
-		alters = append(alters, sql)
+		if cols.OldCol.Name() != cols.NewCol.Name() {
+			sql := fmt.Sprintf("CHANGE COLUMN `%s` %s", cols.OldCol.Name(), cols.NewCol.DefinitionString())
+			alters = append(alters, sql)
+		} else {
+			sql := fmt.Sprintf("MODIFY COLUMN %s", cols.NewCol.DefinitionString())
+			alters = append(alters, sql)
+		}
 	}
 	for _, col := range changes.AddColumns {
 		sql := fmt.Sprintf("ADD COLUMN %s", col.DefinitionString())
@@ -134,5 +139,5 @@ func (mysql *SMySQLBackend) CommitTableChangeSQL(ts sqlchemy.ITableSpec, changes
 }
 
 func createIndexSQL(ts sqlchemy.ITableSpec, idx sqlchemy.STableIndex) string {
-	return fmt.Sprintf("CREATE INDEX `%s` ON `%s` (%s)", idx.Name(), ts.Name(), strings.Join(idx.QuotedColumns(), ","))
+	return fmt.Sprintf("CREATE INDEX `%s` ON `%s` (%s)", idx.Name(), ts.Name(), strings.Join(idx.QuotedColumns("`"), ","))
 }

@@ -366,6 +366,7 @@ type ICloudVM interface {
 
 	StartVM(ctx context.Context) error
 	StopVM(ctx context.Context, opts *ServerStopOptions) error
+	// 需要删除挂载的磁盘
 	DeleteVM(ctx context.Context) error
 
 	UpdateVM(ctx context.Context, input SInstanceUpdateOptions) error
@@ -379,6 +380,7 @@ type ICloudVM interface {
 	ChangeConfig(ctx context.Context, config *SManagedVMChangeConfig) error
 
 	GetVNCInfo(input *ServerVncInput) (*ServerVncOutput, error)
+	// 若有跟随主机删除的选项，需要设置为True
 	AttachDisk(ctx context.Context, diskId string) error
 	DetachDisk(ctx context.Context, diskId string) error
 
@@ -720,6 +722,8 @@ type ICloudLoadbalancer interface {
 
 	CreateILoadBalancerListener(ctx context.Context, listener *SLoadbalancerListenerCreateOptions) (ICloudLoadbalancerListener, error)
 	GetILoadBalancerListenerById(listenerId string) (ICloudLoadbalancerListener, error)
+
+	GetSecurityGroupIds() ([]string, error)
 }
 
 type ICloudLoadbalancerRedirect interface {
@@ -837,7 +841,6 @@ type ICloudLoadbalancerBackend interface {
 type ICloudLoadbalancerCertificate interface {
 	IVirtualResource
 
-	Sync(name, privateKey, publickKey string) error
 	Delete() error
 
 	GetCommonName() string
@@ -851,7 +854,6 @@ type ICloudLoadbalancerCertificate interface {
 type ICloudLoadbalancerAcl interface {
 	IVirtualResource
 
-	GetAclListenerID() string // huawei only
 	GetAclEntries() []SLoadbalancerAccessControlListEntry
 	Sync(acl *SLoadbalancerAccessControlList) error
 	Delete() error
@@ -915,14 +917,16 @@ type ICloudNatGateway interface {
 	GetINatSTable() ([]ICloudNatSEntry, error)
 
 	// ID is the ID of snat entry/rule or dnat entry/rule.
-	GetINatDEntryByID(id string) (ICloudNatDEntry, error)
-	GetINatSEntryByID(id string) (ICloudNatSEntry, error)
+	GetINatDEntryById(id string) (ICloudNatDEntry, error)
+	GetINatSEntryById(id string) (ICloudNatSEntry, error)
 
 	// Read the description of these two structures before using.
 	CreateINatDEntry(rule SNatDRule) (ICloudNatDEntry, error)
 	CreateINatSEntry(rule SNatSRule) (ICloudNatSEntry, error)
 
 	GetINetworkId() string
+	// internet(公网) or intranet(VPC)
+	GetNetworkType() string
 	GetBandwidthMb() int
 	GetIpAddr() string
 
