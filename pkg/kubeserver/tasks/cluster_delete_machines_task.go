@@ -21,7 +21,7 @@ func init() {
 	taskman.RegisterTask(ClusterDeleteMachinesTask{})
 }
 
-func (t *ClusterDeleteMachinesTask) getDeleteMachines() ([]manager.IMachine, error) {
+func (t *ClusterDeleteMachinesTask) getDeleteMachines(ctx context.Context) ([]manager.IMachine, error) {
 	machinesData, err := t.GetParams().GetArray("machines")
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (t *ClusterDeleteMachinesTask) getDeleteMachines() ([]manager.IMachine, err
 		if err != nil {
 			return nil, err
 		}
-		machineObj, err := manager.MachineManager().FetchMachineByIdOrName(t.UserCred, id)
+		machineObj, err := manager.MachineManager().FetchMachineByIdOrName(ctx, t.UserCred, id)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +47,7 @@ func (t *ClusterDeleteMachinesTask) IsFromClusterDeleteTask(cluster *models.SClu
 
 func (t *ClusterDeleteMachinesTask) OnInit(ctx context.Context, obj db.IStandaloneModel, data jsonutils.JSONObject) {
 	cluster := obj.(*models.SCluster)
-	ms, err := t.getDeleteMachines()
+	ms, err := t.getDeleteMachines(ctx)
 	if err != nil {
 		t.OnError(ctx, cluster, err.Error())
 		return
@@ -68,7 +68,7 @@ func (t *ClusterDeleteMachinesTask) OnInit(ctx context.Context, obj db.IStandalo
 }
 
 func (t *ClusterDeleteMachinesTask) OnClusterNodeRemoved(ctx context.Context, cluster *models.SCluster, data jsonutils.JSONObject) {
-	ms, err := t.getDeleteMachines()
+	ms, err := t.getDeleteMachines(ctx)
 	if err != nil {
 		t.OnError(ctx, cluster, err.Error())
 		return

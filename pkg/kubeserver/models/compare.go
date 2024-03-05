@@ -54,11 +54,11 @@ func CompareSetsByFunc(
 	added interface{}) error {
 	dbSetArray, err := valueSet2Array(localObjs, getExternalIdMethod)
 	if err != nil {
-		return errors.Wrapf(err, "Get local objects %s", getExternalIdMethod)
+		return errors.Wrapf(err, "Get local objects")
 	}
 	extSetArray, err := valueSet2Array(extObjs, getGlobalIdMethod)
 	if err != nil {
-		return errors.Wrapf(err, "Get remote objects %s", getGlobalIdMethod)
+		return errors.Wrapf(err, "Get remote objects")
 	}
 	sort.Sort(valueSet(dbSetArray))
 	sort.Sort(valueSet(extSetArray))

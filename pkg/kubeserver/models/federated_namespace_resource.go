@@ -54,7 +54,7 @@ func (m *SFedNamespaceResourceManager) ValidateCreateData(ctx context.Context, u
 	if fedNsId == "" {
 		return nil, httperrors.NewNotEmptyError("federatednamespace_id is empty")
 	}
-	nsObj, err := GetFedNamespaceManager().GetFedNamespaceByIdOrName(userCred, fedNsId)
+	nsObj, err := GetFedNamespaceManager().GetFedNamespaceByIdOrName(ctx, userCred, fedNsId)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (m *SFedNamespaceResourceManager) ListItemFilter(ctx context.Context, q *sq
 		return nil, err
 	}
 	if input.FederatednamespaceId != "" {
-		ns, err := GetFedNamespaceManager().GetFedNamespaceByIdOrName(userCred, input.FederatednamespaceId)
+		ns, err := GetFedNamespaceManager().GetFedNamespaceByIdOrName(ctx, userCred, input.FederatednamespaceId)
 		if err != nil {
 			return nil, err
 		}

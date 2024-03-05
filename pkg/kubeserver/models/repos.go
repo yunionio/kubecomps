@@ -204,8 +204,8 @@ func (man *SRepoManager) FetchRepoById(id string) (*SRepo, error) {
 	return repo.(*SRepo), nil
 }
 
-func (man *SRepoManager) FetchRepoByIdOrName(userCred mcclient.IIdentityProvider, ident string) (*SRepo, error) {
-	repo, err := man.FetchByIdOrName(userCred, ident)
+func (man *SRepoManager) FetchRepoByIdOrName(ctx context.Context, userCred mcclient.IIdentityProvider, ident string) (*SRepo, error) {
+	repo, err := man.FetchByIdOrName(ctx, userCred, ident)
 	if err != nil {
 		return nil, err
 	}

@@ -62,7 +62,7 @@ func (t *MachinePrepareTask) doPrepare(ctx context.Context, obj db.IStandaloneMo
 
 	ip, err := driver.GetPrivateIP(session, machine.GetResourceId())
 	if err != nil {
-		return errors.Wrapf(err, "Get resource %s private ip", machine.GetResourceId)
+		return errors.Wrapf(err, "Get resource %s private ip", machine.GetResourceId())
 	}
 
 	if err := machine.SetPrivateIP(ip); err != nil {

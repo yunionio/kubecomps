@@ -207,14 +207,14 @@ func (m *SFedJointClusterManager) ListItemFilter(ctx context.Context, q *sqlchem
 	}
 	if len(input.FederatedResourceId) > 0 {
 		masterMan := m.GetMasterManager()
-		fedObj, err := masterMan.FetchByIdOrName(userCred, input.FederatedResourceId)
+		fedObj, err := masterMan.FetchByIdOrName(ctx, userCred, input.FederatedResourceId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Get %s object", masterMan.Keyword())
 		}
 		q = q.Equals("federatedresource_id", fedObj.GetId())
 	}
 	if len(input.ClusterId) > 0 {
-		clusterObj, err := GetClusterManager().FetchByIdOrName(userCred, input.ClusterId)
+		clusterObj, err := GetClusterManager().FetchByIdOrName(ctx, userCred, input.ClusterId)
 		if err != nil {
 			return nil, errors.Wrap(err, "Get cluster")
 		}
@@ -225,7 +225,7 @@ func (m *SFedJointClusterManager) ListItemFilter(ctx context.Context, q *sqlchem
 		q = q.In("cluster_id", csq)
 	}
 	if len(input.ResourceId) > 0 {
-		resObj, err := m.GetResourceManager().FetchByIdOrName(userCred, input.ResourceId)
+		resObj, err := m.GetResourceManager().FetchByIdOrName(ctx, userCred, input.ResourceId)
 		if err != nil {
 			return nil, errors.Wrap(err, "Get resource")
 		}

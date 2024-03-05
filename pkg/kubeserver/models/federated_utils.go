@@ -122,7 +122,7 @@ func ValidateFederatedRoleRef(ctx context.Context, userCred mcclient.TokenCreden
 	} else {
 		return httperrors.NewInputParameterError("Not support role kind %s", roleKind)
 	}
-	_, err := man.FetchByName(userCred, roleName)
+	_, err := man.FetchByName(ctx, userCred, roleName)
 	if err != nil {
 		return errors.Wrapf(err, "Not found federated %s role object by name: %s", roleKind, roleName)
 	}

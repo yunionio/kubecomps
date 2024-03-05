@@ -101,6 +101,6 @@ func (h harborImpl) PreparePushImage(ctx context.Context, url string, conf *api.
 		Public:      &trueObj,
 	}
 	ret, err := cs.V2().Project.CreateProject(ctx, params)
-	log.Infof("create project %q, ret: %#v, error: %v", ret, err)
+	log.Infof("create project %q, ret: %#v, error: %v", projectName, ret, err)
 	return nil
 }
