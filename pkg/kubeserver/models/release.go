@@ -135,7 +135,7 @@ func (m *SReleaseManager) ValidateCreateData(ctx context.Context, userCred mccli
 	if chart == "" {
 		return nil, httperrors.NewNotEmptyError("chart must provided")
 	}
-	repoObj, err := db.FetchByIdOrName(RepoManager, userCred, repo)
+	repoObj, err := db.FetchByIdOrName(ctx, RepoManager, userCred, repo)
 	if err != nil {
 		return nil, NewCheckIdOrNameError("repo", repo, err)
 	}

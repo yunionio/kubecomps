@@ -43,7 +43,7 @@ func GetReleaseResources(
 		}
 		namespace := info.Namespace
 		metaObj := newObj.(metav1.Object)
-		modelObj, err := model.NewK8SModelObjectByName(man, clusterMan, namespace, metaObj.GetName())
+		modelObj, err := model.NewK8SModelObjectByName(ctx, man, clusterMan, namespace, metaObj.GetName())
 		if err != nil {
 			return err
 		}

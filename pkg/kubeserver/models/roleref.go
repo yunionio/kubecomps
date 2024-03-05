@@ -1,6 +1,8 @@
 package models
 
 import (
+	"context"
+
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
@@ -20,7 +22,7 @@ type IRoleBaseManager interface {
 	GetRoleKind() string
 }
 
-func (m *SRoleRefResourceBaseManager) ValidateRoleRef(roleObjManager IRoleBaseManager, userCred mcclient.TokenCredential, ref *api.RoleRef) error {
+func (m *SRoleRefResourceBaseManager) ValidateRoleRef(ctx context.Context, roleObjManager IRoleBaseManager, userCred mcclient.TokenCredential, ref *api.RoleRef) error {
 	if ref == nil {
 		return httperrors.NewNotEmptyError("roleRef must provided")
 	}
@@ -28,7 +30,7 @@ func (m *SRoleRefResourceBaseManager) ValidateRoleRef(roleObjManager IRoleBaseMa
 	if ref.Kind != kind {
 		return httperrors.NewNotAcceptableError("role reference kind must %s, input %s", kind, ref.Kind)
 	}
-	refObj, err := roleObjManager.FetchByIdOrName(userCred, ref.Name)
+	refObj, err := roleObjManager.FetchByIdOrName(ctx, userCred, ref.Name)
 	if err != nil {
 		return err
 	}

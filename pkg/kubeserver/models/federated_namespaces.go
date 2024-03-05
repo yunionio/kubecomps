@@ -63,8 +63,8 @@ func (m *SFedNamespaceManager) GetFedNamespace(id string) (*SFedNamespace, error
 	return obj.(*SFedNamespace), nil
 }
 
-func (m *SFedNamespaceManager) GetFedNamespaceByIdOrName(userCred mcclient.IIdentityProvider, id string) (*SFedNamespace, error) {
-	obj, err := m.FetchByIdOrName(userCred, id)
+func (m *SFedNamespaceManager) GetFedNamespaceByIdOrName(ctx context.Context, userCred mcclient.IIdentityProvider, id string) (*SFedNamespace, error) {
+	obj, err := m.FetchByIdOrName(ctx, userCred, id)
 	if err != nil {
 		return nil, err
 	}

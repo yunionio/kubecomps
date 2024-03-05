@@ -1,6 +1,7 @@
 package chart
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 
@@ -39,13 +40,13 @@ func (l *ChartList) Append(obj interface{}) {
 	l.Charts = append(l.Charts, ToChart(l.Repo, obj.(*api.ChartResult)))
 }
 
-func (man *SChartManager) List(userCred mcclient.TokenCredential, query *api.ChartListInput, dsQuery *dataselect.DataSelectQuery) (common.ListResource, error) {
+func (man *SChartManager) List(ctx context.Context, userCred mcclient.TokenCredential, query *api.ChartListInput, dsQuery *dataselect.DataSelectQuery) (common.ListResource, error) {
 	cli := helm.NewChartClient(options.Options.HelmDataDir)
 	repo := query.Repo
 	if repo == "" {
 		return nil, httperrors.NewNotEmptyError("repo must provided")
 	}
-	repoObj, err := models.RepoManager.FetchByIdOrName(userCred, repo)
+	repoObj, err := models.RepoManager.FetchByIdOrName(ctx, userCred, repo)
 	if err != nil {
 		return nil, err
 	}

@@ -33,11 +33,11 @@ func (d *ExternalOpenshift) ValidateCreateData(ctx context.Context, userCred mcc
 		return errors.Wrap(err, "new openshift client")
 	}
 	var clusterOperator *configv1.ClusterOperator
-	clusterOperator, serverErr := ocCli.ClusterOperators().Get(context.Background(), "openshift-apiserver", metav1.GetOptions{})
+	clusterOperator, serverErr := ocCli.ClusterOperators().Get(ctx, "openshift-apiserver", metav1.GetOptions{})
 	if serverErr != nil {
 		switch {
 		case kerrors.IsForbidden(serverErr), kerrors.IsNotFound(serverErr):
-			return errors.Wrapf(err, "OpenShift Version not found (must be logged in to cluster as admin): %v")
+			return errors.Wrapf(err, "OpenShift Version not found (must be logged in to cluster as admin): %v", config)
 		}
 		return errors.Wrap(err, "get openshift apiserver")
 	}

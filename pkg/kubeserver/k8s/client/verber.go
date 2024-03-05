@@ -2,9 +2,10 @@ package client
 
 import (
 	//"encoding/json"
+	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	restclient "k8s.io/client-go/rest"
 
@@ -58,7 +59,7 @@ func NewResourceVerber(client, extensionsClient, appsClient,
 }
 
 // Delete deletes the resource of the given kind in the given namespace with the given name.
-func (verber *resourceVerber) Delete(kind string, namespaceSet bool, namespace string, name string) error {
+func (verber *resourceVerber) Delete(ctx context.Context, kind string, namespaceSet bool, namespace string, name string) error {
 	resourceSpec, ok := api.KindToAPIMapping[kind]
 	if !ok {
 		return fmt.Errorf("Unknown resource kind: %s", kind)
@@ -86,11 +87,11 @@ func (verber *resourceVerber) Delete(kind string, namespaceSet bool, namespace s
 		req.Namespace(namespace)
 	}
 
-	return req.Do().Error()
+	return req.Do(ctx).Error()
 }
 
 // Put puts new resource version of the given kind in the given namespace with the given name.
-func (verber *resourceVerber) Put(kind string, namespaceSet bool, namespace string, name string,
+func (verber *resourceVerber) Put(ctx context.Context, kind string, namespaceSet bool, namespace string, name string,
 	obj runtime.Object) error {
 
 	resourceSpec, ok := api.KindToAPIMapping[kind]
@@ -122,11 +123,11 @@ func (verber *resourceVerber) Put(kind string, namespaceSet bool, namespace stri
 		req.Namespace(namespace)
 	}
 
-	return req.Do().Error()
+	return req.Do(ctx).Error()
 }
 
 // Get gets the resource of the given kind in the given namespace with the given name.
-func (verber *resourceVerber) Get(kind string, namespaceSet bool, namespace string, name string) (runtime.Object, error) {
+func (verber *resourceVerber) Get(ctx context.Context, kind string, namespaceSet bool, namespace string, name string) (runtime.Object, error) {
 	resourceSpec, ok := api.KindToAPIMapping[kind]
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource kind: %s", kind)
@@ -148,6 +149,6 @@ func (verber *resourceVerber) Get(kind string, namespaceSet bool, namespace stri
 		req.Namespace(namespace)
 	}
 
-	err := req.Do().Into(result)
+	err := req.Do(ctx).Into(result)
 	return result, err
 }

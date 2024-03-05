@@ -36,8 +36,8 @@ type IK8sResourceManager interface {
 }
 
 type IClusterManager interface {
-	IsClusterExists(userCred mcclient.TokenCredential, id string) (ICluster, bool, error)
-	FetchClusterByIdOrName(userCred mcclient.TokenCredential, id string) (ICluster, error)
+	IsClusterExists(ctx context.Context, userCred mcclient.TokenCredential, id string) (ICluster, bool, error)
+	FetchClusterByIdOrName(ctx context.Context, userCred mcclient.TokenCredential, id string) (ICluster, error)
 	CreateCluster(ctx context.Context, userCred mcclient.TokenCredential, data api.ClusterCreateInput) (ICluster, error)
 	//GetNonSystemClusters() ([]ICluster, error)
 	GetRunningClusters() ([]ICluster, error)
@@ -62,9 +62,9 @@ type IMachine interface {
 }
 
 type IMachineManager interface {
-	FetchMachineByIdOrName(userCred mcclient.TokenCredential, id string) (IMachine, error)
+	FetchMachineByIdOrName(ctx context.Context, userCred mcclient.TokenCredential, id string) (IMachine, error)
 	GetMachines(clusterId string) ([]IMachine, error)
-	IsMachineExists(userCred mcclient.TokenCredential, id string) (IMachine, bool, error)
+	IsMachineExists(ctx context.Context, userCred mcclient.TokenCredential, id string) (IMachine, bool, error)
 	CreateMachine(ctx context.Context, userCred mcclient.TokenCredential, data *api.CreateMachineData) (IMachine, error)
 }
 
