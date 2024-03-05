@@ -141,7 +141,7 @@ func (_ aws) PostPrepareServerResource(ctx context.Context, s *mcclient.ClientSe
 	for _, netId := range netIds {
 		details, err := onecloudcli.NewNetworkHelper(s).GetDetails(netId)
 		if err != nil {
-			return errors.Wrapf(err, "get network %d details", netId)
+			return errors.Wrapf(err, "get network %s details", netId)
 		}
 		if err := clirc.EC2CreateTags(details.ExternalId, awscli.NewClusterTag(cls.GetName(), awscli.ClusterTagValueShared)); err != nil {
 			return errors.Wrapf(err, "EC2CreateTags for subnet %s", details.Name)

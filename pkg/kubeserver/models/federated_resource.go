@@ -33,7 +33,7 @@ type IFedModel interface {
 
 	GetManager() IFedModelManager
 	GetDetails(baseDetails interface{}, isList bool) interface{}
-	ValidateJointCluster(userCred mcclient.TokenCredential, data jsonutils.JSONObject) (IFedJointClusterModel, jsonutils.JSONObject, error)
+	ValidateJointCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (IFedJointClusterModel, jsonutils.JSONObject, error)
 	GetJointModelManager() IFedJointClusterManager
 	ValidateAttachCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
 	ValidateDetachCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (jsonutils.JSONObject, error)
@@ -179,13 +179,13 @@ func (obj *SFedResourceBase) GetDetails(base interface{}, isList bool) interface
 	return out
 }
 
-func (obj *SFedResourceBase) ValidateJointCluster(userCred mcclient.TokenCredential, data jsonutils.JSONObject) (IFedJointClusterModel, jsonutils.JSONObject, error) {
+func (obj *SFedResourceBase) ValidateJointCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (IFedJointClusterModel, jsonutils.JSONObject, error) {
 	jointMan := obj.GetJointModelManager()
 	clusterId, _ := data.GetString("cluster_id")
 	if clusterId == "" {
 		return nil, data, httperrors.NewInputParameterError("cluster_id not provided")
 	}
-	cluster, err := GetClusterManager().GetClusterByIdOrName(userCred, clusterId)
+	cluster, err := GetClusterManager().GetClusterByIdOrName(ctx, userCred, clusterId)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -197,7 +197,7 @@ func (obj *SFedResourceBase) ValidateJointCluster(userCred mcclient.TokenCredent
 }
 
 func (obj *SFedResourceBase) ValidateAttachCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	jointModel, data, err := obj.ValidateJointCluster(userCred, data)
+	jointModel, data, err := obj.ValidateJointCluster(ctx, userCred, data)
 	if err != nil && errors.Cause(err) != sql.ErrNoRows {
 		return data, err
 	}
@@ -215,7 +215,7 @@ func (obj *SFedResourceBase) GetK8sObjectMeta() metav1.ObjectMeta {
 }
 
 func (obj *SFedResourceBase) ValidateDetachCluster(ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
-	jointModel, input, err := obj.ValidateJointCluster(userCred, data)
+	jointModel, input, err := obj.ValidateJointCluster(ctx, userCred, data)
 	if err != nil && errors.Cause(err) != sql.ErrNoRows {
 		return input, err
 	}

@@ -43,7 +43,7 @@ func (m *SFedNamespaceJointClusterManager) ListItemFilter(ctx context.Context, q
 		return nil, err
 	}
 	if input.FederatedNamespaceId != "" {
-		fedNsObj, err := GetFedNamespaceManager().FetchByIdOrName(userCred, input.FederatedNamespaceId)
+		fedNsObj, err := GetFedNamespaceManager().FetchByIdOrName(ctx, userCred, input.FederatedNamespaceId)
 		if err != nil {
 			return nil, errors.Wrap(err, "Get federatednamespace")
 		}

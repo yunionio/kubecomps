@@ -26,7 +26,7 @@ func (d *externalDriver) GetType() api.RepoType {
 }
 
 func (d *externalDriver) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerCred mcclient.IIdentityProvider, data *api.ReleaseCreateInput) (*api.ReleaseCreateInput, error) {
-	cluster, err := models.ClusterManager.FetchClusterByIdOrName(userCred, data.ClusterId)
+	cluster, err := models.ClusterManager.FetchClusterByIdOrName(ctx, userCred, data.ClusterId)
 	if err != nil {
 		return nil, err
 	}

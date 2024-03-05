@@ -1,6 +1,8 @@
 package client
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -41,7 +43,7 @@ func NewDynamicClient(config *rest.Config) (*DynamicClient, error) {
 	}, nil
 }
 
-func (c *DynamicClient) Update(namespace string, obj runtime.Object) (*unstructured.Unstructured, error) {
+func (c *DynamicClient) Update(ctx context.Context, namespace string, obj runtime.Object) (*unstructured.Unstructured, error) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	gk := gvk.GroupKind()
 	mapping, err := c.mapper.RESTMapping(gk, gvk.Version)
@@ -52,5 +54,5 @@ func (c *DynamicClient) Update(namespace string, obj runtime.Object) (*unstructu
 	if err != nil {
 		return nil, err
 	}
-	return c.dynamicCli.Resource(mapping.Resource).Namespace(namespace).Update(&unstructured.Unstructured{unstructureObj}, metav1.UpdateOptions{})
+	return c.dynamicCli.Resource(mapping.Resource).Namespace(namespace).Update(ctx, &unstructured.Unstructured{unstructureObj}, metav1.UpdateOptions{})
 }

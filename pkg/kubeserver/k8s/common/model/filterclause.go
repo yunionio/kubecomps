@@ -47,14 +47,14 @@ func (_ qCond) IN(field string, params []string) QueryFilter {
 	f := func(val string) (bool, error) {
 		return utils.IsInStringArray(val, params), nil
 	}
-	return QWrapStr(field, f, "%s.in(%v)", params)
+	return QWrapStr(field, f, "%s.in(%v)", field, params)
 }
 
 func (_ qCond) NOT_IN(field string, params []string) QueryFilter {
 	f := func(val string) (bool, error) {
 		return utils.IsInStringArray(val, params), nil
 	}
-	return QWrapStr(field, f, "%s.notin(%v)", params)
+	return QWrapStr(field, f, "%s.notin(%v)", field, params)
 }
 
 func (cond qCond) or(op func(val1, val2 string) bool, val string, params ...string) (bool, error) {
@@ -72,7 +72,7 @@ func (cond qCond) CONTAINS(field string, params []string) QueryFilter {
 			return strings.Contains(v1, v2)
 		}, val, params...)
 	}
-	return QWrapStr(field, f, "%s.contains(%v)", params)
+	return QWrapStr(field, f, "%s.contains(%v)", field, params)
 }
 
 func (cond qCond) LIKE(field string, params []string) QueryFilter {
@@ -85,7 +85,7 @@ func (cond qCond) STARTWITH(field string, params []string) QueryFilter {
 			return strings.HasPrefix(v1, v2)
 		}, val, params...)
 	}
-	return QWrapStr(field, f, "%s.startwith(%v)", params)
+	return QWrapStr(field, f, "%s.startwith(%v)", field, params)
 }
 
 func (cond qCond) ENDWITH(field string, params []string) QueryFilter {
@@ -94,7 +94,7 @@ func (cond qCond) ENDWITH(field string, params []string) QueryFilter {
 			return strings.HasSuffix(v1, v2)
 		}, val, params...)
 	}
-	return QWrapStr(field, f, "%s.endwith(%v)", params)
+	return QWrapStr(field, f, "%s.endwith(%v)", field, params)
 }
 
 func (cond qCond) EQUALS(field string, params []string) QueryFilter {
@@ -103,7 +103,7 @@ func (cond qCond) EQUALS(field string, params []string) QueryFilter {
 			return strings.Compare(v1, v2) == 0
 		}, val, params...)
 	}
-	return QWrapStr(field, f, "%s.equals(%v)", params)
+	return QWrapStr(field, f, "%s.equals(%v)", field, params)
 }
 
 func (cond qCond) NOT_EQUALS(field string, params []string) QueryFilter {
@@ -112,7 +112,7 @@ func (cond qCond) NOT_EQUALS(field string, params []string) QueryFilter {
 			return strings.Compare(v1, v2) != 0
 		}, val, params...)
 	}
-	return QWrapStr(field, f, "%s.not_equals(%v)", params)
+	return QWrapStr(field, f, "%s.not_equals(%v)", field, params)
 }
 
 func (fc *SFilterClause) QueryFilter() QueryFilter {

@@ -16,6 +16,7 @@ import (
 	kapiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
 	"yunion.io/x/pkg/errors"
 
@@ -235,7 +236,7 @@ func (s *server) syncIPPools(ctx context.Context) error {
 		}
 		// delete remote pool
 		if err := s.deleteIPPool(ctx, rp); err != nil {
-			return errors.Wrapf(err, "delete remote IPPool %s")
+			return errors.Wrapf(err, "delete remote IPPool %s", jsonutils.Marshal(rp))
 		}
 	}
 

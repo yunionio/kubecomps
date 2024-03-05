@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+
 	"yunion.io/x/kubecomps/pkg/kubeserver/models"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,7 +106,7 @@ func getUserCredential(ctx context.Context) mcclient.TokenCredential {
 	return policy.FetchUserCredential(ctx)
 }
 
-func getCluster(query, data *jsonutils.JSONDict, userCred mcclient.TokenCredential) (*models.SCluster, error) {
+func getCluster(ctx context.Context, query, data *jsonutils.JSONDict, userCred mcclient.TokenCredential) (*models.SCluster, error) {
 	var clusterId string
 	for _, src := range []*jsonutils.JSONDict{query, data} {
 		if src == nil {
@@ -119,7 +120,7 @@ func getCluster(query, data *jsonutils.JSONDict, userCred mcclient.TokenCredenti
 	if clusterId == "" {
 		return nil, httperrors.NewMissingParameterError("cluster")
 	}
-	cluster, err := models.ClusterManager.FetchClusterByIdOrName(userCred, clusterId)
+	cluster, err := models.ClusterManager.FetchClusterByIdOrName(ctx, userCred, clusterId)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +142,7 @@ func newK8sAdminClient(cluster *models.SCluster) (kubernetes.Interface, *rest.Co
 func NewCloudK8sRequest(ctx context.Context, query, data *jsonutils.JSONDict) (*common.Request, error) {
 	userCred := getUserCredential(ctx)
 
-	cluster, err := getCluster(query, data, userCred)
+	cluster, err := getCluster(ctx, query, data, userCred)
 	if err != nil {
 		return nil, err
 	}
