@@ -140,7 +140,7 @@ func (a sFedResAPI) StartSyncTask(obj IFedModel, ctx context.Context, userCred m
 }
 
 func (a sFedResAPI) PerformSyncCluster(obj IFedModel, ctx context.Context, userCred mcclient.TokenCredential, data jsonutils.JSONObject) error {
-	jObj, data, err := obj.ValidateJointCluster(userCred, data)
+	jObj, data, err := obj.ValidateJointCluster(ctx, userCred, data)
 	if err != nil {
 		return err
 	}

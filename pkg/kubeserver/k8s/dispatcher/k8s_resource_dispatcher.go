@@ -150,7 +150,7 @@ func mergeQueryParams(params map[string]string, query jsonutils.JSONObject, excl
 	return queryDict
 }
 
-func (d K8sModelDispatcher) getCluster(query, data *jsonutils.JSONDict, userCred mcclient.TokenCredential) (*client.ClusterManager, error) {
+func (d K8sModelDispatcher) getCluster(ctx context.Context, query, data *jsonutils.JSONDict, userCred mcclient.TokenCredential) (*client.ClusterManager, error) {
 	var clusterId string
 	for _, src := range []*jsonutils.JSONDict{query, data} {
 		if src == nil {
@@ -164,7 +164,7 @@ func (d K8sModelDispatcher) getCluster(query, data *jsonutils.JSONDict, userCred
 	if clusterId == "" {
 		return nil, httperrors.NewMissingParameterError("cluster")
 	}
-	cluster, err := models.ClusterManager.FetchClusterByIdOrName(userCred, clusterId)
+	cluster, err := models.ClusterManager.FetchClusterByIdOrName(ctx, userCred, clusterId)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func getUserCredential(ctx context.Context) mcclient.TokenCredential {
 
 func (d K8sModelDispatcher) getContext(ctx context.Context, query, data *jsonutils.JSONDict) (*model.RequestContext, error) {
 	userCred := getUserCredential(ctx)
-	cluster, err := d.getCluster(query, data, userCred)
+	cluster, err := d.getCluster(ctx, query, data, userCred)
 	if err != nil {
 		return nil, err
 	}

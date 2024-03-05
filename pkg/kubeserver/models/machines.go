@@ -67,8 +67,8 @@ type SMachine struct {
 	K8sNodeConfig jsonutils.JSONObject `nullable:"true" create:"optional" update:"admin" list:"user"`
 }
 
-func (man *SMachineManager) GetCluster(userCred mcclient.TokenCredential, clusterId string) (*SCluster, error) {
-	obj, err := ClusterManager.FetchByIdOrName(userCred, clusterId)
+func (man *SMachineManager) GetCluster(ctx context.Context, userCred mcclient.TokenCredential, clusterId string) (*SCluster, error) {
+	obj, err := ClusterManager.FetchByIdOrName(ctx, userCred, clusterId)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +117,8 @@ func (man *SMachineManager) GetMachines(clusterId string) ([]manager.IMachine, e
 	return ret, nil
 }
 
-func (man *SMachineManager) IsMachineExists(userCred mcclient.TokenCredential, id string) (manager.IMachine, bool, error) {
-	obj, err := man.FetchByIdOrName(userCred, id)
+func (man *SMachineManager) IsMachineExists(ctx context.Context, userCred mcclient.TokenCredential, id string) (manager.IMachine, bool, error) {
+	obj, err := man.FetchByIdOrName(ctx, userCred, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, false, nil
@@ -202,7 +202,7 @@ func (m *SMachine) GetCreateInput(ctx context.Context, userCred mcclient.TokenCr
 }
 
 func (man *SMachineManager) CreateMachine(ctx context.Context, userCred mcclient.TokenCredential, data *api.CreateMachineData) (manager.IMachine, error) {
-	cluster, err := GetClusterManager().GetClusterByIdOrName(userCred, data.ClusterId)
+	cluster, err := GetClusterManager().GetClusterByIdOrName(ctx, userCred, data.ClusterId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Get cluster by id %s", data.ClusterId)
 	}
@@ -277,8 +277,8 @@ func (man *SMachineManager) FetchMachineById(id string) (*SMachine, error) {
 	return obj.(*SMachine), nil
 }
 
-func (man *SMachineManager) FetchMachineByIdOrName(userCred mcclient.TokenCredential, id string) (manager.IMachine, error) {
-	m, err := man.FetchByIdOrName(userCred, id)
+func (man *SMachineManager) FetchMachineByIdOrName(ctx context.Context, userCred mcclient.TokenCredential, id string) (manager.IMachine, error) {
+	m, err := man.FetchByIdOrName(ctx, userCred, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, httperrors.NewNotFoundError("Machine %s", id)
@@ -319,7 +319,7 @@ func (man *SMachineManager) ValidateCreateData(ctx context.Context, userCred mcc
 	if len(clusterId) == 0 {
 		return nil, httperrors.NewInputParameterError("Cluster must specified")
 	}
-	cluster, err := man.GetCluster(userCred, clusterId)
+	cluster, err := man.GetCluster(ctx, userCred, clusterId)
 	if err != nil {
 		return nil, httperrors.NewNotFoundError("Cluster %s not found", clusterId)
 	}
@@ -437,7 +437,7 @@ func (m *SMachine) AllowPerformRecreate(ctx context.Context, userCred mcclient.T
 
 func (m *SMachine) PerformRecreate(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
 	if m.Status != api.MachineStatusCreateFail {
-		return nil, httperrors.NewForbiddenError("Status is %s", m.SetStatus)
+		return nil, httperrors.NewForbiddenError("Status is %s", m.Status)
 	}
 	if err := m.StartMachineCreateTask(ctx, userCred, data.(*jsonutils.JSONDict), ""); err != nil {
 		return nil, err
@@ -623,11 +623,11 @@ func WaitMachineRunning(machine *SMachine) error {
 	})
 }
 
-func WaitMachineDelete(machine *SMachine) error {
+func WaitMachineDelete(ctx context.Context, machine *SMachine) error {
 	interval := 30 * time.Second
 	timeout := 15 * time.Minute
 	return wait.Poll(interval, timeout, func() (bool, error) {
-		m, exists, err := MachineManager.IsMachineExists(nil, machine.GetId())
+		m, exists, err := MachineManager.IsMachineExists(ctx, nil, machine.GetId())
 		if err != nil {
 			return false, err
 		}

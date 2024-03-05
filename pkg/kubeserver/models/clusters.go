@@ -427,7 +427,7 @@ func (m *SClusterManager) ListItemFilter(
 			return nil, httperrors.NewInputParameterError("federated_keyword %s not found", input.FederatedKeyword)
 		}
 		fedMan := fedJointMan.GetFedManager()
-		fedObj, err := fedMan.FetchByIdOrName(userCred, input.FederatedResourceId)
+		fedObj, err := fedMan.FetchByIdOrName(ctx, userCred, input.FederatedResourceId)
 		if err != nil {
 			return nil, httperrors.NewNotFoundError("federated resource %s %s found error: %v", input.FederatedKeyword, input.FederatedResourceId, err)
 		}
@@ -810,8 +810,8 @@ func (m *SClusterManager) PerformGc(ctx context.Context, userCred mcclient.Token
 	return nil, nil
 }
 
-func (m *SClusterManager) IsClusterExists(userCred mcclient.TokenCredential, id string) (manager.ICluster, bool, error) {
-	obj, err := m.FetchByIdOrName(userCred, id)
+func (m *SClusterManager) IsClusterExists(ctx context.Context, userCred mcclient.TokenCredential, id string) (manager.ICluster, bool, error) {
+	obj, err := m.FetchByIdOrName(ctx, userCred, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, false, nil
@@ -869,12 +869,12 @@ func (m *SClusterManager) GetClustersByStatus(status ...string) ([]manager.IClus
 	return ret, nil
 }
 
-func (m *SClusterManager) FetchClusterByIdOrName(userCred mcclient.TokenCredential, id string) (manager.ICluster, error) {
-	return m.GetClusterByIdOrName(userCred, id)
+func (m *SClusterManager) FetchClusterByIdOrName(ctx context.Context, userCred mcclient.TokenCredential, id string) (manager.ICluster, error) {
+	return m.GetClusterByIdOrName(ctx, userCred, id)
 }
 
-func (m *SClusterManager) GetClusterByIdOrName(userCred mcclient.TokenCredential, id string) (*SCluster, error) {
-	cluster, err := m.FetchByIdOrName(userCred, id)
+func (m *SClusterManager) GetClusterByIdOrName(ctx context.Context, userCred mcclient.TokenCredential, id string) (*SCluster, error) {
+	cluster, err := m.FetchByIdOrName(ctx, userCred, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, httperrors.NewNotFoundError("Cluster %s", id)
@@ -1890,7 +1890,7 @@ func (c *SCluster) PerformDeleteMachines(ctx context.Context, userCred mcclient.
 		if err != nil {
 			return nil, err
 		}
-		machineObj, err := manager.MachineManager().FetchMachineByIdOrName(userCred, id)
+		machineObj, err := manager.MachineManager().FetchMachineByIdOrName(ctx, userCred, id)
 		if err != nil {
 			return nil, httperrors.NewInputParameterError("Not found node by id: %s", id)
 		}

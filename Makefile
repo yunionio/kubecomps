@@ -111,7 +111,11 @@ fmt-check: fmt
 		echo "$@: working tree modified (possibly by gofmt)" >&2 ; \
 		false ; \
 	fi
-.PHONY: fmt fmt-check
+
+test:
+	@go test $(GO_BUILD_FLAGS) $(shell go list ./...)
+
+.PHONY: fmt fmt-check test
 
 %:
 	@:

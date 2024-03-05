@@ -215,7 +215,7 @@ func (m SClusterResourceBaseManager) ValidateCreateData(ctx context.Context, use
 	if data.ClusterId == "" {
 		return nil, httperrors.NewNotEmptyError("cluster is empty")
 	}
-	clsObj, err := ClusterManager.FetchByIdOrName(userCred, data.ClusterId)
+	clsObj, err := ClusterManager.FetchByIdOrName(ctx, userCred, data.ClusterId)
 	if err != nil {
 		return nil, NewCheckIdOrNameError("cluster", data.ClusterId, err)
 	}
@@ -755,7 +755,7 @@ func (m *SClusterResourceBaseManager) ListItemFilter(ctx context.Context, q *sql
 		return nil, err
 	}
 	if input.ClusterId != "" {
-		cls, err := ClusterManager.FetchClusterByIdOrName(userCred, input.ClusterId)
+		cls, err := ClusterManager.FetchClusterByIdOrName(ctx, userCred, input.ClusterId)
 		if err != nil {
 			return nil, errors.Wrap(err, "FetchClusterByIdOrName")
 		}
@@ -1261,7 +1261,7 @@ func onRemoteObjectUpdate(resMan IClusterModelManager, ctx context.Context, user
 func OnRemoteObjectDelete(resMan IClusterModelManager, ctx context.Context, userCred mcclient.TokenCredential, dbObj IClusterModel) error {
 	// log.Debugf("remote object %s/%s deleted, delete local", resMan.Keyword(), dbObj.GetName())
 	if err := SyncRemovedClusterResource(ctx, userCred, dbObj); err != nil {
-		return errors.Wrapf(err, "OnRemoteObjectDelete %s %s SyncRemovedClusterResource error: %v", resMan.Keyword(), dbObj.GetName())
+		return errors.Wrapf(err, "OnRemoteObjectDelete %s %s SyncRemovedClusterResource error: %v", resMan.Keyword(), dbObj.GetName(), err)
 	}
 	return nil
 }
@@ -1269,7 +1269,7 @@ func OnRemoteObjectDelete(resMan IClusterModelManager, ctx context.Context, user
 func GetResourcesByClusters(man IClusterModelManager, clusterIds []string, ret interface{}) error {
 	q := man.Query().In("cluster_id", clusterIds)
 	if err := q.All(ret); err != nil {
-		return errors.Wrapf(err, "fetch %s resources by clusters")
+		return errors.Wrapf(err, "fetch %s resources by clusters", man.Keyword())
 	}
 	return nil
 }

@@ -103,7 +103,7 @@ func chartlistHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return
 	}
 	userCred := policy.FetchUserCredential(ctx)
-	list, err := chart.ChartManager.List(userCred, cq, dsq)
+	list, err := chart.ChartManager.List(ctx, userCred, cq, dsq)
 	if err != nil {
 		errors.GeneralServerError(ctx, w, err)
 		return
@@ -120,7 +120,7 @@ func chartShowHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 	chartName := params["<name>"]
 	userCred := getUserCredential(ctx)
-	repo, err := models.RepoManager.FetchRepoByIdOrName(userCred, repoName)
+	repo, err := models.RepoManager.FetchRepoByIdOrName(ctx, userCred, repoName)
 	if err != nil {
 		errors.GeneralServerError(ctx, w, err)
 		return

@@ -300,7 +300,7 @@ func (m *SComponentManager) ValidateCreateData(
 	if input.Cluster == "" {
 		return nil, httperrors.NewNotEmptyError("cluster must specified")
 	}
-	cluster, err := GetClusterManager().FetchByIdOrName(userCred, input.Cluster)
+	cluster, err := GetClusterManager().FetchByIdOrName(ctx, userCred, input.Cluster)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetch cluster %s", input.Cluster)
 	}
@@ -329,7 +329,7 @@ func (m *SComponent) CustomizeCreate(
 	if err != nil {
 		return errors.Wrapf(err, "get component %s settings", input.Type)
 	}
-	cls, err := ClusterManager.GetClusterByIdOrName(userCred, input.Cluster)
+	cls, err := ClusterManager.GetClusterByIdOrName(ctx, userCred, input.Cluster)
 	if err != nil {
 		return errors.Wrapf(err, "get component %s cluster", input.Type)
 	}
