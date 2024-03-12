@@ -24,7 +24,7 @@ jobs:
           set -o xtrace
           workdir="$HOME/go/src/yunion.io/x"
           mkdir -p "$workdir"
-          mv "$HOME/work/pkg/kubecomps" "$workdir/"
+          mv "$HOME/work/kubecomps/kubecomps" "$workdir/"
 
           export GOPATH="$HOME/go"
           export GO111MODULE=off
