@@ -28,8 +28,5 @@ type PodNic struct {
 
 func (n PodNic) GetInterface(idx int) string {
 	defaultName := fmt.Sprintf("eth%d", idx)
-	if n.Interface != "" {
-		return n.Interface
-	}
 	return defaultName
 }
