@@ -253,6 +253,11 @@ func setupVeth(
 	if err := cli.AddPort(nic.Bridge, hostIf.Name); err != nil {
 		return nil, nil, errors.Wrapf(err, "Add port to OVS: %s -> %s", hostIf.Name, nic.Bridge)
 	}
+	if nic.Vpc != nil && nic.Vpc.Provider == POD_NIC_PROVIDER_OVN {
+		if err := cli.SetIfaceId(nic.NetId, hostIf.Name); err != nil {
+			return nil, nil, errors.Wrapf(err, "Set interface id: %s -> %s", hostIf.Name, nic.Bridge)
+		}
+	}
 	//log.Infof("Port %q added to %q", hostIf.Name, nic.Bridge)
 	return hostIf, ctrIf, nil
 }

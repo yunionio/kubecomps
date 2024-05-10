@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"context"
+	"fmt"
+	"os/exec"
 	"time"
 
 	"yunion.io/x/pkg/errors"
@@ -12,6 +14,7 @@ import (
 type OVSClient interface {
 	AddPort(bridge, port string) error
 	DeletePort(bridge, port string) error
+	SetIfaceId(id string, name string) error
 }
 
 func NewOVSClient() (OVSClient, error) {
@@ -39,6 +42,14 @@ func (sw *ovsClient) AddPort(bridge, port string) error {
 		Bridge: bridge,
 		Port:   port,
 	}))
+}
+
+func (sw *ovsClient) SetIfaceId(netId string, ifName string) error {
+	ovsCmd := exec.Command("ovs-vsctl", "set", "Interface", ifName, fmt.Sprintf("external-ids:iface-id=iface-%s-%s", netId, ifName))
+	if out, err := ovsCmd.CombinedOutput(); err != nil {
+		return errors.Wrapf(err, "set external ids: %s", out)
+	}
+	return nil
 }
 
 func (sw *ovsClient) DeletePort(bridge, port string) error {
