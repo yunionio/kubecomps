@@ -83,6 +83,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	if err != nil {
 		return errors.Wrap(err, "GenerateNetworkResultByNics")
 	}
+	result.CNIVersion = cniVersion
 
 	for idx, nic := range nics {
 		defaultGw := false
