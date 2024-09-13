@@ -12,7 +12,7 @@ const (
 )
 
 type ContainerRegistryListInput struct {
-	apis.StatusInfrasResourceBaseListInput
+	apis.SharableVirtualResourceListInput
 
 	Type string `json:"type"`
 	Url  string `json:"url"`
@@ -33,7 +33,7 @@ type ContainerRegistryConfig struct {
 }
 
 type ContainerRegistryCreateInput struct {
-	apis.StatusInfrasResourceBaseCreateInput
+	apis.SharableVirtualResourceCreateInput
 
 	// Repo type
 	// required: true
