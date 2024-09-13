@@ -31,7 +31,7 @@ import (
 )
 
 type SContainerRegistryManager struct {
-	db.SVirtualResourceBaseManager
+	db.SSharableVirtualResourceBaseManager
 }
 
 var (
@@ -42,7 +42,7 @@ var (
 func GetContainerRegistryManager() *SContainerRegistryManager {
 	if containerRegistryManager == nil {
 		containerRegistryManager = &SContainerRegistryManager{
-			SVirtualResourceBaseManager: db.NewVirtualResourceBaseManager(SContainerRegistry{}, "container_registries_tbl", "container_registry", "container_registries"),
+			SSharableVirtualResourceBaseManager: db.NewSharableVirtualResourceBaseManager(SContainerRegistry{}, "container_registries_tbl", "container_registry", "container_registries"),
 		}
 		containerRegistryManager.SetVirtualObject(containerRegistryManager)
 	}
@@ -54,7 +54,7 @@ func init() {
 }
 
 type SContainerRegistry struct {
-	db.SVirtualResourceBase
+	db.SSharableVirtualResourceBase
 
 	Url    string               `width:"256" charset:"ascii" nullable:"false" create:"required" update:"user" list:"user"`
 	Type   string               `charset:"ascii" width:"128" create:"required" nullable:"true" list:"user"`
@@ -68,7 +68,7 @@ func (man *SContainerRegistryManager) AddDispatcher(prefix string, app *appsrv.A
 }
 
 func (man *SContainerRegistryManager) ListItemFilter(ctx context.Context, q *sqlchemy.SQuery, userCred mcclient.TokenCredential, input *api.ContainerRegistryListInput) (*sqlchemy.SQuery, error) {
-	q, err := man.SVirtualResourceBaseManager.ListItemFilter(ctx, q, userCred, input.VirtualResourceListInput)
+	q, err := man.SSharableVirtualResourceBaseManager.ListItemFilter(ctx, q, userCred, input.SharableVirtualResourceListInput)
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +86,11 @@ func (man *SContainerRegistryManager) GetDriver(rType api.ContainerRegistryType)
 }
 
 func (man *SContainerRegistryManager) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ContainerRegistryCreateInput) (*api.ContainerRegistryCreateInput, error) {
-	shareInput, err := man.SVirtualResourceBaseManager.ValidateCreateData(ctx, userCred, ownerId, query, data.VirtualResourceCreateInput)
+	shareInput, err := man.SSharableVirtualResourceBaseManager.ValidateCreateData(ctx, userCred, ownerId, query, data.SharableVirtualResourceCreateInput)
 	if err != nil {
 		return nil, err
 	}
-	data.VirtualResourceCreateInput = shareInput
+	data.SharableVirtualResourceCreateInput = shareInput
 	if data.Url == "" {
 		return nil, httperrors.NewInputParameterError("Missing repo url")
 	}
@@ -186,7 +186,7 @@ func (r *SContainerRegistry) GetDetailsImageTags(ctx context.Context, userCred m
 }
 
 func (m *SContainerRegistryManager) CustomizeHandlerInfo(info *appsrv.SHandlerInfo) {
-	m.SVirtualResourceBaseManager.CustomizeHandlerInfo(info)
+	m.SSharableVirtualResourceBaseManager.CustomizeHandlerInfo(info)
 
 	switch info.GetName(nil) {
 	case "perform_action", "get_specific", "get_property", "get_details":
