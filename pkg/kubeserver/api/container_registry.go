@@ -28,6 +28,7 @@ type ContainerRegistryConfigHarbor struct {
 }
 
 type ContainerRegistryConfig struct {
+	Type   ContainerRegistryType          `json:"type"`
 	Common *ContainerRegistryConfigCommon `json:"common`
 	Harbor *ContainerRegistryConfigHarbor `json:"harbor"`
 }
