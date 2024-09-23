@@ -125,6 +125,7 @@ func (r *SContainerRegistry) GetConfig() (*api.ContainerRegistryConfig, error) {
 	if err := r.Config.Unmarshal(conf); err != nil {
 		return nil, err
 	}
+	conf.Type = api.ContainerRegistryType(r.Type)
 	return conf, nil
 }
 
@@ -183,6 +184,10 @@ func (r *SContainerRegistry) GetDetailsImageTags(ctx context.Context, userCred m
 		return nil, errors.Wrap(err, "GetDockerRegistryClient")
 	}
 	return rgCli.ListImageTags(ctx, query.Repository)
+}
+
+func (r *SContainerRegistry) GetDetailsConfig(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (*api.ContainerRegistryConfig, error) {
+	return r.GetConfig()
 }
 
 func (m *SContainerRegistryManager) CustomizeHandlerInfo(info *appsrv.SHandlerInfo) {
