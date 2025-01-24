@@ -375,14 +375,19 @@ type AdmissionWebhooks struct {
 	Patch   AdmissionWebhooksPatch `json:"patch"`
 }
 
+type PrometheusOperatorTLS struct {
+	Enabled bool `json:"enabled"`
+}
+
 type PrometheusOperator struct {
 	CommonConfig
 	NodeSelector map[string]string `json:"nodeSelector"`
 	// image: squareup/ghostunnel:v1.5.2
-	TLSProxy          PromTLSProxy      `json:"tlsProxy"`
-	AdmissionWebhooks AdmissionWebhooks `json:"admissionWebhooks"`
+	TLSProxy          PromTLSProxy          `json:"tlsProxy"`
+	TLS               PrometheusOperatorTLS `json:"tls"`
+	AdmissionWebhooks AdmissionWebhooks     `json:"admissionWebhooks"`
 	// image: quay.io/coreos/prometheus-operator:v0.37.0
-	Image Image `json:"image"`
+	Image Image2 `json:"image"`
 	// image: quay.io/coreos/configmap-reload:v0.0.1
 	ConfigmapReloadImage Image `json:"configmapReloadImage"`
 	// image: quay.io/coreos/prometheus-config-reloader:v0.37.0
