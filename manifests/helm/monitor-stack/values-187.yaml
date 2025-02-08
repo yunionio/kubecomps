@@ -1,0 +1,156 @@
+alertmanager:
+  alertmanagerSpec:
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/alertmanager
+      tag: v0.20.0
+grafana:
+  additionalDataSources:
+  - access: proxy
+    isDefault: true
+    name: Thanos-Query
+    type: prometheus
+    url: http://thanos-query.onecloud-monitoring:9090
+  adminPassword: admin@password
+  adminUser: admin
+  grafana.ini:
+    server:
+      root_url: https://10.168.26.187/grafana/
+      serve_from_sub_path: true
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/grafana
+    tag: 6.7.1
+  ingress:
+    enabled: true
+    host: ""
+    path: /grafana
+    secret:
+      certificate: |
+        -----BEGIN CERTIFICATE-----
+        MIICyjCCAbKgAwIBAgIBADANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwprdWJl
+        cm5ldGVzMCAXDTIxMDcxOTA5NDc0OVoYDzIxMjEwNjI1MDk0NzQ5WjAVMRMwEQYD
+        VQQDEwprdWJlcm5ldGVzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
+        7Lv05VaJPgtJhmX1bGA6puhM2xCBwXGDFHUu4nZfEmHH55oh/gyTR0Zm6tdMiQBy
+        xX6DOy0ZOysLtDF6jwJFDcwMkmMzIkaLTYZxSKACXu15RRVJbDPhzP/kJsTgDq61
+        u3mlzSZefpoEdhmmnjoECkr5tbH7O7hvFbCfBygmpTYfRAlqpirThX0S1+6JjcmP
+        GUni1G3GOeyaocQulT9Xz0vaTxCHIkSzliXH1pa27tEzRYkRwvd3ZMAhr5bTVac0
+        yzq2C9xHVoX2AqORZjYqSTo+945eFY8thh45idnM9u98X5XsuvvPjX0reVNgyZyD
+        npZiqUS1w9yfeCml9pJsEwIDAQABoyMwITAOBgNVHQ8BAf8EBAMCAqQwDwYDVR0T
+        AQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAKBwMSHrquNLSJVIMsVQu/Une
+        Dt+Ac12yGL3dT4XIKKfeF+0IHCBKQUgZcdUATYkbMXvP8HYrcot/0Ur/rLAodTL6
+        SmDssUVEvg3j54m6njdxSc2tECPmM7h6z+4TsJOR5SInydc//hLs0WJY36y1SVh/
+        haCgBKJlOczMpUci18DUO8ybeDsHGltDg+tIUZDPgZ+J7ScPALkso5kUM+GkhYzN
+        nWfMB33Kf6TDzqnDAqa8Ea/1BvgaMLy5IYHMqiYBuiON94Dkwyi/uHII6WWXk9Vk
+        gSRrb6ysJ+czKMxsNxWMOQrnS7QcP7CXiOmzUu13sd6UDGiA4AWxFNPaHXjG3w==
+        -----END CERTIFICATE-----
+      key: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEpAIBAAKCAQEA7Lv05VaJPgtJhmX1bGA6puhM2xCBwXGDFHUu4nZfEmHH55oh
+        /gyTR0Zm6tdMiQByxX6DOy0ZOysLtDF6jwJFDcwMkmMzIkaLTYZxSKACXu15RRVJ
+        bDPhzP/kJsTgDq61u3mlzSZefpoEdhmmnjoECkr5tbH7O7hvFbCfBygmpTYfRAlq
+        pirThX0S1+6JjcmPGUni1G3GOeyaocQulT9Xz0vaTxCHIkSzliXH1pa27tEzRYkR
+        wvd3ZMAhr5bTVac0yzq2C9xHVoX2AqORZjYqSTo+945eFY8thh45idnM9u98X5Xs
+        uvvPjX0reVNgyZyDnpZiqUS1w9yfeCml9pJsEwIDAQABAoIBABj/H7S3lnY+qtzO
+        F0QCRS8qiDL5YzoRyk12siSnaxJ90KXb2IsCuOplvKg/Y41zxqqj2Sd+c5OT0ACO
+        2OoQy0nRqeIrJ1MPL9ZXw85vVtC/Mnbg8IfEUqtaubR+RUpHmFjbV256BrBHgwEV
+        ZEqAxbxwfj15NZXwu4oGxEP1MV9wS4+Vn5R/gpNpCHc12Edg4p81arbDHkCAI56w
+        aMu3h/wq7P3rmalDviSgEtdD5MEXgv1jkXAIhRjoJ4KvET+AC4fX9lpn91r3SiAm
+        W9pV3CiQdq+qACfVS3VheQ0gH/4kLsCuX5+lGURz4aI5SO4MOAgvr+D53DEkuO4o
+        OwinGMECgYEA96bFgz/ZDcTGCuW5EU5zkJSsLp7JzrPOe33iVo49dw1rHXpFkXq4
+        jitm/GxCt9+jHhwNP6HPOjQ14sQ+H0w2pgLOPLMibgmVhaBP6YF21A/MuckXUSlJ
+        KOQ9dqi220A38sfXozZdOhXqJ9z2FFiGzlCKaPwBYPnSp6EdqP/y0dcCgYEA9Lb4
+        K6+/5sqk1Z//CHrHkQL8okw2kw/Lsa49UAgt1o7dvDVAd/14VtPf9g6hF3BkF1kv
+        gha59FULRCQ45AjMyH99aPtESj8UW2RhaubBdtZohEn2nPwNqkR4WPrXSWFT6nxT
+        b8T2csh5ogQi4QkDueCN5YcFSSLKjqt/qXjDqCUCgYEAiHTVGgfBQovtD64atkWC
+        +eRhp2KJEiMTIApx/31qssGrBtgLoyh6rqONoILKlGRejcWpKymudIS2OFgnXrlw
+        1zJujxWpX/ZZ9AIsZh6W6iw2gxwhg+/6xtRUZaB6+P4+lcC1udHHtqzCk+p1kSpi
+        RSYtzcElxViCUSk+nZNCKYsCgYBmrHIZmkaw5asdOmD9xM4AqLkou0NWlpUHOqzc
+        7GGXGSAtfEZNUdrwyzq3eVHbjLtiFHhbY3+n5Rqx/2SjQJHzOZJ7vpjbcfXvloFN
+        If5gBvuZLZM8MIDnRI0eADjdv+k+g+VaCtDAPh7SfFvKAUc/8Nh4ShtMoT1NeOU6
+        TMICxQKBgQChHCAEA/nmM3bP6lnGrfSEAEBCswrHmMWYMFH5AI3cCPfZ+f8gclqX
+        S8WFa4nJzyZxY2veQmC4LFKKGtCtWWmPhBeAAjtSlmTOVhsppAU4Je5w7wD+JiSx
+        TmiNjQFk43Io/UXDYDCIPerEe+Sl6ECIFgBOrWpHUkgezHLqvuIt2A==
+        -----END RSA PRIVATE KEY-----
+      name: grafana-ingress-tls
+    tls:
+    - secretName: grafana-ingress-tls
+  service:
+    type: ClusterIP
+  sidecar:
+    datasources:
+      defaultDatasourceEnabled: false
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/k8s-sidecar
+      tag: 0.1.99
+kube-state-metrics:
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/kube-state-metrics
+    tag: v1.9.4
+loki:
+  config:
+    compactor:
+      shared_store: s3
+    schema_config:
+      configs:
+      - from: "2020-10-24"
+        index:
+          period: 24h
+          prefix: index_
+        object_store: aws
+        schema: v11
+        store: boltdb-shipper
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 24h
+    storage_config:
+      aws:
+        s3: s3://monitor-admin:monitor-admin-passwd@monitor-minio.onecloud-monitoring:9000/loki
+        s3forcepathstyle: true
+      boltdb_shipper:
+        cache_ttl: 24h
+        shared_store: s3
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/loki
+    tag: 2.0.0
+prometheus:
+  prometheusSpec:
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/prometheus
+      tag: v2.15.2
+    retention: 4h
+    thanos:
+      baseImage: registry.cn-beijing.aliyuncs.com/yunionio/thanos
+      objectStorageConfig:
+        key: thanos.yaml
+        name: thanos-objstore-config
+      version: v0.16.0
+prometheus-node-exporter:
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/node-exporter
+    tag: v0.18.1
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+    patch:
+      enabled: false
+      image:
+        repository: registry.cn-beijing.aliyuncs.com/yunionio/kube-webhook-certgen
+        tag: v1.0.0
+  configmapReloadImage:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/configmap-reload
+    tag: v0.0.1
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/prometheus-operator
+    tag: v0.37.0
+  prometheusConfigReloaderImage:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/prometheus-config-reloader
+    tag: v0.37.0
+  tlsProxy:
+    enabled: false
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/ghostunnel
+      tag: v1.5.2
+promtail:
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/promtail
+    tag: 2.0.0
+

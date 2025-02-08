@@ -1,0 +1,314 @@
+alertmanager:
+  alertmanagerSpec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: onecloud.yunion.io/controller
+              operator: In
+              values:
+              - enable
+    enabled: false
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/alertmanager
+      tag: v0.22.2
+    tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/controlplane
+  enabled: false
+grafana:
+  additionalDataSources:
+  - access: proxy
+    database: telegraf
+    isDefault: false
+    jsonData:
+      tlsSkipVerify: true
+    name: Influxdb-Telegraf
+    type: influxdb
+    url: https://default-influxdb.onecloud:30086
+  - access: proxy
+    database: system
+    isDefault: false
+    jsonData:
+      tlsSkipVerify: true
+    name: InfluxDB-system
+    type: influxdb
+    url: https://default-influxdb.onecloud:30086
+  adminPassword: VvVFeVtSf84VdEDP
+  adminUser: admin
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: onecloud.yunion.io/controller
+            operator: In
+            values:
+            - enable
+  enabled: true
+  grafana.ini:
+    auth.anonymous:
+      enabled: false
+      org_name: Main Org.
+      org_role: Viewer
+    auth.generic_oauth:
+      allow_sign_up: false
+      enabled: false
+    database:
+      host: 192.168.0.240:3306
+      name: grafana
+      password: eqys7tjrDcBuBtK6
+      type: mysql
+      user: grafana
+    server:
+      enforce_domain: false
+      root_url: https://192.168.0.240/grafana/
+      serve_from_sub_path: true
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/grafana
+    tag: 7.5.17
+  ingress:
+    enabled: true
+    host: ""
+    path: /grafana
+    secret:
+      certificate: |
+        -----BEGIN CERTIFICATE-----
+        MIIC6TCCAdGgAwIBAgIBADANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwprdWJl
+        cm5ldGVzMCAXDTI0MDkyNzEwNDY1NloYDzIxMjQwOTAzMTA0NjU2WjAVMRMwEQYD
+        VQQDEwprdWJlcm5ldGVzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
+        vaPdjw8APnCQphGij5S6o1TaQlKl4At4ASrCkGShk473F2Tpoz9j4/eJ9q1KYFEu
+        RtMPdDKayhfZvE+3jaoMrMvsmtBErDXqWa7IWZx4RDN5zcG2uKc6PYNdlo4jQBPW
+        juZw30lNru34pPQ9COuM1LOaCv9Y41Txul1LPXQQPW/TBD4JWnVIe8ZpCan1Gdku
+        RQUC4q7rFc5l5Gt6oWuYU/7lUntONkBYY0tER33r8Mi4xSDv4Fpf11A70pp1z93s
+        3P4yTzK7wtRf5IJyAPtP8IlgxifCRtoNdWsQl7r7nqQBM3mb9hYR0GR3y9dJd4rb
+        oNZUJvNZ9fCtxAg2SFKNzwIDAQABo0IwQDAOBgNVHQ8BAf8EBAMCAqQwDwYDVR0T
+        AQH/BAUwAwEB/zAdBgNVHQ4EFgQU5WMcsa+749QRdoOovHCzQTQ4wj0wDQYJKoZI
+        hvcNAQELBQADggEBAEEwuIAhg5eL6GdHN+aYVDNtrwtK1PaJfkBNbsnzRYvZ/RAY
+        eyVEZZsERhC7fs5HOwoqhCTqzHvEfKFhLeRL7zmzWBsfPpDaqzu+hR1El8lzuFth
+        V0uDHGo1JAuhH4h9ChUVILrS/okFlb0gPy7wBzEIFpD8LVKgb4vn32V6HoYlbkBD
+        LonEMe8YqdkIfMVDjYJOrEzOxceqKiwVpr3C7OFgRB5Fm6AWAS4sThXvndgukiQE
+        NBLjXQDZSpT9BSbfXKKW4lAVmxVf7HUs0rC1QuGsYUdBJyCTtS1UNHlSqJAvXB3o
+        TXM+eogIMsDmez7OMwAEx1Ajv4pA+zHjpCUah2s=
+        -----END CERTIFICATE-----
+      key: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEowIBAAKCAQEAvaPdjw8APnCQphGij5S6o1TaQlKl4At4ASrCkGShk473F2Tp
+        oz9j4/eJ9q1KYFEuRtMPdDKayhfZvE+3jaoMrMvsmtBErDXqWa7IWZx4RDN5zcG2
+        uKc6PYNdlo4jQBPWjuZw30lNru34pPQ9COuM1LOaCv9Y41Txul1LPXQQPW/TBD4J
+        WnVIe8ZpCan1GdkuRQUC4q7rFc5l5Gt6oWuYU/7lUntONkBYY0tER33r8Mi4xSDv
+        4Fpf11A70pp1z93s3P4yTzK7wtRf5IJyAPtP8IlgxifCRtoNdWsQl7r7nqQBM3mb
+        9hYR0GR3y9dJd4rboNZUJvNZ9fCtxAg2SFKNzwIDAQABAoIBAHztRxZn9mwrsU6F
+        TYaynqTcUA/i7D0EsSBrr9J5SGuxgZsaskMFjmNt/afQDrAWqpqjjYmpkIjTX2+L
+        QEsFm+X1TL/LtYGQ3voHhxppVlzvYC0okJtiJp7BPFTi+9vJdc2bhv3BB3jWcbcQ
+        4mhO6+5vBmp6Pm871SZFMTyhidU+Asr+2+N4ErWOn9/YSQ/HNwAy1G+paDFX1c6u
+        0DvkuEKfx+UZkUs+xUr68M0jz03+S7fKGVzJpuaar4FD63SlRZF2vT4a0Dg8owUu
+        sHo+MeSjQuTfRsv+Rmjv/muqoZly29aSzC5301XBaVC0ErR43GJuerpd3DTuHt6e
+        WHw1XmECgYEAyQ1H55dlAhW7u+rqoNoJF5XCQ0dvbmyQVhs9XhFwTEopyRtPVZol
+        iQ6kppavDZPCTF2Eb8o6IYeOkYv5mb1z4I82ZN5fh3X42Dn9HrOe0QHinjUd9PHy
+        +e8meLRJEHyqA09hVMRmgxN84y+2IhrDSgGKfdUKoP29BdQcfoiEB5ECgYEA8Xgn
+        BDZxTO3nxx5nCxnYAYf6WY33b9Y38P8C9k5h4/67YOMlaR6mr8xhbioHpGcDUWsg
+        8ZYQSF3fGWQ9CTR2vHgFd2ukZliUzkJqfWoy9Tw9XpkdCi4QKQkyn9kY9GNuV19c
+        uCht+JifaRj5wT64Cjwzdyf9MC+fxa0D9R4eT18CgYApUp96zDUojor9frUmxmmj
+        /VXmOiJ/EbVA3WxpjzADniKkgQZ3U61vVCEnVEU6hyoiQ/5ac7gq+A+nfpuYq8XL
+        W+QUK1h7IRY6awDJdKWp07deSRCVLb2A/VRs7rEtwFG5SHF62LsxKao7j6zhqZqF
+        9XcfkdATctONBSGuKCTq4QKBgQDrtAFB13LZSREKCN9EssFrHTR+3lk9zbllgUd+
+        7hwX1btKY+9MoSLMT5B7XIOBMxzGCPBrYbQbL6ZqvrHlnlSYu/96BpS/YpA+lg4k
+        xdlgEKFHCeaS3UvhAp1r8xqs07INj4SOLsjJ9REGId8JhxNWylTiZyJ6OsKWzsAi
+        MHgduQKBgBDEacDeR7ePQWKxPIp750RS68z2Nl+BdO7+WV8tTiC7Lxoyu2KU54/u
+        oe8YSm2nCU2lW+nD1ZbuGUsB12uebarZKd3N6n+xP7CNwhJd21Zs8VCUjPTGLB+w
+        WeRCkMRiXgPQVudRbfskkvYNkM52uqp6jYmsZoOay5KuSdx22UjW
+        -----END RSA PRIVATE KEY-----
+      name: grafana-ingress-tls
+    tls:
+    - secretName: grafana-ingress-tls
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1024Mi
+    requests:
+      cpu: "0.01"
+      memory: 10Mi
+  service:
+    type: ClusterIP
+  sidecar:
+    dashboards:
+      enabled: false
+    datasources:
+      defaultDatasourceEnabled: false
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/k8s-sidecar
+      tag: 1.12.2
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/controlplane
+kube-state-metrics:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: onecloud.yunion.io/controller
+            operator: In
+            values:
+            - enable
+  enabled: false
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/kube-state-metrics
+    tag: v1.9.8
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/controlplane
+loki:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: onecloud.yunion.io/controller
+            operator: In
+            values:
+            - enable
+  config:
+    compactor:
+      shared_store: s3
+    schema_config:
+      configs:
+      - from: "2020-10-24"
+        index:
+          period: 24h
+          prefix: index_
+        object_store: aws
+        schema: v11
+        store: boltdb-shipper
+    storage_config:
+      aws:
+        s3: s3://monitor-admin:hM6btzZjxM3M2qFy@monitor-minio.onecloud-monitoring:9000/loki
+        s3forcepathstyle: true
+      boltdb_shipper:
+        cache_ttl: 24h
+        shared_store: s3
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: 168h
+  enabled: true
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/loki
+    tag: 2.2.1
+  resources:
+    limits:
+      cpu: "2"
+      memory: 2048Mi
+    requests:
+      cpu: "0.01"
+      memory: 10Mi
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/controlplane
+nodeExporter:
+  enabled: false
+prometheus:
+  enabled: false
+  prometheusSpec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: onecloud.yunion.io/controller
+              operator: In
+              values:
+              - enable
+    enabled: false
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/prometheus
+      tag: v2.28.1
+    retention: 4h
+    thanos:
+      baseImage: registry.cn-beijing.aliyuncs.com/yunionio/thanos
+      objectStorageConfig:
+        key: thanos.yaml
+        name: thanos-objstore-config
+      version: v0.22.0
+    tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/controlplane
+prometheus-node-exporter:
+  enabled: false
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/node-exporter
+    tag: v1.2.0
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+    patch:
+      enabled: false
+      image:
+        repository: registry.cn-beijing.aliyuncs.com/yunionio/kube-webhook-certgen
+        tag: v1.5.2
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: onecloud.yunion.io/controller
+            operator: In
+            values:
+            - enable
+  configmapReloadImage:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/configmap-reload
+    tag: v0.5.0
+  enabled: true
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/prometheus-operator
+    tag: v0.37.0
+  prometheusConfigReloaderImage:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/prometheus-config-reloader
+    tag: v0.38.1
+  tlsProxy:
+    enabled: false
+    image:
+      repository: registry.cn-beijing.aliyuncs.com/yunionio/ghostunnel
+      tag: v1.5.3
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/controlplane
+promtail:
+  enabled: true
+  image:
+    repository: registry.cn-beijing.aliyuncs.com/yunionio/promtail
+    tag: 2.2.1
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1024Mi
+    requests:
+      cpu: "0.01"
+      memory: 10Mi
+  volumeMounts:
+  - mountPath: /opt/docker/containers
+    name: docker
+    readOnly: true
+  - mountPath: /var/log/pods
+    name: pods
+    readOnly: true
+  volumes:
+  - hostPath:
+      path: /opt/docker/containers
+    name: docker
+  - hostPath:
+      path: /var/log/pods
+    name: pods

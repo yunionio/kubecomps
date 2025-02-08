@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"k8s.io/api/core/v1"
@@ -46,7 +47,6 @@ func init() {
 
 type SMonitorComponentManager struct {
 	SComponentManager
-	HelmComponentManager
 }
 
 type SMonitorComponent struct {
@@ -58,9 +58,16 @@ func NewMonitorComponentManager() *SMonitorComponentManager {
 	man.SComponentManager = *NewComponentManager(SMonitorComponent{},
 		"kubecomponentmonitor",
 		"kubecomponentmonitors")
-	man.HelmComponentManager = *NewHelmComponentManager(MonitorNamespace, MonitorReleaseName, embed.MONITOR_STACK_8_12_13_TGZ)
 	man.SetVirtualObject(man)
 	return man
+}
+
+func (m *SMonitorComponentManager) GetComponentManager(cluster *SCluster) *HelmComponentManager {
+	embedChart := embed.MONITOR_STACK_8_12_13_TGZ
+	if strings.Contains(cluster.GetVersion(), "k3s") {
+		embedChart = embed.MONITOR_STACK_V2_55_11_0_TGZ
+	}
+	return NewHelmComponentManager(MonitorNamespace, MonitorReleaseName, embedChart)
 }
 
 type componentDriverMonitor struct {
@@ -255,7 +262,7 @@ func (c componentDriverMonitor) createOrUpdateThanosObjectStoreSecret(ctx contex
 	if err != nil {
 		return errors.Wrapf(err, "get cluster %s remote client", cluster.GetName())
 	}
-	if err := MonitorComponentManager.EnsureNamespace(cluster, MonitorNamespace); err != nil {
+	if err := MonitorComponentManager.GetComponentManager(cluster).EnsureNamespace(cluster, MonitorNamespace); err != nil {
 		return errors.Wrap(err, "ensure namespace")
 	}
 	secrets := cli.GetClientset().CoreV1().Secrets(MonitorNamespace)
@@ -570,27 +577,9 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			Resources: input.Promtail.Resources,
 			Image:     mi("promtail", "2.2.1"),
 		},
-		PrometheusOperator: components.PrometheusOperator{
-			CommonConfig: components.CommonConfig{
-				// must enable to controll prometheus lifecycle
-				Enabled:   true,
-				Resources: input.Prometheus.Resources,
-			},
-			Image:                         mi("prometheus-operator", "v0.37.0"),
-			ConfigmapReloadImage:          mi("configmap-reload", "v0.5.0"),
-			PrometheusConfigReloaderImage: mi("prometheus-config-reloader", "v0.38.1"),
-			TLSProxy: components.PromTLSProxy{
-				Image: mi("ghostunnel", "v1.5.3"),
-			},
-			AdmissionWebhooks: components.AdmissionWebhooks{
-				Enabled: false,
-				Patch: components.AdmissionWebhooksPatch{
-					Enabled: false,
-					Image:   mi("kube-webhook-certgen", "v1.5.2"),
-				},
-			},
-		},
 	}
+
+	conf.PrometheusOperator = m.getPrometheusOperatorConf(cluster, input, repo)
 
 	// inject prometheus spec
 	if input.Prometheus.Storage != nil && input.Prometheus.Storage.Enabled {
@@ -659,7 +648,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 				JsonData: &components.GrafanaDataSourceJsonData{
 					TlsSkipVerify: true,
 				},
-			}, components.GrafanaAdditionalDataSource{
+			},
+			components.GrafanaAdditionalDataSource{
 				Name:     InfluxdbSystemDS,
 				Type:     "influxdb",
 				Access:   "proxy",
@@ -668,7 +658,14 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 				JsonData: &components.GrafanaDataSourceJsonData{
 					TlsSkipVerify: true,
 				},
-			})
+			},
+			components.GrafanaAdditionalDataSource{
+				Name:   "Loki",
+				Type:   "loki",
+				Access: "proxy",
+				Url:    fmt.Sprintf(fmt.Sprintf("http://%s-loki:3100", MonitorReleaseName)),
+			},
+		)
 	}
 
 	// inject loki spec
@@ -791,11 +788,11 @@ func (m SMonitorComponentManager) CreateHelmResource(cluster *SCluster, setting 
 	if err != nil {
 		return errors.Wrap(err, "get helm config values")
 	}
-	return m.HelmComponentManager.CreateHelmResource(cluster, vals)
+	return m.GetComponentManager(cluster).CreateHelmResource(cluster, vals)
 }
 
 func (m SMonitorComponentManager) DeleteHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
-	return m.HelmComponentManager.DeleteHelmResource(cluster)
+	return m.GetComponentManager(cluster).DeleteHelmResource(cluster)
 }
 
 func (m SMonitorComponentManager) UpdateHelmResource(cluster *SCluster, setting *api.ComponentSettings) error {
@@ -803,7 +800,7 @@ func (m SMonitorComponentManager) UpdateHelmResource(cluster *SCluster, setting 
 	if err != nil {
 		return errors.Wrap(err, "get helm config values")
 	}
-	return m.HelmComponentManager.UpdateHelmResource(cluster, vals)
+	return m.GetComponentManager(cluster).UpdateHelmResource(cluster, vals)
 }
 
 func (m SMonitorComponentManager) SyncSystemGrafanaDashboard(ctx context.Context, userCred mcclient.TokenCredential, isStart bool) {
@@ -926,4 +923,43 @@ func (m SMonitorComponentManager) syncSystemGrafanaDashboard(ctx context.Context
 	log.Infof("import service monitor dashboard to grafana successful")
 
 	return nil
+}
+
+func (m *SMonitorComponentManager) getPrometheusOperatorConf(cluster *SCluster, input *api.ComponentSettingMonitor, repo string) components.PrometheusOperator {
+	mi := func(name, tag string) components.Image {
+		return components.Image{
+			Repository: fmt.Sprintf("%s/%s", repo, name),
+			Tag:        tag,
+		}
+	}
+	mi2 := func(name, tag string) components.Image2 {
+		return components.Image2{
+			Registry:   repo,
+			Repository: name,
+			Tag:        tag,
+		}
+	}
+	return components.PrometheusOperator{
+		CommonConfig: components.CommonConfig{
+			// must enable to control prometheus lifecycle
+			Enabled:   true,
+			Resources: input.Prometheus.Resources,
+		},
+		Image:                         mi2("prometheus-operator", ""),
+		ConfigmapReloadImage:          mi("configmap-reload", "v0.5.0"),
+		PrometheusConfigReloaderImage: mi("prometheus-config-reloader", "v0.38.1"),
+		TLSProxy: components.PromTLSProxy{
+			Image: mi("ghostunnel", "v1.5.3"),
+		},
+		TLS: components.PrometheusOperatorTLS{
+			Enabled: false,
+		},
+		AdmissionWebhooks: components.AdmissionWebhooks{
+			Enabled: false,
+			Patch: components.AdmissionWebhooksPatch{
+				Enabled: false,
+				Image:   mi("kube-webhook-certgen", "v1.5.2"),
+			},
+		},
+	}
 }
