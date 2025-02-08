@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 PROJ_DIR="$(dirname $(dirname "${BASH_SOURCE[0]}"))"
 MANIFESTS_DIR="$PROJ_DIR/manifests"
 HELM_DIR="$MANIFESTS_DIR/helm"
@@ -10,6 +12,7 @@ rm -rf "$STATIC_DIR"
 
 CHARTS=(
     manifests/helm/monitor-stack
+    manifests/helm/monitor-stack-v2
     manifests/helm/minio
     manifests/helm/thanos
     manifests/helm/fluent-bit

@@ -32,6 +32,7 @@ type IClustersManager interface {
 	AddClient(dbCluster manager.ICluster) error
 	UpdateClient(dbCluster manager.ICluster, ignoreStatus bool) error
 	RemoveClient(clusterId string) error
+	IsClusterClientHealthy(dbCluster manager.ICluster) bool
 }
 
 type ClustersManager struct {
@@ -95,6 +96,17 @@ func (m *ClustersManager) addManager(man *ClusterManager) {
 
 func (m *ClustersManager) AddClient(dbCluster manager.ICluster) error {
 	return m.addClient(dbCluster, false)
+}
+
+func (m *ClustersManager) IsClusterClientHealthy(dbCluster manager.ICluster) bool {
+	clusterId := dbCluster.GetId()
+	man := m.getManager(clusterId)
+	err := man.ClientV2.K8S().IsReachable()
+	if err != nil {
+		log.Warningf("check cluster %s is reachable error: %v", dbCluster.GetName(), err)
+		return false
+	}
+	return true
 }
 
 func (m *ClustersManager) addClient(dbCluster manager.ICluster, ignoreStatus bool) error {

@@ -906,7 +906,7 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 		c := &clusters[idx]
 		if err := c.IsHealthy(); err == nil {
 			prevStatus := c.GetStatus()
-			if c.GetStatus() != api.ClusterStatusRunning {
+			if c.GetStatus() != api.ClusterStatusRunning || !client.GetClustersManager().IsClusterClientHealthy(c) {
 				if err := c.SetStatus(ctx, userCred, api.ClusterStatusRunning, "by health check cronjob"); err != nil {
 					log.Errorf("Set cluster %s status to running error: %v", c.GetName(), err)
 				} else {
