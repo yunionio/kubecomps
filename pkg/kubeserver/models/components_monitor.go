@@ -678,6 +678,11 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 	}
 	if input.Loki.ObjectStoreConfig != nil {
 		objConf := input.Loki.ObjectStoreConfig
+		s3Proto := "s3"
+		if !objConf.Insecure {
+			s3Proto = "https"
+		}
+		s3Endpoint := fmt.Sprintf("%s://%s:%s@%s/%s", s3Proto, objConf.AccessKey, objConf.SecretKey, objConf.Endpoint, objConf.Bucket)
 		conf.Loki.Config = &components.LokiConfig{
 			SchemaConfig: components.LokiConfigSchemaConfig{
 				Configs: []components.LokiSchemaConfig{
@@ -696,7 +701,8 @@ func (m SMonitorComponentManager) GetHelmValues(cluster *SCluster, setting *api.
 			StorageConfig: components.LokiStorageConfig{
 				Aws: components.LokiStorageConfigAws{
 					S3ForcepathStyle: true,
-					S3:               fmt.Sprintf("s3://%s:%s@%s/%s", objConf.AccessKey, objConf.SecretKey, objConf.Endpoint, objConf.Bucket),
+					S3:               s3Endpoint,
+					Insecure:         objConf.Insecure,
 				},
 				BoltdbShipper: components.LokiStorageConfigBoltdbShipper{
 					// ActiveIndexDirectory: "/data/loki/boltdb-shipper-active",

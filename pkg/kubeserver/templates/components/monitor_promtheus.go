@@ -293,10 +293,17 @@ type LokiStorageConfigBoltdbShipper struct {
 	SharedStore string `json:"shared_store"`
 }
 
+type LokiStorageHTTPConfig struct {
+	IdleConnTimeout       string `json:"idle_conn_timeout"`
+	ResponseHeaderTimeout string `json:"response_header_timeout"`
+	InsecureSkipVerify    bool   `json:"insecure_skip_verify"`
+}
+
 type LokiStorageConfigAws struct {
 	// e.g. `s3://plUbSwTzWXi3QsP0B8Ab:Rp40yaVS7NVf4zkrpIU6WANlbxWQTUErSIs1EduG@minio-test.default:9000/loki-bucket`
 	S3               string `json:"s3"`
 	S3ForcepathStyle bool   `json:"s3forcepathstyle"`
+	Insecure         bool   `json:"insecure"`
 }
 
 type LokiStorageConfig struct {
