@@ -1,8 +1,12 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
+	"io"
+	olog "log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -34,7 +38,34 @@ func Start(httpsAddr string, app *appsrv.Application) error {
 
 	utilruntime.ReallyCrash = false
 	serveHTTPS := func() error {
-		return http.ListenAndServeTLS(httpsAddr, tlsCertFile, tlsPrivateKey, root)
+		cipherSuites := []uint16{}
+		for _, suite := range tls.CipherSuites() {
+			if !strings.HasSuffix(suite.Name, "_SHA") {
+				cipherSuites = append(cipherSuites, suite.ID)
+			}
+		}
+
+		minTLSVer := uint16(tls.VersionTLS12)
+		tlsConf := &tls.Config{
+			CipherSuites: cipherSuites,
+			MinVersion:   minTLSVer,
+		}
+
+		s := &http.Server{
+			Addr:              httpsAddr,
+			Handler:           root,
+			IdleTimeout:       appsrv.DEFAULT_IDLE_TIMEOUT,
+			ReadTimeout:       appsrv.DEFAULT_READ_TIMEOUT,
+			ReadHeaderTimeout: appsrv.DEFAULT_READ_HEADER_TIMEOUT,
+			WriteTimeout:      appsrv.DEFAULT_WRITE_TIMEOUT,
+			MaxHeaderBytes:    1 << 20,
+			// fix aliyun elb healt check tls error
+			// issue like: https://github.com/megaease/easegress/issues/481
+			ErrorLog: olog.New(io.Discard, "", olog.LstdFlags),
+
+			TLSConfig: tlsConf,
+		}
+		return s.ListenAndServeTLS(tlsCertFile, tlsPrivateKey)
 	}
 	return serveHTTPS()
 }
