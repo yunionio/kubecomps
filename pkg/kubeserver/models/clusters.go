@@ -923,8 +923,17 @@ func (m *SClusterManager) ClusterHealthCheckTask(ctx context.Context, userCred m
 			}
 			continue
 		} else {
-			c.SetStatus(ctx, userCred, api.ClusterStatusLost, err.Error())
-			client.GetClustersManager().RemoveClient(c.GetId())
+			if c.GetName() == SystemClusterName {
+				log.Infof("cluster %q is unhealthy, perform force sync", c.GetName())
+				if _, err := c.PerformSync(ctx, userCred, nil, api.ClusterSyncInput{
+					Force: true,
+				}); err != nil {
+					log.Errorf("cluster %q perform force sync when health check error: %v", c.GetName(), err)
+				}
+			} else {
+				c.SetStatus(ctx, userCred, api.ClusterStatusLost, err.Error())
+				client.GetClustersManager().RemoveClient(c.GetId())
+			}
 		}
 	}
 }
