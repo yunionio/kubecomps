@@ -101,6 +101,9 @@ func (m *ClustersManager) AddClient(dbCluster manager.ICluster) error {
 func (m *ClustersManager) IsClusterClientHealthy(dbCluster manager.ICluster) bool {
 	clusterId := dbCluster.GetId()
 	man := m.getManager(clusterId)
+	if man == nil {
+		return false
+	}
 	err := man.ClientV2.K8S().IsReachable()
 	if err != nil {
 		log.Warningf("check cluster %s is reachable error: %v", dbCluster.GetName(), err)
