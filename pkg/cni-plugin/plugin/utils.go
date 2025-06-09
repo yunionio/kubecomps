@@ -173,7 +173,35 @@ func getNetworkConfig(idx int, nic PodNic, defaultGw bool) (*current.Interface, 
 			GW:  defaultGateway,
 		}
 		routes = append(routes, route)
+
 	}
+	// process ipv6
+	if nic.Ip6 != "" {
+		ip6n, err := getIPNet(nic.Ip6, nic.Masklen6)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "get ipv6 network")
+		}
+		gatewayIp6 := net.ParseIP(nic.Gateway6)
+		ip6Config := &current.IPConfig{
+			Version:   "6",
+			Interface: &idx,
+			Address:   *ip6n,
+			Gateway:   gatewayIp6,
+		}
+		ipConfigs = append(ipConfigs, ip6Config)
+
+		// add ipv6 default route if ipv6 is configured
+		if defaultGw {
+			_, defaultNet6, _ := net.ParseCIDR("::/0")
+			defaultGateway6 := net.ParseIP(nic.Gateway6)
+			route6 := &types.Route{
+				Dst: *defaultNet6,
+				GW:  defaultGateway6,
+			}
+			routes = append(routes, route6)
+		}
+	}
+
 	return ctrIf, ipConfigs, routes, nil
 }
 
@@ -250,7 +278,7 @@ func setupVeth(
 	}
 	hostIf.Mac = hostVeth.Attrs().HardwareAddr.String()
 
-	if err := cli.AddPort(nic.Bridge, hostIf.Name); err != nil {
+	if err := cli.AddPort(nic.Bridge, hostIf.Name, nic.Vlan); err != nil {
 		return nil, nil, errors.Wrapf(err, "Add port to OVS: %s -> %s", hostIf.Name, nic.Bridge)
 	}
 	if nic.Vpc != nil && nic.Vpc.Provider == POD_NIC_PROVIDER_OVN {
