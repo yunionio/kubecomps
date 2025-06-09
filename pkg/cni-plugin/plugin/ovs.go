@@ -42,7 +42,7 @@ func (sw *ovsClient) AddPort(bridge, port string, vlanId int) error {
 		Bridge: bridge,
 		Port:   port,
 	}))*/
-	args := []string{"add-port", bridge, port}
+	args := []string{"--may-exist", "add-port", bridge, port}
 	if vlanId > 1 {
 		args = append(args, fmt.Sprintf("tag=%d", vlanId))
 	}
