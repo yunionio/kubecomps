@@ -25,15 +25,19 @@ type PodNic struct {
 	Ifname    string     `json:"ifname"`
 	Interface string     `json:"interface"`
 	Ip        string     `json:"ip"`
+	Ip6       string     `json:"ip6"`
 	Mac       string     `json:"mac"`
 	Gateway   string     `json:"gateway"`
+	Gateway6  string     `json:"gateway6"`
 	Bandwidth int        `json:"bw"`
 	Dns       string     `json:"dns"`
 	Mtu       int        `json:"mtu"`
 	Masklen   int        `json:"masklen,omitempty"`
+	Masklen6  int        `json:"masklen6,omitempty"`
 	Domain    string     `json:"domain,omitempty"`
 	NetId     string     `json:"net_id"`
 	WireId    string     `json:"wire_id"`
+	Vlan      int        `json:"vlan"`
 	Vpc       *PodNicVpc `json:"vpc,omitempty"`
 }
 
