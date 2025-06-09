@@ -12,7 +12,7 @@ import (
 )
 
 type OVSClient interface {
-	AddPort(bridge, port string) error
+	AddPort(bridge, port string, vlanId int) error
 	DeletePort(bridge, port string) error
 	SetIfaceId(id string, name string) error
 }
@@ -37,11 +37,20 @@ func newTimeoutCtx() context.Context {
 	return ctx
 }
 
-func (sw *ovsClient) AddPort(bridge, port string) error {
-	return sw.agentCli.W(sw.agentCli.VSwitch.AddBridgePort(newTimeoutCtx(), &pb.AddBridgePortRequest{
+func (sw *ovsClient) AddPort(bridge, port string, vlanId int) error {
+	/*return sw.agentCli.W(sw.agentCli.VSwitch.AddBridgePort(newTimeoutCtx(), &pb.AddBridgePortRequest{
 		Bridge: bridge,
 		Port:   port,
-	}))
+	}))*/
+	args := []string{"add-port", bridge, port}
+	if vlanId > 1 {
+		args = append(args, fmt.Sprintf("tag=%d", vlanId))
+	}
+	ovsCmd := exec.Command("ovs-vsctl", args...)
+	if out, err := ovsCmd.CombinedOutput(); err != nil {
+		return errors.Wrapf(err, "add port to ovs %v: %s", args, out)
+	}
+	return nil
 }
 
 func (sw *ovsClient) SetIfaceId(netId string, ifName string) error {
