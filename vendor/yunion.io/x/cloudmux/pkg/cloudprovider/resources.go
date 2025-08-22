@@ -25,6 +25,8 @@ import (
 	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/samlutils"
 	"yunion.io/x/pkg/util/secrules"
+
+	api "yunion.io/x/cloudmux/pkg/apis/cloudid"
 )
 
 type ICloudResource interface {
@@ -61,6 +63,7 @@ type IBillingResource interface {
 	GetExpiredAt() time.Time
 	SetAutoRenew(bc billing.SBillingCycle) error
 	Renew(bc billing.SBillingCycle) error
+	ChangeBillingType(billType string) error
 	IsAutoRenew() bool
 }
 
@@ -827,7 +830,13 @@ type ICloudLoadbalancerBackendGroup interface {
 }
 
 type ICloudLoadbalancerBackend interface {
-	ICloudResource
+	GetId() string
+	GetName() string
+	GetGlobalId() string
+	GetCreatedAt() time.Time
+	GetDescription() string
+
+	GetStatus() string
 
 	GetWeight() int
 	GetPort() int
@@ -1240,6 +1249,12 @@ type ICloudQuota interface {
 	GetCurrentQuotaUsedCount() int
 }
 
+type SClouduserEnableOptions struct {
+	Password              string
+	EnableMfa             bool
+	PasswordResetRequired bool
+}
+
 // 公有云子账号
 type IClouduser interface {
 	GetGlobalId() string
@@ -1250,14 +1265,13 @@ type IClouduser interface {
 
 	GetICloudgroups() ([]ICloudgroup, error)
 
-	GetISystemCloudpolicies() ([]ICloudpolicy, error)
-	GetICustomCloudpolicies() ([]ICloudpolicy, error)
+	GetICloudpolicies() ([]ICloudpolicy, error)
 
-	AttachSystemPolicy(policyName string) error
-	DetachSystemPolicy(policyName string) error
+	AttachPolicy(policyName string, policyType api.TPolicyType) error
+	DetachPolicy(policyName string, policyType api.TPolicyType) error
 
-	AttachCustomPolicy(policyName string) error
-	DetachCustomPolicy(policyName string) error
+	SetEnable(opts *SClouduserEnableOptions) error
+	SetDisable() error
 
 	Delete() error
 
@@ -1274,6 +1288,7 @@ type ICloudpolicy interface {
 	GetGlobalId() string
 	GetName() string
 	GetDescription() string
+	GetPolicyType() api.TPolicyType
 
 	GetDocument() (*jsonutils.JSONDict, error)
 	UpdateDocument(*jsonutils.JSONDict) error
@@ -1286,18 +1301,14 @@ type ICloudgroup interface {
 	GetGlobalId() string
 	GetName() string
 	GetDescription() string
-	GetISystemCloudpolicies() ([]ICloudpolicy, error)
-	GetICustomCloudpolicies() ([]ICloudpolicy, error)
+	GetICloudpolicies() ([]ICloudpolicy, error)
 	GetICloudusers() ([]IClouduser, error)
 
 	AddUser(name string) error
 	RemoveUser(name string) error
 
-	AttachSystemPolicy(policyName string) error
-	DetachSystemPolicy(policyName string) error
-
-	AttachCustomPolicy(policyName string) error
-	DetachCustomPolicy(policyName string) error
+	AttachPolicy(policyName string, policyType api.TPolicyType) error
+	DetachPolicy(policyName string, policyType api.TPolicyType) error
 
 	Delete() error
 }
@@ -1331,6 +1342,7 @@ type ICloudDnsRecord interface {
 	GetDnsValue() string
 	GetTTL() int64
 	GetMxPriority() int64
+	GetExtraAddresses() ([]string, error)
 
 	Update(*DnsRecord) error
 
@@ -1369,8 +1381,8 @@ type ICloudrole interface {
 	GetSAMLProvider() string
 
 	GetICloudpolicies() ([]ICloudpolicy, error)
-	AttachPolicy(id string) error
-	DetachPolicy(id string) error
+	AttachPolicy(policyName string, policyType api.TPolicyType) error
+	DetachPolicy(policyName string, policyType api.TPolicyType) error
 
 	Delete() error
 }
@@ -1485,6 +1497,21 @@ type ICloudWafInstance interface {
 	// 绑定的资源列表
 	GetCloudResources() ([]SCloudResource, error)
 
+	// 前面是否有代理服务
+	GetIsAccessProduct() bool
+	GetAccessHeaders() []string
+	GetHttpPorts() []int
+	GetHttpsPorts() []int
+	GetCname() string
+	// 源站地址
+	GetSourceIps() []string
+	// 回源地址
+	GetCcList() []string
+	GetCertId() string
+	GetCertName() string
+	GetUpstreamScheme() string
+	GetUpstreamPort() int
+
 	Delete() error
 }
 
@@ -1584,19 +1611,63 @@ type ICloudKafka interface {
 	Delete() error
 }
 
+type AppBackupConfig struct {
+	Enabled               bool
+	FrequencyInterval     int
+	FrequencyUnit         string
+	RetentionPeriodInDays int
+}
+
 type ICloudApp interface {
 	IVirtualResource
 	GetEnvironments() ([]ICloudAppEnvironment, error)
 	GetTechStack() string
-	GetType() string
-	GetKind() string
 	GetOsType() TOsType
+	GetIpAddress() string
+	GetHostname() string
+	GetServerFarm() string
+	GetBackups() ([]IAppBackup, error)
+	GetPublicNetworkAccess() string
+	GetNetworkId() string
+	GetHybirdConnections() ([]IAppHybirdConnection, error)
+	GetCertificates() ([]IAppCertificate, error)
+	GetBackupConfig() AppBackupConfig
+	GetDomains() ([]IAppDomain, error)
+}
+
+type IAppDomain interface {
+	GetGlobalId() string
+	GetName() string
+	GetStatus() string
+	GetSslState() string
+}
+
+type IAppCertificate interface {
+	GetGlobalId() string
+	GetName() string
+	GetSubjectName() string
+	GetIssuer() string
+	GetIssueDate() time.Time
+	GetThumbprint() string
+	GetExpireTime() time.Time
+}
+
+type IAppHybirdConnection interface {
+	GetGlobalId() string
+	GetName() string
+	GetHostname() string
+	GetNamespace() string
+	GetPort() int
+}
+
+type IAppBackup interface {
+	GetGlobalId() string
+	GetName() string
+	GetType() string
 }
 
 type ICloudAppEnvironment interface {
 	IVirtualResource
-	GetInstanceType() (string, error)
-	GetInstanceNumber() (int, error)
 }
 
 type ICloudDBInstanceSku interface {

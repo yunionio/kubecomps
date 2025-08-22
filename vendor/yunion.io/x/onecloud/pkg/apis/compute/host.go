@@ -71,6 +71,7 @@ type HostListInput struct {
 
 	StorageFilterListInput
 	UsableResourceListInput
+	BackupstorageFilterListInput
 
 	// filter by ResourceType
 	ResourceType string `json:"resource_type"`
@@ -150,6 +151,42 @@ type HostListInput struct {
 	// 按内存超分率排序
 	// enmu: asc,desc
 	OrderByMemCommitRate string `json:"order_by_mem_commit_rate"`
+
+	// 按本地存储分配大小排序
+	// enmu: asc,desc
+	OrderByStorageUsed string `json:"order_by_storage_used"`
+
+	// 按cpu分配大小排序
+	// enmu: asc,desc
+	OrderByCpuCommit string `json:"order_by_cpu_commit"`
+
+	// 按内存分配大小排序
+	// enmu: asc,desc
+	OrderByMemCommit string `json:"order_by_mem_commit"`
+
+	// 按物理cpu使用率排序
+	// enmu: asc,desc
+	OrderByCpuUsage string `json:"order_by_cpu_usage"`
+
+	// 按物理内存使用率排序
+	// enmu: asc,desc
+	OrderByMemUsage string `json:"order_by_mem_usage"`
+
+	// 按物理存储使用率排序
+	// enmu: asc,desc
+	OrderByStorageUsage string `json:"order_by_storage_usage"`
+
+	// 按虚拟内存使用率排序
+	// enmu: asc,desc
+	OrderByVirtualMemUsage string `json:"order_by_virtual_mem_usage"`
+
+	// 按虚拟cpu使用率排序
+	// enmu: asc,desc
+	OrderByVirtualCpuUsage string `json:"order_by_virtual_cpu_usage"`
+
+	// 按虚拟存储使用率排序
+	// enmu: asc,desc
+	OrderByVirtualStorageUsage string `json:"order_by_virtual_storage_usage"`
 }
 
 type HostDetails struct {
@@ -227,7 +264,7 @@ type HostDetails struct {
 	AutoMigrateOnHostShutdown bool `json:"auto_migrate_on_host_shutdown"`
 
 	// reserved resource for isolated device
-	ReservedResourceForGpu IsolatedDeviceReservedResourceInput `json:"reserved_resource_for_gpu"`
+	ReservedResourceForGpu *IsolatedDeviceReservedResourceInput `json:"reserved_resource_for_gpu"`
 	// isolated device count
 	IsolatedDeviceCount int
 
@@ -290,11 +327,18 @@ type HostResourceInfo struct {
 	// 宿主机状态
 	HostStatus string `json:"host_status"`
 
+	HostResourceType string `json:"host_resource_type"`
+
+	// 宿主机计费类型
+	HostBillingType string `json:"host_billing_type"`
+
 	// 宿主机服务状态`
 	HostServiceStatus string `json:"host_service_status"`
 
 	// 宿主机类型
 	HostType string `json:"host_type"`
+
+	HostAccessIp string `json:"host_access_ip"`
 }
 
 type HostFilterListInput struct {
@@ -405,7 +449,7 @@ type HostIpmiAttributes struct {
 	// presence
 	IpmiPresent *bool `json:"ipmi_present"`
 	// lan channel
-	IpmiLanChannel *int `json:"ipmi_lan_channel"`
+	IpmiLanChannel *uint8 `json:"ipmi_lan_channel"`
 	// verified
 	IpmiVerified *bool `json:"ipmi_verified"`
 	// Redfish API support
@@ -525,11 +569,14 @@ type SHostStorageStat struct {
 type SHostPingInput struct {
 	WithData bool `json:"with_data"`
 
-	MemoryUsedMb int `json:"memory_used_mb"`
+	MemoryUsedMb    int     `json:"memory_used_mb"`
+	CpuUsagePercent float64 `json:"cpu_usage_percent"`
 
 	RootPartitionUsedCapacityMb int `json:"root_partition_used_capacity_mb"`
 
 	StorageStats []SHostStorageStat `json:"storage_stats"`
+
+	QgaRunningGuestIds []string `json:"qga_running_guests"`
 }
 
 type HostReserveCpusInput struct {
@@ -563,7 +610,7 @@ type HostAddNetifInput struct {
 
 	NicType cloudmux.TNicType `json:"nic_type"`
 
-	Index int8 `json:"index"`
+	Index int `json:"index"`
 
 	LinkUp string `json:"link_up"`
 
@@ -632,4 +679,9 @@ type HostLoginInfoOutput struct {
 }
 
 type HostPerformStartInput struct {
+}
+
+type HostSetCommitBoundInput struct {
+	CpuCmtbound *float32
+	MemCmtbound *float32
 }

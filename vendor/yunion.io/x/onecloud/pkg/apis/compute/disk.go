@@ -160,6 +160,12 @@ type DiskListInput struct {
 	// swagger:ignore
 	// Deprecated
 	Snapshot string `json:"snapshot" yunion-deprecated-by:"snapshot_id"`
+
+	// 根据虚拟机状态过滤
+	GuestStatus string `json:"guest_status"`
+
+	// 根据是否绑定快照策略过滤
+	BindingSnapshotpolicy *bool `json:"binding_snapshotpolicy"`
 }
 
 type DiskResourceInput struct {
@@ -198,6 +204,12 @@ type SimpleGuest struct {
 	Driver string `json:"driver"`
 	// 缓存模式
 	CacheMode string `json:"cache_mode"`
+	// 磁盘并发数
+	Iops int `json:"iops"`
+	// 磁盘吞吐
+	Bps int `json:"bps"`
+	// 计费类型
+	BillingType string `json:"billing_type"`
 }
 
 type SimpleSnapshotPolicy struct {
@@ -222,6 +234,8 @@ type DiskDetails struct {
 	GuestCount int `json:"guest_count"`
 	// 所挂载虚拟机状态
 	GuestStatus string `json:"guest_status"`
+	// 所挂载虚拟机计费类型
+	GuestBillingType string `json:"guest_billing_type"`
 
 	// 自动清理时间
 	AutoDeleteAt time.Time `json:"auto_delete_at"`
@@ -230,11 +244,6 @@ type DiskDetails struct {
 
 	// 自动快照策略
 	Snapshotpolicies []SimpleSnapshotPolicy `json:"snapshotpolicies"`
-
-	// 手动快照数量
-	ManualSnapshotCount int `json:"manual_snapshot_count"`
-	// 最多可创建手动快照数量
-	MaxManualSnapshotCount int `json:"max_manual_snapshot_count"`
 }
 
 type DiskResourceInfoBase struct {
@@ -259,6 +268,8 @@ type DiskUpdateInput struct {
 
 	// 磁盘类型
 	DiskType string `json:"disk_type"`
+	// 关机自动重置
+	AutoReset *bool `json:"auto_reset"`
 }
 
 type DiskSaveInput struct {
@@ -319,6 +330,7 @@ type DiskAllocateFromBackupInput struct {
 type DiskDeleteInput struct {
 	SkipRecycle      *bool
 	EsxiFlatFilePath string
+	CleanSnapshots   bool
 }
 
 type DiskResetInput struct {
@@ -326,6 +338,20 @@ type DiskResetInput struct {
 	AutoStart  bool   `json:"auto_start"`
 }
 
+type DiskMigrateInput struct {
+	TargetStorageId string `json:"target_storage_id"`
+}
+
 type DiskSnapshotpolicyInput struct {
 	SnapshotpolicyId string `json:"snapshotpolicy_id"`
+}
+
+type DiskRebuildInput struct{}
+
+type DiskChangeBillingTypeInput struct {
+	// 仅在磁盘挂载在虚拟机上时调用
+	// 目前支持阿里云
+	// enmu: [postpaid, prepaid]
+	// required: true
+	BillingType string `json:"billing_type"`
 }

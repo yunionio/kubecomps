@@ -127,8 +127,13 @@ type ServerListInput struct {
 	// 根据镜像发行版排序
 	OrderByOsDist string `json:"order_by_os_dist"`
 
+	SnapshotpolicyId string `json:"snapshotpolicy_id"`
+
 	// 是否调度到宿主机上
 	WithHost *bool `json:"with_host"`
+
+	// 根据是否绑定快照策略过滤
+	BindingSnapshotpolicy *bool `json:"binding_snapshotpolicy"`
 }
 
 func (input *ServerListInput) AfterUnmarshal() {
@@ -190,18 +195,11 @@ type ServerDetails struct {
 	// 系统管理员可见的安全组规则
 	AdminSecurityRules string `json:"admin_security_rules"`
 
-	// list
-	AttachTime time.Time `json:"attach_time"`
-
 	// common
 	IsPrepaidRecycle bool `json:"is_prepaid_recycle"`
 
-	// 备份主机所在宿主机名称
-	BackupHostName string `json:"backup_host_name"`
-	// 备份主机所在宿主机状态
-	BackupHostStatus string `json:"backup_host_status"`
-	// 主备机同步状态
-	BackupGuestSyncStatus string `json:"backup_guest_sync_status"`
+	// 主备机信息
+	BackupInfo
 
 	// 是否可以回收
 	CanRecycle bool `json:"can_recycle"`
@@ -275,6 +273,15 @@ type ServerDetails struct {
 	MonitorUrl string `json:"monitor_url"`
 }
 
+type BackupInfo struct {
+	// 备份主机所在宿主机名称
+	BackupHostName string `json:"backup_host_name"`
+	// 备份主机所在宿主机状态
+	BackupHostStatus string `json:"backup_host_status"`
+	// 主备机同步状态
+	BackupGuestSyncStatus string `json:"backup_guest_sync_status"`
+}
+
 type Floppy struct {
 	Ordinal int    `json:"ordinal"`
 	Detail  string `json:"detail"`
@@ -283,6 +290,7 @@ type Floppy struct {
 type Cdrom struct {
 	Ordinal   int    `json:"ordinal"`
 	Detail    string `json:"detail"`
+	Name      string `json:"name"`
 	BootIndex int8   `json:"boot_index"`
 }
 
@@ -310,6 +318,8 @@ func (self ServerDetails) GetMetricTags() map[string]string {
 		"paltform":            self.Hypervisor,
 		"host":                self.Host,
 		"host_id":             self.HostId,
+		"ips":                 self.IPs,
+		"vm_ip":               self.IPs,
 		"vm_id":               self.Id,
 		"vm_name":             self.Name,
 		"zone":                self.Zone,
@@ -356,9 +366,11 @@ type GuestDiskInfo struct {
 	Driver        string `json:"driver"`
 	CacheMode     string `json:"cache_mode"`
 	AioMode       string `json:"aio_mode"`
+	AutoReset     bool   `json:"auto_reset"`
 	MediumType    string `json:"medium_type"`
 	StorageType   string `json:"storage_type"`
 	Iops          int    `json:"iops"`
+	Throughput    int    `json:"throughput"`
 	Bps           int    `json:"bps"`
 	ImageId       string `json:"image_id,omitempty"`
 	Image         string `json:"image,omitemtpy"`
@@ -469,6 +481,13 @@ type ConvertToKvmInput struct {
 
 	// dest guest network configs
 	Networks []*NetworkConfig `json:"networks"`
+
+	// deploy telegraf after convert
+	DeployTelegraf bool `json:"deploy_telegraf"`
+}
+
+type BatchConvertToKvmCheckInput struct {
+	GuestIds []string `json:"guest_ids"`
 }
 
 type GuestSaveToTemplateInput struct {
@@ -610,7 +629,11 @@ type ServerStopInput struct {
 	// 是否强制关机
 	IsForce bool `json:"is_force"`
 
+	// 关机等待时间，如果是强制关机，则等待时间为0，如果不设置，默认为30秒
+	TimeoutSecs int `json:"timeout_secs"`
+
 	// 是否关机停止计费, 若平台不支持停止计费，此参数无作用
+	// 若包年包月机器关机设置此参数，则先转换计费模式到按量计费，再关机不收费
 	// 目前仅阿里云，腾讯云此参数生效
 	StopCharging bool `json:"stop_charging"`
 }
@@ -698,6 +721,7 @@ type ServerMigrateForecastInput struct {
 	SkipKernelCheck bool   `json:"skip_kernel_check"`
 	ConvertToKvm    bool   `json:"convert_to_kvm"`
 	IsRescueMode    bool   `json:"is_rescue_mode"`
+	ResetCpuNumaPin bool   `json:"reset_cpu_numa_pin"`
 }
 
 type ServerResizeDiskInput struct {
@@ -742,6 +766,8 @@ type ServerDeployInputBase struct {
 	ResetPassword bool `json:"reset_password"`
 	// 重置指定密码
 	Password string `json:"password"`
+	// swagger: ignore
+	LoginAccount string `json:"login_account"`
 
 	// swagger: ignore
 	Restart bool `json:"restart"`
@@ -846,6 +872,8 @@ type GuestJsonDesc struct {
 
 	IsolatedDevices []*IsolatedDeviceJsonDesc `json:"isolated_devices"`
 
+	CpuNumaPin []SCpuNumaPin `json:"cpu_numa_pin"`
+
 	Domain string `json:"domain"`
 
 	Nics  []*GuestnetworkJsonDesc `json:"nics"`
@@ -894,12 +922,25 @@ type GuestJsonDesc struct {
 		InstanceSnapshotId string `json:"instance_snapshot_id"`
 		InstanceId         string `json:"instance_id"`
 	} `json:"instance_snapshot_info"`
+	EnableEsxiSwap bool `json:"enable_esxi_swap"`
 
 	EncryptKeyId string `json:"encrypt_key_id,omitempty"`
 
 	IsDaemon bool `json:"is_daemon"`
 
 	LightMode bool `json:"light_mode"`
+}
+
+type SVCpuPin struct {
+	Vcpu int
+	Pcpu int
+}
+
+type SCpuNumaPin struct {
+	SizeMB *int `json:"size_mb"`
+	NodeId int  `json:"node_id"`
+
+	VcpuPin []SVCpuPin `json:"vcpu_pin"`
 }
 
 type ServerSetBootIndexInput struct {
@@ -947,6 +988,13 @@ type ServerChangeDiskStorageInternalInput struct {
 	CloneDiskCount     int `json:"disk_count"`
 }
 
+type ServerCopyDiskToStorageInput struct {
+	KeepOriginDisk     bool `json:"keep_origin_disk"`
+	GuestRunning       bool `json:"guest_running"`
+	CompletedDiskCount int  `json:"completed_disk_count"`
+	CloneDiskCount     int  `json:"disk_count"`
+}
+
 type ServerSetExtraOptionInput struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -991,6 +1039,10 @@ type ServerSnapshotAndCloneInput struct {
 
 	// ignore
 	InstanceSnapshotId string `json:"instance_snapshot_id"`
+
+	// Perfer clone destination host
+	// 指定期望的迁移目标宿主机
+	PreferHostId string `json:"prefer_host_id"`
 }
 
 type ServerInstanceSnapshot struct {
@@ -1128,7 +1180,7 @@ type ServerQgaGetNetworkInput struct {
 }
 
 type ServerQgaTimeoutInput struct {
-	// qga execute timeout millisecond
+	// qga execute timeout second
 	Timeout int
 }
 
@@ -1167,15 +1219,25 @@ type ServerNicTrafficLimit struct {
 	TxTrafficLimit *int64 `json:"tx_traffic_limit"`
 }
 
-type GuestAddSubIpsInput struct {
-	ServerNetworkInfo
-
+type GuestAddSubIpsInfo struct {
 	Count  int      `json:"count"`
 	SubIps []string `json:"sub_ips"`
 
 	Reserved bool `json:"reserved"`
 
 	AllocDir IPAllocationDirection `json:"alloc_dir"`
+}
+
+type GuestAddSubIpsInput struct {
+	ServerNetworkInfo
+
+	GuestAddSubIpsInfo
+}
+
+type GuestUpdateSubIpsInput struct {
+	GuestAddSubIpsInput
+
+	RemoveSubIps []string `json:"remove_sub_ips"`
 }
 
 type NetworkAddrConf struct {
@@ -1202,6 +1264,8 @@ type GuestPerformStartInput struct {
 	// 指定启动虚拟机的Qemu版本，可选值：2.12.1, 4.2.0
 	// 仅适用于KVM虚拟机
 	QemuVersion string `json:"qemu_version"`
+	// 按量机器自动转换为包年包月
+	AutoPrepaid bool `json:"auto_prepaid"`
 }
 
 type ServerSetOSInfoInput struct {
@@ -1287,6 +1351,10 @@ func (conf ServerChangeConfigSettings) MemChanged() bool {
 	return conf.VmemSize != conf.Old.VmemSize
 }
 
+func (conf ServerChangeConfigSettings) InstanceTypeChanged() bool {
+	return len(conf.InstanceType) > 0 && conf.InstanceType != conf.Old.InstanceType
+}
+
 func (conf ServerChangeConfigSettings) AddedMem() int {
 	addMem := conf.VmemSize - conf.Old.VmemSize
 	if addMem < 0 {
@@ -1304,4 +1372,11 @@ func (conf ServerChangeConfigSettings) AddedDisk() int {
 		size += create.SizeMb
 	}
 	return size
+}
+
+type ServerChangeBillingTypeInput struct {
+	// 仅在虚拟机开机或关机状态下调用
+	// enmu: [postpaid, prepaid]
+	// required: true
+	BillingType string `json:"billing_type"`
 }

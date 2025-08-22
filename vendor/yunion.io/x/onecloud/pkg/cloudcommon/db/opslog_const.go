@@ -51,6 +51,8 @@ const (
 	ACT_BACKUP_START        = "backup_start"
 	ACT_BACKUP_START_FAILED = "backup_start_fail"
 
+	ACT_SET_RELEASE_TIME = "set_release_time"
+
 	ACT_FREEZE      = "freeze"
 	ACT_FREEZE_FAIL = "freeze_fail"
 	ACT_UNFREEZE    = "unfreeze"
@@ -73,6 +75,8 @@ const (
 	ACT_MIGRATING    = "migrating"
 	ACT_MIGRATE      = "migrate"
 	ACT_MIGRATE_FAIL = "migrate_fail"
+
+	ACT_RESET_CPU_NUMA_PIN = "reset_cpu_numa_pin"
 
 	ACT_VM_CONVERT      = "vm_convert"
 	ACT_VM_CONVERTING   = "vm_converting"
@@ -331,4 +335,6 @@ const (
 	ACT_STOP_RESCUE_FAILED  = "stop_rescue_failed"
 
 	ACT_RE_BILLING = "re_billing"
+
+	ACT_SET_COMMIT_BOUND = "set_commit_bound"
 )

@@ -83,6 +83,11 @@ type BackupStorageDetails struct {
 
 type BackupStorageListInput struct {
 	apis.EnabledStatusInfrasResourceBaseListInput
+
+	// filter by server_id
+	ServerId string `json:"server_id"`
+	// filter by disk_id
+	DiskId string `json:"disk_id"`
 }
 
 type DiskBackupListInput struct {
@@ -112,6 +117,8 @@ type DiskBackupDetails struct {
 	BackupStorageName string `json:"backup_storage_name"`
 	// description: 是否是子备份
 	IsSubBackup bool `json:"is_sub_backup"`
+
+	SDiskBackup
 }
 
 type DiskBackupCreateInput struct {
@@ -182,6 +189,8 @@ type SBackupStorageAccessInfo struct {
 	ObjectAccessKey string `json:"object_access_key"`
 	// description: secret of object storage
 	ObjectSecret string `json:"object_secret"`
+	// description: signing version, can be v2/v4, default is v4
+	ObjectSignVer string `json:"object_sign_ver"`
 }
 
 func (ba *SBackupStorageAccessInfo) String() string {

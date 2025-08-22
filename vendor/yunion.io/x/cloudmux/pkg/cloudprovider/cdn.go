@@ -68,15 +68,16 @@ type CdnCreateOptions struct {
 // +onecloud:model-api-gen
 type SCdnOrigins []SCdnOrigin
 
-func (self SCdnOrigins) IsZero() bool {
-	return len(self) == 0
+func (origins SCdnOrigins) IsZero() bool {
+	return len(origins) == 0
 }
 
-func (self SCdnOrigins) String() string {
-	return jsonutils.Marshal(self).String()
+func (origins SCdnOrigins) String() string {
+	return jsonutils.Marshal(origins).String()
 }
 
 // 是否忽略参数
+// +onecloud:model-api-gen
 type SCDNCacheKeys struct {
 	// 开启关闭忽略参数
 	Enabled *bool
@@ -101,15 +102,16 @@ type CacheKeyRuleQueryString struct {
 	Value   string
 }
 
-func (self SCDNCacheKeys) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNCacheKeys{})
+func (keys SCDNCacheKeys) IsZero() bool {
+	return jsonutils.Marshal(keys) == jsonutils.Marshal(&SCDNCacheKeys{})
 }
 
-func (self SCDNCacheKeys) String() string {
-	return jsonutils.Marshal(self).String()
+func (keys SCDNCacheKeys) String() string {
+	return jsonutils.Marshal(keys).String()
 }
 
 // 是否分片回源
+// +onecloud:model-api-gen
 type SCDNRangeOriginPull struct {
 	Enabled              *bool
 	RangeOriginPullRules []SRangeOriginPullRule
@@ -121,12 +123,12 @@ type SRangeOriginPullRule struct {
 	RulePaths []string
 }
 
-func (self SCDNRangeOriginPull) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNRangeOriginPull{})
+func (pull SCDNRangeOriginPull) IsZero() bool {
+	return jsonutils.Marshal(pull) == jsonutils.Marshal(&SCDNRangeOriginPull{})
 }
 
-func (self SCDNRangeOriginPull) String() string {
-	return jsonutils.Marshal(self).String()
+func (pull SCDNRangeOriginPull) String() string {
+	return jsonutils.Marshal(pull).String()
 }
 
 type CacheRule struct {
@@ -143,6 +145,7 @@ type CacheRule struct {
 	CacheTime int
 }
 
+// +onecloud:model-api-gen
 type SCDNCache struct {
 	RuleCache []SCacheRuleCache
 }
@@ -178,14 +181,15 @@ type RuleCacheConfig struct {
 	}
 }
 
-func (self SCDNCache) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNCache{})
+func (cache SCDNCache) IsZero() bool {
+	return jsonutils.Marshal(cache) == jsonutils.Marshal(&SCDNCache{})
 }
 
-func (self SCDNCache) String() string {
-	return jsonutils.Marshal(self).String()
+func (cache SCDNCache) String() string {
+	return jsonutils.Marshal(cache).String()
 }
 
+// +onecloud:model-api-gen
 type SCDNHttps struct {
 	// https 配置开关
 	Enabled *bool
@@ -193,14 +197,15 @@ type SCDNHttps struct {
 	Http2 *bool
 }
 
-func (self SCDNHttps) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNHttps{})
+func (https SCDNHttps) IsZero() bool {
+	return jsonutils.Marshal(https) == jsonutils.Marshal(&SCDNHttps{})
 }
 
-func (self SCDNHttps) String() string {
-	return jsonutils.Marshal(self).String()
+func (https SCDNHttps) String() string {
+	return jsonutils.Marshal(https).String()
 }
 
+// +onecloud:model-api-gen
 type SCDNForceRedirect struct {
 	// 访问强制跳转配置开关
 	Enabled *bool
@@ -209,12 +214,12 @@ type SCDNForceRedirect struct {
 	RedirectType string
 }
 
-func (self SCDNForceRedirect) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNForceRedirect{})
+func (redirect SCDNForceRedirect) IsZero() bool {
+	return jsonutils.Marshal(redirect) == jsonutils.Marshal(&SCDNForceRedirect{})
 }
 
-func (self SCDNForceRedirect) String() string {
-	return jsonutils.Marshal(self).String()
+func (redirect SCDNForceRedirect) String() string {
+	return jsonutils.Marshal(redirect).String()
 }
 
 type RefererRule struct {
@@ -230,6 +235,7 @@ type RefererRule struct {
 	AllowEmpty  *bool
 }
 
+// +onecloud:model-api-gen
 type SCDNReferer struct {
 	// 是否开启防盗链
 	Enabled *bool
@@ -237,12 +243,12 @@ type SCDNReferer struct {
 	RefererRules []RefererRule
 }
 
-func (self SCDNReferer) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNReferer{})
+func (referer SCDNReferer) IsZero() bool {
+	return jsonutils.Marshal(referer) == jsonutils.Marshal(&SCDNReferer{})
 }
 
-func (self SCDNReferer) String() string {
-	return jsonutils.Marshal(self).String()
+func (referer SCDNReferer) String() string {
+	return jsonutils.Marshal(referer).String()
 }
 
 type SMaxAgeRule struct {
@@ -253,17 +259,18 @@ type SMaxAgeRule struct {
 }
 
 // 浏览器缓存配置
+// +onecloud:model-api-gen
 type SCDNMaxAge struct {
 	Enabled     *bool
 	MaxAgeRules []SMaxAgeRule
 }
 
-func (self SCDNMaxAge) IsZero() bool {
-	return jsonutils.Marshal(self) == jsonutils.Marshal(&SCDNMaxAge{})
+func (maxAge SCDNMaxAge) IsZero() bool {
+	return jsonutils.Marshal(maxAge) == jsonutils.Marshal(&SCDNMaxAge{})
 }
 
-func (self SCDNMaxAge) String() string {
-	return jsonutils.Marshal(self).String()
+func (maxAge SCDNMaxAge) String() string {
+	return jsonutils.Marshal(maxAge).String()
 }
 
 func init() {

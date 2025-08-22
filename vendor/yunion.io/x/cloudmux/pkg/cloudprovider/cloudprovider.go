@@ -203,6 +203,7 @@ type ICloudProviderFactory interface {
 
 	ValidateChangeBandwidth(instanceId string, bandwidth int64) error
 	ValidateCreateCloudaccountData(ctx context.Context, input SCloudaccountCredential) (SCloudaccount, error)
+	IsReadOnly() bool
 	ValidateUpdateCloudaccountCredential(ctx context.Context, input SCloudaccountCredential, cloudaccount string) (SCloudaccount, error)
 	GetSupportedBrands() []string
 
@@ -217,18 +218,6 @@ type ICloudProviderFactory interface {
 	GetMaxCloudEventKeepDays() int
 
 	IsNeedForceAutoCreateProject() bool
-
-	IsCloudpolicyWithSubscription() bool     // 自定义权限属于订阅级别资源
-	IsClouduserpolicyWithSubscription() bool // 绑定用户权限需要指定订阅
-
-	IsSupportCloudIdService() bool
-	IsSupportClouduserPolicy() bool
-	IsSupportResetClouduserPassword() bool
-	GetClouduserMinPolicyCount() int
-	IsClouduserNeedInitPolicy() bool
-	IsSupportCreateCloudgroup() bool
-
-	IsSystemCloudpolicyUnified() bool // 国内国外权限是否一致
 
 	IsSupportCrossCloudEnvVpcPeering() bool
 	IsSupportCrossRegionVpcPeering() bool
@@ -261,7 +250,7 @@ type ICloudProvider interface {
 	GetVersion() string
 	GetIamLoginUrl() string
 
-	GetIRegions() []ICloudRegion
+	GetIRegions() ([]ICloudRegion, error)
 	GetIProjects() ([]ICloudProject, error)
 	CreateIProject(name string) (ICloudProject, error)
 	GetIRegionById(id string) (ICloudRegion, error)
@@ -285,8 +274,7 @@ type ICloudProvider interface {
 
 	IsClouduserSupportPassword() bool
 	GetICloudusers() ([]IClouduser, error)
-	GetISystemCloudpolicies() ([]ICloudpolicy, error)
-	GetICustomCloudpolicies() ([]ICloudpolicy, error)
+	GetICloudpolicies() ([]ICloudpolicy, error)
 	GetICloudgroups() ([]ICloudgroup, error)
 	GetICloudgroupByName(name string) (ICloudgroup, error)
 	CreateICloudgroup(name, desc string) (ICloudgroup, error)
@@ -432,7 +420,7 @@ func GetProviderFactory(provider string) (ICloudProviderFactory, error) {
 	if ok {
 		return factory, nil
 	}
-	return nil, fmt.Errorf("No such provider %s", provider)
+	return nil, fmt.Errorf("no such provider %s", provider)
 }
 
 func GetRegistedProviderIds() []string {
@@ -480,171 +468,167 @@ type SBaseProvider struct {
 	factory ICloudProviderFactory
 }
 
-func (provider *SBaseProvider) GetFactory() ICloudProviderFactory {
-	return provider.factory
+func (base *SBaseProvider) GetFactory() ICloudProviderFactory {
+	return base.factory
 }
 
-func (self *SBaseProvider) GetOnPremiseIRegion() (ICloudRegion, error) {
+func (base *SBaseProvider) GetOnPremiseIRegion() (ICloudRegion, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetIamLoginUrl() string {
+func (base *SBaseProvider) GetIamLoginUrl() string {
 	return ""
 }
 
-func (self *SBaseProvider) IsClouduserSupportPassword() bool {
+func (base *SBaseProvider) IsClouduserSupportPassword() bool {
 	return true
 }
 
-func (self *SBaseProvider) GetICloudusers() ([]IClouduser, error) {
+func (base *SBaseProvider) GetICloudusers() ([]IClouduser, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICloudgroups() ([]ICloudgroup, error) {
+func (base *SBaseProvider) GetICloudgroups() ([]ICloudgroup, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICloudgroupByName(name string) (ICloudgroup, error) {
+func (base *SBaseProvider) GetICloudgroupByName(name string) (ICloudgroup, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) CreateICloudgroup(name, desc string) (ICloudgroup, error) {
+func (base *SBaseProvider) CreateICloudgroup(name, desc string) (ICloudgroup, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetISystemCloudpolicies() ([]ICloudpolicy, error) {
+func (base *SBaseProvider) GetICloudpolicies() ([]ICloudpolicy, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICustomCloudpolicies() ([]ICloudpolicy, error) {
+func (base *SBaseProvider) GetIClouduserByName(name string) (IClouduser, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetIClouduserByName(name string) (IClouduser, error) {
+func (base *SBaseProvider) CreateIClouduser(conf *SClouduserCreateConfig) (IClouduser, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) CreateIClouduser(conf *SClouduserCreateConfig) (IClouduser, error) {
-	return nil, ErrNotImplemented
-}
-
-func (self *SBaseProvider) GetICloudSAMLProviders() ([]ICloudSAMLProvider, error) {
+func (base *SBaseProvider) GetICloudSAMLProviders() ([]ICloudSAMLProvider, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudSAMLProviders")
 }
 
-func (self *SBaseProvider) GetICloudroles() ([]ICloudrole, error) {
+func (base *SBaseProvider) GetICloudroles() ([]ICloudrole, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudroles")
 }
 
-func (self *SBaseProvider) GetICloudroleById(id string) (ICloudrole, error) {
+func (base *SBaseProvider) GetICloudroleById(id string) (ICloudrole, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudroleById")
 }
 
-func (self *SBaseProvider) GetICloudroleByName(name string) (ICloudrole, error) {
+func (base *SBaseProvider) GetICloudroleByName(name string) (ICloudrole, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudroleByName")
 }
 
-func (self *SBaseProvider) CreateICloudrole(opts *SRoleCreateOptions) (ICloudrole, error) {
+func (base *SBaseProvider) CreateICloudrole(opts *SRoleCreateOptions) (ICloudrole, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "CreateICloudrole")
 }
 
-func (self *SBaseProvider) CreateICloudSAMLProvider(opts *SAMLProviderCreateOptions) (ICloudSAMLProvider, error) {
+func (base *SBaseProvider) CreateICloudSAMLProvider(opts *SAMLProviderCreateOptions) (ICloudSAMLProvider, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "CreateICloudSAMLProvider")
 }
 
-func (self *SBaseProvider) CreateICloudpolicy(opts *SCloudpolicyCreateOptions) (ICloudpolicy, error) {
+func (base *SBaseProvider) CreateICloudpolicy(opts *SCloudpolicyCreateOptions) (ICloudpolicy, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetEnrollmentAccounts() ([]SEnrollmentAccount, error) {
+func (base *SBaseProvider) GetEnrollmentAccounts() ([]SEnrollmentAccount, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) CreateSubscription(SubscriptionCreateInput) error {
+func (base *SBaseProvider) CreateSubscription(SubscriptionCreateInput) error {
 	return ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICloudDnsZones() ([]ICloudDnsZone, error) {
+func (base *SBaseProvider) GetICloudDnsZones() ([]ICloudDnsZone, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICloudDnsZoneById(id string) (ICloudDnsZone, error) {
+func (base *SBaseProvider) GetICloudDnsZoneById(id string) (ICloudDnsZone, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) CreateICloudDnsZone(opts *SDnsZoneCreateOptions) (ICloudDnsZone, error) {
+func (base *SBaseProvider) CreateICloudDnsZone(opts *SDnsZoneCreateOptions) (ICloudDnsZone, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetCloudRegionExternalIdPrefix() string {
-	return self.factory.GetId()
+func (base *SBaseProvider) GetCloudRegionExternalIdPrefix() string {
+	return base.factory.GetId()
 }
 
-func (self *SBaseProvider) CreateIProject(name string) (ICloudProject, error) {
+func (base *SBaseProvider) CreateIProject(name string) (ICloudProject, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetSamlEntityId() string {
+func (base *SBaseProvider) GetSamlEntityId() string {
 	return ""
 }
 
-func (self *SBaseProvider) GetSamlSpInitiatedLoginUrl(idpName string) string {
+func (base *SBaseProvider) GetSamlSpInitiatedLoginUrl(idpName string) string {
 	return ""
 }
 
-func (self *SBaseProvider) GetICloudInterVpcNetworks() ([]ICloudInterVpcNetwork, error) {
+func (base *SBaseProvider) GetICloudInterVpcNetworks() ([]ICloudInterVpcNetwork, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICloudInterVpcNetworkById(id string) (ICloudInterVpcNetwork, error) {
+func (base *SBaseProvider) GetICloudInterVpcNetworkById(id string) (ICloudInterVpcNetwork, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) CreateICloudInterVpcNetwork(opts *SInterVpcNetworkCreateOptions) (ICloudInterVpcNetwork, error) {
+func (base *SBaseProvider) CreateICloudInterVpcNetwork(opts *SInterVpcNetworkCreateOptions) (ICloudInterVpcNetwork, error) {
 	return nil, ErrNotImplemented
 }
 
-func (self *SBaseProvider) GetICloudGlobalVpcs() ([]ICloudGlobalVpc, error) {
+func (base *SBaseProvider) GetICloudGlobalVpcs() ([]ICloudGlobalVpc, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudGlobalVpcs")
 }
 
-func (self *SBaseProvider) GetICloudGlobalVpcById(id string) (ICloudGlobalVpc, error) {
+func (base *SBaseProvider) GetICloudGlobalVpcById(id string) (ICloudGlobalVpc, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudGlobalVpcById")
 }
 
-func (self *SBaseProvider) CreateICloudGlobalVpc(opts *GlobalVpcCreateOptions) (ICloudGlobalVpc, error) {
+func (base *SBaseProvider) CreateICloudGlobalVpc(opts *GlobalVpcCreateOptions) (ICloudGlobalVpc, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "CreateICloudGlobalVpc")
 }
 
-func (self *SBaseProvider) GetICloudCDNDomains() ([]ICloudCDNDomain, error) {
+func (base *SBaseProvider) GetICloudCDNDomains() ([]ICloudCDNDomain, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudCDNDomains")
 }
 
-func (self *SBaseProvider) GetICloudCDNDomainByName(name string) (ICloudCDNDomain, error) {
+func (base *SBaseProvider) GetICloudCDNDomainByName(name string) (ICloudCDNDomain, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetICloudCDNDomainByName")
 }
 
-func (self *SBaseProvider) CreateICloudCDNDomain(opts *CdnCreateOptions) (ICloudCDNDomain, error) {
+func (base *SBaseProvider) CreateICloudCDNDomain(opts *CdnCreateOptions) (ICloudCDNDomain, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "CreateICloudCDNDomain")
 }
 
-func (self *SBaseProvider) GetMetrics(opts *MetricListOptions) ([]MetricValues, error) {
+func (base *SBaseProvider) GetMetrics(opts *MetricListOptions) ([]MetricValues, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetMetric")
 }
 
-func (self *SBaseProvider) GetIModelartsPools() ([]ICloudModelartsPool, error) {
+func (base *SBaseProvider) GetIModelartsPools() ([]ICloudModelartsPool, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetIModelartsPools")
 }
 
-func (self *SBaseProvider) GetIModelartsPoolById(id string) (ICloudModelartsPool, error) {
+func (base *SBaseProvider) GetIModelartsPoolById(id string) (ICloudModelartsPool, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetIModelartsPoolDetail")
 }
 
-func (self *SBaseProvider) CreateIModelartsPool(pool *ModelartsPoolCreateOption, callback func(id string)) (ICloudModelartsPool, error) {
+func (base *SBaseProvider) CreateIModelartsPool(pool *ModelartsPoolCreateOption, callback func(id string)) (ICloudModelartsPool, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "CreateIModelartsPool")
 }
 
-func (self *SBaseProvider) GetIModelartsPoolSku() ([]ICloudModelartsPoolSku, error) {
+func (base *SBaseProvider) GetIModelartsPoolSku() ([]ICloudModelartsPoolSku, error) {
 	return nil, errors.Wrapf(ErrNotImplemented, "GetIModelartsPoolSku")
 }
 
@@ -672,40 +656,10 @@ func GetPrivateProviders() []string {
 	return providers
 }
 
-func GetSupportCloudgroupProviders() []string {
-	providers := []string{}
-	for p, d := range providerTable {
-		if d.IsSupportCreateCloudgroup() {
-			providers = append(providers, p)
-		}
-	}
-	return providers
-}
-
 func GetOnPremiseProviders() []string {
 	providers := make([]string, 0)
 	for p, d := range providerTable {
 		if !d.IsPublicCloud() && d.IsOnPremise() {
-			providers = append(providers, p)
-		}
-	}
-	return providers
-}
-
-func GetSupportCloudIdProvider() []string {
-	providers := []string{}
-	for p, d := range providerTable {
-		if d.IsSupportCloudIdService() {
-			providers = append(providers, p)
-		}
-	}
-	return providers
-}
-
-func GetClouduserpolicyWithSubscriptionProviders() []string {
-	providers := []string{}
-	for p, d := range providerTable {
-		if d.IsClouduserpolicyWithSubscription() {
 			providers = append(providers, p)
 		}
 	}
@@ -753,6 +707,10 @@ func (factory *baseProviderFactory) IsMultiTenant() bool {
 	return false
 }
 
+func (factory *baseProviderFactory) IsReadOnly() bool {
+	return false
+}
+
 func (factory *baseProviderFactory) IsCloudeventRegional() bool {
 	return false
 }
@@ -767,43 +725,6 @@ func (factory *baseProviderFactory) GetMaxCloudEventKeepDays() int {
 
 func (factory *baseProviderFactory) IsNeedForceAutoCreateProject() bool {
 	return false
-}
-
-func (factory *baseProviderFactory) IsCloudpolicyWithSubscription() bool {
-	return false
-}
-
-func (factory *baseProviderFactory) IsClouduserpolicyWithSubscription() bool {
-	return false
-}
-
-func (factory *baseProviderFactory) IsSupportCloudIdService() bool {
-	return false
-}
-
-func (factory *baseProviderFactory) IsSupportClouduserPolicy() bool {
-	return true
-}
-
-func (factory *baseProviderFactory) IsSupportResetClouduserPassword() bool {
-	return true
-}
-
-func (factory *baseProviderFactory) IsClouduserNeedInitPolicy() bool {
-	return false
-}
-
-func (factory *baseProviderFactory) GetClouduserMinPolicyCount() int {
-	// unlimited
-	return -1
-}
-
-func (factory *baseProviderFactory) IsSupportCreateCloudgroup() bool {
-	return false
-}
-
-func (factory *baseProviderFactory) IsSystemCloudpolicyUnified() bool {
-	return true
 }
 
 func (factory *baseProviderFactory) IsSupportCrossCloudEnvVpcPeering() bool {

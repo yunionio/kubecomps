@@ -15,6 +15,8 @@
 package compute
 
 import (
+	"time"
+
 	"yunion.io/x/jsonutils"
 
 	"yunion.io/x/onecloud/pkg/apis"
@@ -172,6 +174,10 @@ type DiskConfig struct {
 	// requried: false
 	Fs string `json:"fs"`
 
+	// 关机后自动重置磁盘
+	// required: false
+	AutoReset bool `json:"auto_reset"`
+
 	// 磁盘存储格式
 	// enum: qcow2, raw, docker, iso, vmdk, vmdkflatver1, vmdkflatver2, vmdkflat, vmdksparse, vmdksparsever1, vmdksparsever2, vmdksepsparse vhd
 	// requried: false
@@ -284,7 +290,7 @@ type IsolatedDeviceConfig struct {
 	DevType      string `json:"dev_type"`
 	Model        string `json:"model"`
 	Vendor       string `json:"vendor"`
-	NetworkIndex *int8  `json:"network_index"`
+	NetworkIndex *int   `json:"network_index"`
 	WireId       string `json:"wire_id"`
 	DiskIndex    *int8  `json:"disk_index"`
 }
@@ -306,6 +312,21 @@ type BaremetalDiskConfig struct {
 	RA           *bool   `json:"ra,omitempty"`
 	WT           *bool   `json:"wt,omitempty"`
 	Direct       *bool   `json:"direct,omitempty"`
+}
+
+type RootDiskMatcherSizeMBRange struct {
+	Start int64 `json:"start"`
+	End   int64 `json:"end"`
+}
+
+const (
+	BAREMETAL_SERVER_METATA_ROOT_DISK_MATCHER = "baremetal_root_disk_matcher"
+)
+
+type BaremetalRootDiskMatcher struct {
+	Device      string                      `json:"device"`
+	SizeMB      int64                       `json:"size_mb"`
+	SizeMBRange *RootDiskMatcherSizeMBRange `json:"size_mb_range"`
 }
 
 type ServerConfigs struct {
@@ -399,6 +420,9 @@ type ServerConfigs struct {
 
 	// 裸金属磁盘配置列表
 	BaremetalDiskConfigs []*BaremetalDiskConfig `json:"baremetal_disk_configs"`
+
+	// 裸金属系统盘匹配器
+	BaremetalRootDiskMatcher *BaremetalRootDiskMatcher `json:"baremetal_root_disk_matcher"`
 
 	// 主机组列表, 参数可以是主机组名称或ID,建议使用ID
 	InstanceGroupIds []string `json:"groups"`
@@ -612,6 +636,8 @@ type ServerCreateInput struct {
 	BillingType string `json:"billing_type"`
 	// swagger:ignore
 	BillingCycle string `json:"billing_cycle"`
+	// 到期释放时间
+	ReleaseAt time.Time `json:"release_at"`
 
 	// swagger:ignore
 	// Deprecated

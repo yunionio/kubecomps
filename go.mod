@@ -1,6 +1,6 @@
 module yunion.io/x/kubecomps
 
-go 1.18
+go 1.21
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.0
@@ -20,11 +20,11 @@ require (
 	github.com/projectcalico/libcalico-go v1.7.2-0.20201119184045-34d8399da148
 	github.com/regclient/regclient v0.4.8
 	github.com/smartystreets/goconvey v1.7.2
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.9.0
 	github.com/vishvananda/netlink v1.1.0
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5
-	golang.org/x/crypto v0.8.0
-	golang.org/x/sync v0.1.0
+	golang.org/x/crypto v0.19.0
+	golang.org/x/sync v0.6.0
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/api v0.19.4
@@ -41,16 +41,17 @@ require (
 	sigs.k8s.io/controller-runtime v0.6.4
 	sigs.k8s.io/yaml v1.2.0
 	yunion.io/x/code-generator v0.0.0-20230130032150-a6851cfe4737
-	yunion.io/x/jsonutils v1.0.1-0.20240203102553-4096f103b401
+	yunion.io/x/jsonutils v1.0.1-0.20250507052344-1abcf4f443b1
 	yunion.io/x/log v1.0.1-0.20240305175729-7cf2d6cd5a91
-	yunion.io/x/onecloud v0.0.0-20240312053540-299846783d7f
-	yunion.io/x/pkg v1.10.1-0.20240303050651-73685b15a96e
+	yunion.io/x/onecloud v0.0.0-20250821101039-ea65acf6ed1a
+	yunion.io/x/pkg v1.10.4-0.20250820035218-6008459eb4f0
 	yunion.io/x/sdnagent v1.2.10-0.20240129094758-082d26e0e076
-	yunion.io/x/sqlchemy v1.1.3-0.20240309151155-b34f29f02c79
+	yunion.io/x/sqlchemy v1.1.3-0.20250806073422-e37f5197cec0
 )
 
 require (
-	cloud.google.com/go v0.99.0 // indirect
+	cloud.google.com/go/compute v1.24.0 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	gitee.com/chunanyong/dm v1.8.14 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -73,7 +74,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/beevik/etree v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59 // indirect
 	github.com/containerd/containerd v1.3.4 // indirect
@@ -103,7 +104,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.7.7 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.20.1 // indirect
 	github.com/go-openapi/errors v0.20.1 // indirect
@@ -125,12 +126,12 @@ require (
 	github.com/golang-plus/errors v1.0.0 // indirect
 	github.com/golang-plus/uuid v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
@@ -156,7 +157,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/mattn/go-sqlite3 v1.14.12 // indirect
+	github.com/mattn/go-sqlite3 v1.14.19 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/minio/md5-simd v1.1.0 // indirect
@@ -176,6 +177,7 @@ require (
 	github.com/opencontainers/runc v1.0.0-rc92 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
+	github.com/petermattis/goid v0.0.0-20250508124226-395b08cebbdb // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
@@ -201,8 +203,9 @@ require (
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
-	github.com/tredoe/osutil/v2 v2.0.0-rc.16 // indirect
+	github.com/tredoe/osutil v1.5.0 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
+	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
@@ -212,23 +215,23 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.1 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.0 // indirect
 	go.mongodb.org/mongo-driver v1.7.3 // indirect
-	go.opencensus.io v0.23.0 // indirect
+	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/term v0.7.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
-	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/oauth2 v0.17.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/term v0.17.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde // indirect
-	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
-	google.golang.org/grpc v1.42.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
+	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
+	google.golang.org/grpc v1.62.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/go-playground/validator.v9 v9.29.1 // indirect
 	gopkg.in/gorp.v1 v1.7.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -238,16 +241,16 @@ require (
 	k8s.io/apiserver v0.19.4 // indirect
 	k8s.io/cloud-provider v0.19.3 // indirect
 	k8s.io/component-base v0.19.4 // indirect
-	k8s.io/klog/v2 v2.3.0 // indirect
+	k8s.io/klog/v2 v2.20.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6 // indirect
 	k8s.io/utils v0.0.0-20200729134348-d5654de09c73 // indirect
 	moul.io/http2curl/v2 v2.3.0 // indirect
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.1 // indirect
-	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20240308095624-f1aeca8dcd51 // indirect
-	yunion.io/x/executor v0.0.0-20230705125604-c5ac3141db32 // indirect
-	yunion.io/x/s3cli v0.0.0-20190917004522-13ac36d8687e // indirect
+	yunion.io/x/cloudmux v0.3.10-0-alpha.1.0.20250820024124-b54c4686c57c // indirect
+	yunion.io/x/executor v0.0.0-20250518005516-5402e9e0bed0 // indirect
+	yunion.io/x/s3cli v0.0.0-20241221171442-1c11599d28e1 // indirect
 	yunion.io/x/structarg v0.0.0-20231017124457-df4d5009457c // indirect
 )
 
@@ -286,6 +289,7 @@ replace (
 	k8s.io/component-base => k8s.io/component-base v0.19.3
 	k8s.io/cri-api => k8s.io/cri-api v0.19.3
 	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.19.3
+	k8s.io/klog/v2 => k8s.io/klog/v2 v2.3.0
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.19.3
 	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.19.3
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.19.3

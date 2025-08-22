@@ -260,19 +260,6 @@ func (model *SStandaloneAnonResourceBase) SetAllMetadata(ctx context.Context, di
 	return nil
 }
 
-func (model *SStandaloneAnonResourceBase) SetUserMetadataValues(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential) error {
-	dictStore, err := ensurePrefixString(dictstore, USER_TAG_PREFIX)
-	if err != nil {
-		return errors.Wrapf(err, "ensurePrefixString %s", USER_TAG_PREFIX)
-	}
-	err = Metadata.SetValuesWithLog(ctx, model, dictStore, userCred)
-	if err != nil {
-		return errors.Wrap(err, "SetValuesWithLog")
-	}
-	model.GetIStandaloneModel().OnMetadataUpdated(ctx, userCred)
-	return nil
-}
-
 func ensurePrefix(input map[string]interface{}, prefix string) (map[string]interface{}, error) {
 	dictStore := make(map[string]interface{}, len(input))
 	for k, v := range input {
@@ -307,6 +294,22 @@ func ensurePrefixString(input map[string]string, prefix string) (map[string]inte
 	return dictStore, nil
 }
 
+func (model *SStandaloneAnonResourceBase) SetUserMetadataValues(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential) error {
+	dictStore, err := ensurePrefixString(dictstore, USER_TAG_PREFIX)
+	if err != nil {
+		return errors.Wrapf(err, "ensurePrefixString %s", USER_TAG_PREFIX)
+	}
+	err = Metadata.SetValuesWithLog(ctx, model, dictStore, userCred)
+	if err != nil {
+		return errors.Wrap(err, "SetValuesWithLog")
+	}
+	{
+		model.GetModelManager().TableSpec().InformUpdate(ctx, model, jsonutils.Marshal(model).(*jsonutils.JSONDict))
+	}
+	model.GetIStandaloneModel().OnMetadataUpdated(ctx, userCred)
+	return nil
+}
+
 func (model *SStandaloneAnonResourceBase) SetUserMetadataAll(ctx context.Context, dictstore map[string]string, userCred mcclient.TokenCredential) error {
 	var err error
 	dictStore, err := ensurePrefixString(dictstore, USER_TAG_PREFIX)
@@ -316,6 +319,9 @@ func (model *SStandaloneAnonResourceBase) SetUserMetadataAll(ctx context.Context
 	err = Metadata.SetAll(ctx, model, dictStore, userCred, USER_TAG_PREFIX)
 	if err != nil {
 		return errors.Wrap(err, "SetAll")
+	}
+	{
+		model.GetModelManager().TableSpec().InformUpdate(ctx, model, jsonutils.Marshal(model).(*jsonutils.JSONDict))
 	}
 	model.GetIStandaloneModel().OnMetadataUpdated(ctx, userCred)
 	return nil
@@ -359,20 +365,21 @@ func (model *SStandaloneAnonResourceBase) SetOrganizationMetadataAll(ctx context
 			return errors.Wrap(err, "SetAllOrganization")
 		}
 	}
-	{
-		userTags := make(map[string]interface{})
-		for k, _ := range meta {
-			if strings.HasPrefix(k, ORGANIZATION_TAG_PREFIX) {
-				k = k[len(ORGANIZATION_TAG_PREFIX):]
-			}
-			k = USER_TAG_PREFIX + k
-			userTags[k] = "none"
-		}
-		err := Metadata.SetValuesWithLog(ctx, model, userTags, userCred)
-		if err != nil {
-			return errors.Wrap(err, "SetValuesWithLog userTags")
-		}
-	}
+	// 避免加入组织架构后，项目所在的层级会移除此项目
+	//{
+	//	userTags := make(map[string]interface{})
+	//	for k, _ := range meta {
+	//		if strings.HasPrefix(k, ORGANIZATION_TAG_PREFIX) {
+	//			k = k[len(ORGANIZATION_TAG_PREFIX):]
+	//		}
+	//		k = USER_TAG_PREFIX + k
+	//		userTags[k] = "none"
+	//	}
+	//	err := Metadata.SetValuesWithLog(ctx, model, userTags, userCred)
+	//	if err != nil {
+	//		return errors.Wrap(err, "SetValuesWithLog userTags")
+	//	}
+	//}
 	return nil
 }
 
@@ -1022,6 +1029,7 @@ func GetTagValueCountMap(
 			sqlchemy.NewFunction(
 				sqlchemy.NewCase().When(sqlchemy.IsNull(subq.Field("value")), sqlchemy.NewStringField(tagutils.NoValue)).Else(subq.Field("value")),
 				valueFieldName,
+				false,
 			),
 		)
 		groupBy = append(groupBy, q.Field(valueFieldName))
