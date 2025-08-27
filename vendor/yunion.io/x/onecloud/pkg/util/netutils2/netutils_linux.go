@@ -17,6 +17,7 @@ package netutils2
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/vishvananda/netlink"
 
@@ -24,28 +25,98 @@ import (
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/onecloud/pkg/util/iproute2"
+	"yunion.io/x/onecloud/pkg/util/procutils"
 )
 
-func (n *SNetInterface) GetAddresses() [][]string {
-	ipnets, err := iproute2.NewAddress(n.name).List4()
+type SNicAddress struct {
+	Addr    string
+	MaskLen int
+}
+
+func (n *SNetInterface) GetAddresses() []SNicAddress {
+	addrList := iproute2.NewAddress(n.name)
+	addrs4 := n.getAddresses(addrList.List4)
+	addrs6 := n.getAddresses(addrList.List6)
+	if len(addrs6) > 0 {
+		addrs4 = append(addrs4, addrs6...)
+	}
+	return addrs4
+}
+
+func (n *SNetInterface) getAddresses(listFunc func() ([]net.IPNet, error)) []SNicAddress {
+	ipnets, err := listFunc()
 	if err != nil {
 		log.Errorf("list address %s: %v", n.name, err)
 		return nil
 	}
-	r := make([][]string, len(ipnets))
+	r := make([]SNicAddress, len(ipnets))
 	for i, ipnet := range ipnets {
 		ip := ipnet.IP
 		masklen, _ := ipnet.Mask.Size()
-		r[i] = []string{
-			ip.String(),
-			fmt.Sprintf("%d", masklen),
+		r[i] = SNicAddress{
+			Addr:    ip.String(),
+			MaskLen: masklen,
 		}
 	}
 	return r
 }
 
 func (n *SNetInterface) GetRouteSpecs() []iproute2.RouteSpec {
-	routespecs, err := iproute2.NewRoute(n.name).List4()
+	routeList := iproute2.NewRoute(n.name)
+	rets := make([]iproute2.RouteSpec, 0)
+	routes4 := getRouteSpecs(routeList.List4)
+	for i := range routes4 {
+		if routes4[i].Gw == nil {
+			continue
+		}
+		if strings.HasPrefix(routes4[i].Dst.String(), "169.") {
+			continue
+		}
+		rets = append(rets, routes4[i])
+	}
+	routes6 := getRouteSpecs(routeList.List6)
+	for i := range routes6 {
+		isDefaultRoute := routes6[i].Dst.String() == "::/0"
+
+		if !isDefaultRoute && routes6[i].Gw == nil {
+			continue
+		}
+
+		if strings.HasPrefix(routes6[i].Dst.String(), "fe80:") {
+			continue
+		}
+		rets = append(rets, routes6[i])
+	}
+	return rets
+}
+
+func (n *SNetInterface) Shutdown() error {
+	return n.setStatus("down")
+}
+
+func (n *SNetInterface) Bringup() error {
+	return n.setStatus("up")
+}
+
+func (n *SNetInterface) Reset() error {
+	err := n.Shutdown()
+	if err != nil {
+		return errors.Wrap(err, "shutdown")
+	}
+	return n.Bringup()
+}
+
+func (n *SNetInterface) setStatus(status string) error {
+	cmd := procutils.NewCommand("ip", "link", "set", n.name, status)
+	msg, err := cmd.Output()
+	if err != nil {
+		return errors.Wrap(err, strings.TrimSpace(string(msg)))
+	}
+	return nil
+}
+
+func getRouteSpecs(listFunc func() ([]iproute2.RouteSpec, error)) []iproute2.RouteSpec {
+	routespecs, err := listFunc()
 	if err != nil {
 		return nil
 	}
