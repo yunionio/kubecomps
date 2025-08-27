@@ -15,16 +15,24 @@
 package compute
 
 import (
+	"reflect"
 	"time"
 
 	"yunion.io/x/cloudmux/pkg/multicloud/esxi/vcenter"
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/pkg/gotypes"
 	"yunion.io/x/pkg/util/fileutils"
 
 	"yunion.io/x/onecloud/pkg/apis"
 	"yunion.io/x/onecloud/pkg/apis/billing"
 	"yunion.io/x/onecloud/pkg/httperrors"
 )
+
+func init() {
+	gotypes.RegisterSerializable(reflect.TypeOf(new(DiskFsFeatures)), func() gotypes.ISerializable {
+		return new(DiskFsFeatures)
+	})
+}
 
 type DiskCreateInput struct {
 	apis.VirtualResourceCreateInput
@@ -52,7 +60,7 @@ type DiskCreateInput struct {
 
 	// 此参数仅适用于未指定storage时进行调度到指定平台创建磁盘
 	// default: kvm
-	// enum: kvm, openstack, esxi, aliyun, aws, qcloud, azure, huawei, openstack, ucloud, zstack google, ctyun
+	// enum: ["kvm", "openstack", "esxi", "aliyun", "aws", "qcloud", "azure", "huawei", "ucloud", "zstack", "google", "ctyun"]
 	Hypervisor string `json:"hypervisor"`
 }
 
@@ -160,6 +168,12 @@ type DiskListInput struct {
 	// swagger:ignore
 	// Deprecated
 	Snapshot string `json:"snapshot" yunion-deprecated-by:"snapshot_id"`
+
+	// 根据虚拟机状态过滤
+	GuestStatus string `json:"guest_status"`
+
+	// 根据是否绑定快照策略过滤
+	BindingSnapshotpolicy *bool `json:"binding_snapshotpolicy"`
 }
 
 type DiskResourceInput struct {
@@ -198,6 +212,12 @@ type SimpleGuest struct {
 	Driver string `json:"driver"`
 	// 缓存模式
 	CacheMode string `json:"cache_mode"`
+	// 磁盘并发数
+	Iops int `json:"iops"`
+	// 磁盘吞吐
+	Bps int `json:"bps"`
+	// 计费类型
+	BillingType string `json:"billing_type"`
 }
 
 type SimpleSnapshotPolicy struct {
@@ -222,6 +242,8 @@ type DiskDetails struct {
 	GuestCount int `json:"guest_count"`
 	// 所挂载虚拟机状态
 	GuestStatus string `json:"guest_status"`
+	// 所挂载虚拟机计费类型
+	GuestBillingType string `json:"guest_billing_type"`
 
 	// 自动清理时间
 	AutoDeleteAt time.Time `json:"auto_delete_at"`
@@ -230,11 +252,6 @@ type DiskDetails struct {
 
 	// 自动快照策略
 	Snapshotpolicies []SimpleSnapshotPolicy `json:"snapshotpolicies"`
-
-	// 手动快照数量
-	ManualSnapshotCount int `json:"manual_snapshot_count"`
-	// 最多可创建手动快照数量
-	MaxManualSnapshotCount int `json:"max_manual_snapshot_count"`
 }
 
 type DiskResourceInfoBase struct {
@@ -259,6 +276,8 @@ type DiskUpdateInput struct {
 
 	// 磁盘类型
 	DiskType string `json:"disk_type"`
+	// 关机自动重置
+	AutoReset *bool `json:"auto_reset"`
 }
 
 type DiskSaveInput struct {
@@ -286,7 +305,9 @@ type DiskAllocateInput struct {
 	Format        string
 	DiskSizeMb    int
 	ImageId       string
+	ImageFormat   string
 	FsFormat      string
+	FsFeatures    *DiskFsFeatures
 	Rebuild       bool
 	BackingDiskId string
 	SnapshotId    string
@@ -314,11 +335,14 @@ type DiskAllocateFromBackupInput struct {
 	BackupId                string
 	BackupStorageId         string
 	BackupStorageAccessInfo *jsonutils.JSONDict
+	DiskConfig              *DiskConfig           `json:"disk_config"`
+	BackupAsTar             *DiskBackupAsTarInput `json:"backup_as_tar"`
 }
 
 type DiskDeleteInput struct {
 	SkipRecycle      *bool
 	EsxiFlatFilePath string
+	CleanSnapshots   bool
 }
 
 type DiskResetInput struct {
@@ -326,6 +350,45 @@ type DiskResetInput struct {
 	AutoStart  bool   `json:"auto_start"`
 }
 
+type DiskMigrateInput struct {
+	TargetStorageId string `json:"target_storage_id"`
+}
+
 type DiskSnapshotpolicyInput struct {
 	SnapshotpolicyId string `json:"snapshotpolicy_id"`
+}
+
+type DiskRebuildInput struct {
+	BackupId   *string `json:"backup_id,allowempty"`
+	TemplateId *string `json:"template_id,allowempty"`
+	Size       *string `json:"size,allowempty"`
+	Fs         *string `json:"fs,allowempty"`
+}
+
+type DiskFsExt4Features struct {
+	CaseInsensitive          bool `json:"case_insensitive"`
+	ReservedBlocksPercentage int  `json:"reserved_blocks_percentage"`
+}
+
+type DiskFsFeatures struct {
+	Ext4 *DiskFsExt4Features `json:"ext4"`
+}
+
+func (d *DiskFsFeatures) String() string {
+	return jsonutils.Marshal(d).String()
+}
+
+func (d *DiskFsFeatures) IsZero() bool {
+	if reflect.DeepEqual(*d, DiskFsFeatures{}) {
+		return true
+	}
+	return false
+}
+
+type DiskChangeBillingTypeInput struct {
+	// 仅在磁盘挂载在虚拟机上时调用
+	// 目前支持阿里云
+	// enmu: [postpaid, prepaid]
+	// required: true
+	BillingType string `json:"billing_type"`
 }

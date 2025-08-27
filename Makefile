@@ -26,7 +26,7 @@ LDFLAGS := "-w \
 
 export GO111MODULE:=on
 export GOPROXY:=direct
-RELEASE_BRANCH:=release/3.11
+RELEASE_BRANCH:=release/4.0
 GO_BUILD := go build -mod vendor -buildvcs=false -ldflags $(LDFLAGS)
 
 CMDS := $(shell find $(ROOT_DIR)/cmd -mindepth 1 -maxdepth 1 -type d)

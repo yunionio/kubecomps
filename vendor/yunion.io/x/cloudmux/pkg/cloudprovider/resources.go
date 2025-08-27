@@ -25,6 +25,8 @@ import (
 	"yunion.io/x/pkg/util/rbacscope"
 	"yunion.io/x/pkg/util/samlutils"
 	"yunion.io/x/pkg/util/secrules"
+
+	api "yunion.io/x/cloudmux/pkg/apis/cloudid"
 )
 
 type ICloudResource interface {
@@ -61,6 +63,7 @@ type IBillingResource interface {
 	GetExpiredAt() time.Time
 	SetAutoRenew(bc billing.SBillingCycle) error
 	Renew(bc billing.SBillingCycle) error
+	ChangeBillingType(billType string) error
 	IsAutoRenew() bool
 }
 
@@ -113,6 +116,8 @@ type ICloudRegion interface {
 
 	GetILoadBalancers() ([]ICloudLoadbalancer, error)
 	GetILoadBalancerAcls() ([]ICloudLoadbalancerAcl, error)
+	GetILoadBalancerHealthChecks() ([]ICloudLoadbalancerHealthCheck, error)
+
 	GetILoadBalancerCertificates() ([]ICloudLoadbalancerCertificate, error)
 
 	GetILoadBalancerById(loadbalancerId string) (ICloudLoadbalancer, error)
@@ -122,6 +127,7 @@ type ICloudRegion interface {
 	CreateILoadBalancer(loadbalancer *SLoadbalancerCreateOptions) (ICloudLoadbalancer, error)
 	CreateILoadBalancerAcl(acl *SLoadbalancerAccessControlList) (ICloudLoadbalancerAcl, error)
 	CreateILoadBalancerCertificate(cert *SLoadbalancerCertificate) (ICloudLoadbalancerCertificate, error)
+	CreateILoadBalancerHealthCheck(healthCheck *SLoadbalancerHealthCheck) (ICloudLoadbalancerHealthCheck, error)
 
 	GetISkus() ([]ICloudSku, error)
 	CreateISku(opts *SServerSkuCreateOption) (ICloudSku, error)
@@ -199,8 +205,6 @@ type ICloudRegion interface {
 	GetIModelartsPoolSku() ([]ICloudModelartsPoolSku, error)
 
 	GetIMiscResources() ([]ICloudMiscResource, error)
-
-	GetISSLCertificates() ([]ICloudSSLCertificate, error)
 }
 
 type ICloudZone interface {
@@ -284,11 +288,9 @@ type ICloudHost interface {
 	GetIVMs() ([]ICloudVM, error)
 	GetIVMById(id string) (ICloudVM, error)
 
-	// GetIWires() ([]ICloudWire, error)
 	GetIStorages() ([]ICloudStorage, error)
 	GetIStorageById(id string) (ICloudStorage, error)
 
-	// GetStatus() string     // os status
 	GetEnabled() bool      // is enabled
 	GetHostStatus() string // service status
 	GetAccessIp() string   //
@@ -308,6 +310,8 @@ type ICloudHost interface {
 	GetStorageSizeMB() int64
 	GetStorageType() string
 	GetHostType() string
+	GetStorageDriver() string
+	GetStorageInfo() jsonutils.JSONObject
 
 	GetIsMaintenance() bool
 	GetVersion() string
@@ -318,6 +322,19 @@ type ICloudHost interface {
 	GetSchedtags() ([]string, error)
 
 	GetOvnVersion() string // just for cloudpods host
+
+	GetIsolateDevices() ([]IsolateDevice, error)
+}
+
+type IsolateDevice interface {
+	GetName() string
+	GetGlobalId() string
+	GetModel() string
+	GetAddr() string
+	GetDevType() string
+	GetNumaNode() int8
+	GetVendorDeviceId() string
+	GetSharedProjectIds() ([]string, error)
 }
 
 type ICloudVM interface {
@@ -400,6 +417,7 @@ type ICloudVM interface {
 
 	AllocatePublicIpAddress() (string, error)
 	GetPowerStates() string
+	GetIsolateDeviceIds() ([]string, error)
 }
 
 type ICloudNic interface {
@@ -707,7 +725,7 @@ type ICloudLoadbalancer interface {
 	GetChargeType() string
 	GetEgressMbps() int
 
-	GetIEIP() (ICloudEIP, error)
+	GetIEIPs() ([]ICloudEIP, error)
 
 	Delete(ctx context.Context) error
 
@@ -734,7 +752,7 @@ type ICloudLoadbalancerRedirect interface {
 	GetRedirectPath() string
 }
 
-type ICloudloadbalancerHealthCheck interface {
+type ICloudloadbalancerHealthCheckInfo interface {
 	GetHealthCheck() string
 	GetHealthCheckType() string
 	GetHealthCheckTimeout() int
@@ -748,7 +766,17 @@ type ICloudloadbalancerHealthCheck interface {
 	// HTTP && HTTPS
 	GetHealthCheckDomain() string
 	GetHealthCheckURI() string
+	GetHealthCheckMethod() string
+	GetHealthCheckPort() int
 	GetHealthCheckCode() string
+}
+
+type ICloudLoadbalancerHealthCheck interface {
+	IVirtualResource
+	ICloudloadbalancerHealthCheckInfo
+
+	Delete() error
+	Update(ctx context.Context, opts *SLoadbalancerHealthCheck) error
 }
 
 type ICloudLoadbalancerListener interface {
@@ -786,7 +814,7 @@ type ICloudLoadbalancerListener interface {
 
 	// http redirect
 	ICloudLoadbalancerRedirect
-	ICloudloadbalancerHealthCheck
+	ICloudloadbalancerHealthCheckInfo
 
 	Start() error
 	Stop() error
@@ -809,7 +837,12 @@ type ICloudLoadbalancerListenerRule interface {
 	GetCondition() string
 	GetBackendGroupId() string
 
+	GetBackendGroups() ([]string, error)
+	GetRedirectPool() (SRedirectPool, error)
+
 	Delete(ctx context.Context) error
+
+	Update(ctx context.Context, rule *SLoadbalancerListenerRule) error
 }
 
 type ICloudLoadbalancerBackendGroup interface {
@@ -817,17 +850,25 @@ type ICloudLoadbalancerBackendGroup interface {
 
 	IsDefault() bool
 	GetType() string
+	GetScheduler() string
+	GetHealthCheckId() string
 	GetILoadbalancerBackends() ([]ICloudLoadbalancerBackend, error)
 	GetILoadbalancerBackendById(backendId string) (ICloudLoadbalancerBackend, error)
-	AddBackendServer(serverId string, weight int, port int) (ICloudLoadbalancerBackend, error)
-	RemoveBackendServer(serverId string, weight int, port int) error
+	AddBackendServer(opts *SLoadbalancerBackend) (ICloudLoadbalancerBackend, error)
+	RemoveBackendServer(opts *SLoadbalancerBackend) error
 
 	Delete(ctx context.Context) error
-	Sync(ctx context.Context, group *SLoadbalancerBackendGroup) error
+	Update(ctx context.Context, opts *SLoadbalancerBackendGroup) error
 }
 
 type ICloudLoadbalancerBackend interface {
-	ICloudResource
+	GetId() string
+	GetName() string
+	GetGlobalId() string
+	GetCreatedAt() time.Time
+	GetDescription() string
+
+	GetStatus() string
 
 	GetWeight() int
 	GetPort() int
@@ -835,7 +876,7 @@ type ICloudLoadbalancerBackend interface {
 	GetBackendRole() string
 	GetBackendId() string
 	GetIpAddress() string // backend type is ip
-	SyncConf(ctx context.Context, port, weight int) error
+	Update(ctx context.Context, opts *SLoadbalancerBackend) error
 }
 
 type ICloudLoadbalancerCertificate interface {
@@ -899,11 +940,6 @@ type ICloudSku interface {
 
 type ICloudProject interface {
 	ICloudResource
-
-	GetDomainId() string
-	GetDomainName() string
-
-	GetAccountId() string
 }
 
 type ICloudNatGateway interface {
@@ -1240,6 +1276,12 @@ type ICloudQuota interface {
 	GetCurrentQuotaUsedCount() int
 }
 
+type SClouduserEnableOptions struct {
+	Password              string
+	EnableMfa             bool
+	PasswordResetRequired bool
+}
+
 // 公有云子账号
 type IClouduser interface {
 	GetGlobalId() string
@@ -1250,14 +1292,13 @@ type IClouduser interface {
 
 	GetICloudgroups() ([]ICloudgroup, error)
 
-	GetISystemCloudpolicies() ([]ICloudpolicy, error)
-	GetICustomCloudpolicies() ([]ICloudpolicy, error)
+	GetICloudpolicies() ([]ICloudpolicy, error)
 
-	AttachSystemPolicy(policyName string) error
-	DetachSystemPolicy(policyName string) error
+	AttachPolicy(policyName string, policyType api.TPolicyType) error
+	DetachPolicy(policyName string, policyType api.TPolicyType) error
 
-	AttachCustomPolicy(policyName string) error
-	DetachCustomPolicy(policyName string) error
+	SetEnable(opts *SClouduserEnableOptions) error
+	SetDisable() error
 
 	Delete() error
 
@@ -1274,6 +1315,7 @@ type ICloudpolicy interface {
 	GetGlobalId() string
 	GetName() string
 	GetDescription() string
+	GetPolicyType() api.TPolicyType
 
 	GetDocument() (*jsonutils.JSONDict, error)
 	UpdateDocument(*jsonutils.JSONDict) error
@@ -1286,18 +1328,14 @@ type ICloudgroup interface {
 	GetGlobalId() string
 	GetName() string
 	GetDescription() string
-	GetISystemCloudpolicies() ([]ICloudpolicy, error)
-	GetICustomCloudpolicies() ([]ICloudpolicy, error)
+	GetICloudpolicies() ([]ICloudpolicy, error)
 	GetICloudusers() ([]IClouduser, error)
 
 	AddUser(name string) error
 	RemoveUser(name string) error
 
-	AttachSystemPolicy(policyName string) error
-	DetachSystemPolicy(policyName string) error
-
-	AttachCustomPolicy(policyName string) error
-	DetachCustomPolicy(policyName string) error
+	AttachPolicy(policyName string, policyType api.TPolicyType) error
+	DetachPolicy(policyName string, policyType api.TPolicyType) error
 
 	Delete() error
 }
@@ -1316,6 +1354,10 @@ type ICloudDnsZone interface {
 
 	AddDnsRecord(*DnsRecord) (string, error)
 
+	GetNameServers() ([]string, error)
+	GetOriginalNameServers() ([]string, error)
+	GetRegistrar() string
+
 	Delete() error
 
 	GetDnsProductType() TDnsProductType
@@ -1326,11 +1368,13 @@ type ICloudDnsRecord interface {
 
 	GetDnsName() string
 	GetStatus() string
+	IsProxied() bool
 	GetEnabled() bool
 	GetDnsType() TDnsType
 	GetDnsValue() string
 	GetTTL() int64
 	GetMxPriority() int64
+	GetExtraAddresses() ([]string, error)
 
 	Update(*DnsRecord) error
 
@@ -1369,8 +1413,8 @@ type ICloudrole interface {
 	GetSAMLProvider() string
 
 	GetICloudpolicies() ([]ICloudpolicy, error)
-	AttachPolicy(id string) error
-	DetachPolicy(id string) error
+	AttachPolicy(policyName string, policyType api.TPolicyType) error
+	DetachPolicy(policyName string, policyType api.TPolicyType) error
 
 	Delete() error
 }
@@ -1398,7 +1442,7 @@ type ICloudInterVpcNetworkRoute interface {
 }
 
 type ICloudFileSystem interface {
-	ICloudResource
+	IVirtualResource
 	IBillingResource
 
 	GetFileSystemType() string
@@ -1412,6 +1456,8 @@ type ICloudFileSystem interface {
 
 	GetMountTargets() ([]ICloudMountTarget, error)
 	CreateMountTarget(opts *SMountTargetCreateOptions) (ICloudMountTarget, error)
+
+	SetQuota(input *SFileSystemSetQuotaInput) error
 
 	Delete() error
 }
@@ -1485,6 +1531,21 @@ type ICloudWafInstance interface {
 	// 绑定的资源列表
 	GetCloudResources() ([]SCloudResource, error)
 
+	// 前面是否有代理服务
+	GetIsAccessProduct() bool
+	GetAccessHeaders() []string
+	GetHttpPorts() []int
+	GetHttpsPorts() []int
+	GetCname() string
+	// 源站地址
+	GetSourceIps() []string
+	// 回源地址
+	GetCcList() []string
+	GetCertId() string
+	GetCertName() string
+	GetUpstreamScheme() string
+	GetUpstreamPort() int
+
 	Delete() error
 }
 
@@ -1501,9 +1562,15 @@ type ICloudWafRule interface {
 	GetDesc() string
 	GetGlobalId() string
 	GetPriority() int
+	GetType() string
 	GetAction() *DefaultAction
 	GetStatementCondition() TWafStatementCondition
+	GetExpression() string
 	GetStatements() ([]SWafStatement, error)
+	GetConfig() (jsonutils.JSONObject, error)
+	GetEnabled() bool
+	Enable() error
+	Disable() error
 
 	Update(opts *SWafRule) error
 	Delete() error
@@ -1584,19 +1651,63 @@ type ICloudKafka interface {
 	Delete() error
 }
 
+type AppBackupConfig struct {
+	Enabled               bool
+	FrequencyInterval     int
+	FrequencyUnit         string
+	RetentionPeriodInDays int
+}
+
 type ICloudApp interface {
 	IVirtualResource
 	GetEnvironments() ([]ICloudAppEnvironment, error)
 	GetTechStack() string
-	GetType() string
-	GetKind() string
 	GetOsType() TOsType
+	GetIpAddress() string
+	GetHostname() string
+	GetServerFarm() string
+	GetBackups() ([]IAppBackup, error)
+	GetPublicNetworkAccess() string
+	GetNetworkId() string
+	GetHybirdConnections() ([]IAppHybirdConnection, error)
+	GetCertificates() ([]IAppCertificate, error)
+	GetBackupConfig() AppBackupConfig
+	GetDomains() ([]IAppDomain, error)
+}
+
+type IAppDomain interface {
+	GetGlobalId() string
+	GetName() string
+	GetStatus() string
+	GetSslState() string
+}
+
+type IAppCertificate interface {
+	GetGlobalId() string
+	GetName() string
+	GetSubjectName() string
+	GetIssuer() string
+	GetIssueDate() time.Time
+	GetThumbprint() string
+	GetExpireTime() time.Time
+}
+
+type IAppHybirdConnection interface {
+	GetGlobalId() string
+	GetName() string
+	GetHostname() string
+	GetNamespace() string
+	GetPort() int
+}
+
+type IAppBackup interface {
+	GetGlobalId() string
+	GetName() string
+	GetType() string
 }
 
 type ICloudAppEnvironment interface {
 	IVirtualResource
-	GetInstanceType() (string, error)
-	GetInstanceNumber() (int, error)
 }
 
 type ICloudDBInstanceSku interface {
@@ -1653,6 +1764,19 @@ type ICloudCDNDomain interface {
 	GetReferer() (*SCDNReferer, error)
 	// 浏览器缓存配置
 	GetMaxAge() (*SCDNMaxAge, error)
+
+	GetDNSSECEnabled() bool
+	// SSL/TLS加密模式
+	GetSSLSetting() string
+
+	GetHTTPSRewrites() bool
+	GetCacheLevel() string
+	ClearCache(opts *CacheClearOptions) error
+	GetBrowserCacheTTL() int
+	ChangeConfig(opts *CacheConfig) error
+	GetCustomHostnames() ([]CustomHostname, error)
+	AddCustomHostname(opts *CustomHostnameCreateOptions) error
+	DeleteCustomHostname(id string) error
 
 	Delete() error
 }
@@ -1714,7 +1838,6 @@ type ICloudSSLCertificate interface {
 	GetCommon() string
 	GetCountry() string
 	GetIssuer() string
-	GetExpired() bool
 	GetEndDate() time.Time
 	GetFingerprint() string
 	GetCity() string
@@ -1722,4 +1845,22 @@ type ICloudSSLCertificate interface {
 	GetIsUpload() bool
 	GetCert() string
 	GetKey() string
+	GetDnsZoneId() string
+
+	Delete() error
+}
+
+type IAiGateway interface {
+	IVirtualResource
+
+	IsAuthentication() bool
+	IsCacheInvalidateOnUpdate() bool
+	GetCacheTTL() int
+	IsCollectLogs() bool
+	GetRateLimitingInterval() int
+	GetRateLimitingLimit() int
+	GetRateLimitingTechnique() string
+
+	ChangeConfig(opts *AiGatewayChangeConfigOptions) error
+	Delete() error
 }
