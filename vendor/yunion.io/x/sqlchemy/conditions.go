@@ -328,7 +328,7 @@ func IsFalse(f IQueryField) ICondition {
 	return &c
 }
 
-// SNoLaterThanCondition coompares a DATETIME field with current time and ensure the field is no later than now, e.g. a <= NOW()
+// SNoLaterThanCondition compares a DATETIME field with current time and ensure the field is no later than now, e.g. a <= NOW()
 type SNoLaterThanCondition struct {
 	SSingleCondition
 }
@@ -369,15 +369,30 @@ type STupleCondition struct {
 }
 
 func tupleConditionWhereClause(t *STupleCondition, op string) string {
+	return tupleConditionWhereClauseInternal(t, op, "")
+}
+
+func TupleConditionWhereClauseWithFuncname(t *STupleCondition, funcName string) string {
+	return tupleConditionWhereClauseInternal(t, ",", funcName)
+}
+
+func tupleConditionWhereClauseInternal(t *STupleCondition, op string, funcName string) string {
 	if isFieldRequireAscii(t.left) && !isVariableAscii(t.right) {
 		return "0"
 	}
 	var buf bytes.Buffer
+	if len(funcName) > 0 {
+		buf.WriteString(funcName)
+		buf.WriteByte('(')
+	}
 	buf.WriteString(t.left.Reference())
 	buf.WriteByte(' ')
 	buf.WriteString(op)
 	buf.WriteByte(' ')
 	buf.WriteString(VarConditionWhereClause(t.right))
+	if len(funcName) > 0 {
+		buf.WriteByte(')')
+	}
 	return buf.String()
 }
 
@@ -415,15 +430,13 @@ func VarConditionWhereClause(v interface{}) string {
 }
 
 func varConditionVariables(v interface{}) []interface{} {
-	switch v.(type) {
+	switch vv := v.(type) {
 	case IQueryField:
 		return []interface{}{}
 	case *SQuery:
-		q := v.(*SQuery)
-		return q.Variables()
+		return vv.Variables()
 	case *SSubQuery:
-		q := v.(*SSubQuery)
-		return q.query.Variables()
+		return vv.query.Variables()
 	default:
 		return reflectutils.ExpandInterface(v)
 	}
@@ -447,7 +460,11 @@ func (t *STupleCondition) Variables() []interface{} {
 	if isFieldRequireAscii(t.left) && !isVariableAscii(t.right) {
 		return []interface{}{}
 	}
-	return varConditionVariables(t.right)
+	vars := varConditionVariables(t.right)
+	for i := range vars {
+		vars[i] = t.left.ConvertFromValue(vars[i])
+	}
+	return vars
 }
 
 // database implementation of STupleCondition for ICondition
@@ -602,8 +619,7 @@ func (t *SEqualsCondition) WhereClause() string {
 
 // Equals method represents equal of two fields
 func Equals(f IQueryField, v interface{}) ICondition {
-	c := SEqualsCondition{NewTupleCondition(f, v)}
-	return &c
+	return f.database().backend.Equals(f, v)
 }
 
 // SNotEqualsCondition is the opposite of equal condition
@@ -696,9 +712,13 @@ type STripleCondition struct {
 func (t *STripleCondition) Variables() []interface{} {
 	ret := make([]interface{}, 0)
 	vars := varConditionVariables(t.right)
-	ret = append(ret, vars...)
+	for i := range vars {
+		ret = append(ret, t.left.ConvertFromValue(vars[i]))
+	}
 	vars = varConditionVariables(t.right2)
-	ret = append(ret, vars...)
+	for i := range vars {
+		ret = append(ret, t.left.ConvertFromValue(vars[i]))
+	}
 	return ret
 }
 

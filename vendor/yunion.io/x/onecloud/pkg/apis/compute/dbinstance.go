@@ -82,11 +82,11 @@ type DBInstanceCreateInput struct {
 	// default: false
 	AutoRenew bool `json:"auto_renew"`
 
-	// swagger:ignore
-	ExpiredAt time.Time `json:"expired_at"`
+	// 到期释放时间
+	ReleaseAt time.Time `json:"release_at"`
 
 	// 计费方式
-	// enum: postpaid, prepaid
+	// enum: ["postpaid", "prepaid"]
 	BillingType string
 	// swagger:ignore
 	BillingCycle string
@@ -96,7 +96,7 @@ type DBInstanceCreateInput struct {
 	InstanceType string `json:"instance_type"`
 
 	// rds引擎
-	// enum: MySQL, SQLServer, PostgreSQL, MariaDB, Oracle, PPAS
+	// enum: ["MySQL", "SQLServer", "PostgreSQL", "MariaDB", "Oracle", "PPAS"]
 	// required: true
 	Engine string `json:"engine"`
 
@@ -342,6 +342,8 @@ func (self DBInstanceDetails) GetMetricTags() map[string]string {
 		"tenant_id":      self.ProjectId,
 		"brand":          self.Brand,
 		"domain_id":      self.DomainId,
+		"account":        self.Account,
+		"account_id":     self.AccountId,
 		"project_domain": self.ProjectDomain,
 		"external_id":    self.ExternalId,
 	}

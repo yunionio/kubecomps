@@ -23,7 +23,8 @@ import (
 )
 
 type ReceiverCreateInput struct {
-	apis.EnabledStatusDomainLevelResourceCreateInput
+	apis.VirtualResourceCreateInput
+	apis.EnabledBaseResourceCreateInput
 
 	// description: user id in keystone
 	// example: adfb720ccdd34c638346ea4fa7a713a8
@@ -117,7 +118,7 @@ func (im SInternationalMobile) String() string {
 }
 
 type ReceiverDetails struct {
-	apis.EnabledStatusDomainLevelResourceDetails
+	apis.VirtualResourceDetails
 
 	SReceiver
 	InternationalMobile SInternationalMobile `json:"international_mobile"`
@@ -137,7 +138,8 @@ type VerifiedInfo struct {
 }
 
 type ReceiverListInput struct {
-	apis.EnabledStatusDomainLevelResourceListInput
+	apis.VirtualResourceListInput
+	apis.EnabledResourceBaseListInput
 
 	UID string `json:"uid"`
 
@@ -151,7 +153,7 @@ type ReceiverListInput struct {
 }
 
 type ReceiverUpdateInput struct {
-	apis.EnabledStatusDomainLevelResourceBaseUpdateInput
+	apis.VirtualResourceBaseUpdateInput
 
 	// description: user email
 	// example: example@gmail.com
@@ -170,7 +172,7 @@ type ReceiverTriggerVerifyInput struct {
 	// description: contact type
 	// required: true
 	// example: email
-	// enum: email,mobile
+	// enum: ["email","mobile"]
 	ContactType string `json:"contact_type"`
 }
 
@@ -178,7 +180,7 @@ type ReceiverVerifyInput struct {
 	// description: Contact type
 	// required: true
 	// example: email
-	// enum: email,mobile
+	// enum: ["email","mobile"]
 	ContactType string `json:"contact_type"`
 	// description: token user input
 	// required: true
