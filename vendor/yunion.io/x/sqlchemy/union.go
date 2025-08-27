@@ -54,14 +54,28 @@ func (sqf *SUnionQueryField) Reference() string {
 // Label implementation of SUnionQueryField for IQueryField
 func (sqf *SUnionQueryField) Label(label string) IQueryField {
 	if len(label) > 0 {
-		sqf.alias = label
+		nsqf := *sqf
+		nsqf.alias = label
+		return &nsqf
+	} else {
+		return sqf
 	}
-	return sqf
 }
 
 // Variables implementation of SUnionQueryField for IQueryField
 func (sqf *SUnionQueryField) Variables() []interface{} {
 	return nil
+}
+
+// ConvertFromValue implementation of SUnionQueryField for IQueryField
+func (sqf *SUnionQueryField) ConvertFromValue(val interface{}) interface{} {
+	for _, query := range sqf.union.queries {
+		field := query.Field(sqf.name)
+		if field != nil {
+			return field.ConvertFromValue(val)
+		}
+	}
+	return val
 }
 
 func (sqf *SUnionQueryField) database() *SDatabase {

@@ -232,6 +232,8 @@ type EndpointListInput struct {
 type SJoinProjectsInput struct {
 	Projects []string `json:"projects"`
 	Roles    []string `json:"roles"`
+	// 启用用户, 仅用户禁用时生效
+	Enabled bool
 }
 
 func (input SJoinProjectsInput) Validate() error {
@@ -269,9 +271,10 @@ func (input SLeaveProjectsInput) Validate() error {
 }
 
 type SProjectAddUserGroupInput struct {
-	Users  []string
-	Groups []string
-	Roles  []string
+	Users          []string
+	Groups         []string
+	Roles          []string
+	EnableAllUsers bool
 }
 
 func (input SProjectAddUserGroupInput) Validate() error {
@@ -337,7 +340,7 @@ type IdentityProviderListInput struct {
 
 	// 过滤支持SSO的认证源，如果值为all，则列出所有的全局认证源，否则可出sso为域ID的域认证源
 	// example: all
-	SsoDomain string `json:"sso"`
+	SsoDomain string `json:"sso_domain"`
 
 	AutoCreateProject *bool `json:"auto_create_project"`
 	AutoCreateUser    *bool `json:"auto_create_user"`

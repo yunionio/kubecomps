@@ -15,11 +15,13 @@
 package dameng
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"reflect"
 	"strconv"
 	"strings"
+	"runtime/debug"
 
 	_ "gitee.com/chunanyong/dm"
 
@@ -94,6 +96,7 @@ func (dameng *SDamengBackend) PrepareInsertOrUpdateSQL(ts sqlchemy.ITableSpec, i
 	for _, primary := range onPrimaryCols {
 		colName := strings.Trim(primary, "'\"")
 		if _, ok := colNameMap[colName]; !ok {
+			debug.PrintStack()
 			log.Fatalf("primary colume %s missing from insert columes for table %s", colName, ts.Name())
 		}
 		onConditions = append(onConditions, fmt.Sprintf("T1.%s=T2.%s", primary, primary))
@@ -256,7 +259,7 @@ func (dameng *SDamengBackend) GetColumnSpecByFieldType(table *sqlchemy.STableSpe
 			col := NewDecimalColumn(fieldname, tagmap, isPointer)
 			return &col
 		}
-		colType := "REAL"
+		colType := "FLOAT"
 		if fieldType == gotypes.Float64Type {
 			colType = "DOUBLE"
 		}
@@ -277,4 +280,14 @@ func (dameng *SDamengBackend) GetColumnSpecByFieldType(table *sqlchemy.STableSpe
 
 func (dameng *SDamengBackend) QuoteChar() string {
 	return "\""
+}
+
+func (dameng *SDamengBackend) RegexpWhereClause(cond *sqlchemy.SRegexpConition) string {
+	var buf bytes.Buffer
+	buf.WriteString("REGEXP_LIKE(")
+	buf.WriteString(cond.GetLeft().Reference())
+	buf.WriteString(", ")
+	buf.WriteString(sqlchemy.VarConditionWhereClause(cond.GetRight()))
+	buf.WriteString(")")
+	return buf.String()
 }
