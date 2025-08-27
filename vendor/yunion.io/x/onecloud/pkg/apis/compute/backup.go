@@ -56,7 +56,7 @@ type BackupStorageCreateInput struct {
 	apis.EnabledStatusInfrasResourceBaseCreateInput
 
 	// description: storage type
-	// enum: nfs
+	// enum: ["nfs"]
 	StorageType string `json:"storage_type"`
 
 	SBackupStorageAccessInfo
@@ -83,6 +83,11 @@ type BackupStorageDetails struct {
 
 type BackupStorageListInput struct {
 	apis.EnabledStatusInfrasResourceBaseListInput
+
+	// filter by server_id
+	ServerId string `json:"server_id"`
+	// filter by disk_id
+	DiskId string `json:"disk_id"`
 }
 
 type DiskBackupListInput struct {
@@ -112,6 +117,15 @@ type DiskBackupDetails struct {
 	BackupStorageName string `json:"backup_storage_name"`
 	// description: 是否是子备份
 	IsSubBackup bool `json:"is_sub_backup"`
+
+	SDiskBackup
+}
+
+type DiskBackupAsTarInput struct {
+	IncludeFiles       []string `json:"include_files"`
+	ExcludeFiles       []string `json:"exclude_files"`
+	ContainerId        string   `json:"container_id"`
+	IgnoreNotExistFile bool     `json:"ignore_not_exist_file"`
 }
 
 type DiskBackupCreateInput struct {
@@ -120,12 +134,15 @@ type DiskBackupCreateInput struct {
 
 	// description: disk id
 	DiskId string `json:"disk_id"`
+	// swagger: ignore
+	BackStorageId string `json:"back_storage_id" yunion-deprecated-by:"backup_storage_id"`
 	// description: backup storage id
-	BackupStorageId string `json:"back_storage_id"`
+	BackupStorageId string `json:"backup_storage_id"`
 	// swagger: ignore
 	CloudregionId string `json:"cloudregion_id"`
 	// swagger:ignore
-	ManagerId string `json:"manager_id"`
+	ManagerId   string                `json:"manager_id"`
+	BackupAsTar *DiskBackupAsTarInput `json:"backup_as_tar"`
 }
 
 type DiskBackupRecoveryInput struct {
@@ -182,6 +199,8 @@ type SBackupStorageAccessInfo struct {
 	ObjectAccessKey string `json:"object_access_key"`
 	// description: secret of object storage
 	ObjectSecret string `json:"object_secret"`
+	// description: signing version, can be v2/v4, default is v4
+	ObjectSignVer string `json:"object_sign_ver"`
 }
 
 func (ba *SBackupStorageAccessInfo) String() string {

@@ -60,12 +60,12 @@ type StorageCreateInput struct {
 	// local: 本地存储
 	// rbd: ceph块存储, ceph存储创建时仅会检测是否重复创建，不会具体检测认证参数是否合法，只有挂载存储时
 	// 计算节点会验证参数，若挂载失败，宿主机和存储不会关联，可以通过查看存储日志查找挂载失败原因
-	// enum: local, rbd, nfs, gpfs
+	// enum: ["local", "rbd", "nfs", "gpfs"]
 	// required: true
 	StorageType string `json:"storage_type"`
 
 	// 存储介质类型
-	// enum: rotate, ssd, hybird
+	// enum: ["rotate", "ssd", "hybird"]
 	// required: true
 	// default: ssd
 	MediumType string `json:"medium_type"`
@@ -76,6 +76,12 @@ type StorageCreateInput struct {
 	// 单个ip或以逗号分隔的多个ip具体可查询 /etc/ceph/ceph.conf 文件
 	// example: 192.168.222.3,192.168.222.4,192.168.222.99
 	RbdMonHost string `json:"rbd_mon_host"`
+
+	// enable ceph messenger v2
+	EnableMessengerV2 *bool `json:"enable_messenger_v2"`
+
+	// rbd storage auto cache glance images
+	AutoCacheImages *bool `json:"auto_cache_images"`
 
 	// swagger:ignore
 	MonHost string
@@ -117,7 +123,6 @@ type StorageCreateInput struct {
 	CLVMVgName string
 	// SLVM VG Name
 	SLVMVgName string
-	MasterHost string
 	Lvmlockd   bool
 }
 
@@ -180,6 +185,9 @@ type StorageDetails struct {
 
 	// 超分比
 	CommitBound float32 `json:"commit_bound"`
+
+	// master host name
+	MasterHostName string `json:"master_host_name"`
 }
 
 func (self StorageDetails) GetMetricTags() map[string]string {
@@ -239,6 +247,11 @@ type StorageUpdateInput struct {
 	// example: AQDigB9dtnDAKhAAxS6X4zi4BPR/lIle4nf4Dw==
 	RbdKey string `json:"rbd_key"`
 
+	// enable ceph messenger v2
+	EnableMessengerV2 *bool `json:"enable_messenger_v2"`
+	// rbd storage auto cache glance images
+	AutoCacheImages *bool `json:"auto_cache_images"`
+
 	RbdTimeoutInput
 
 	// swagger:ignore
@@ -249,4 +262,20 @@ type StorageUpdateInput struct {
 	// swagger:ignore
 	HardwareInfo *StorageHardwareInfo `json:"hardware_info"`
 	MasterHost   string
+}
+
+type RbdStorageConf struct {
+	RadosMonOpTimeout  int `json:"rados_mon_op_timeout"`
+	RadosOsdOpTimeout  int `json:"rados_osd_op_timeout"`
+	ClientMountTimeout int `json:"client_mount_timeout"`
+
+	MonHost           string `json:"mon_host"`
+	Pool              string `json:"pool"`
+	Key               string `json:"key"`
+	EnableMessengerV2 bool   `json:"enable_messenger_v2"`
+	AutoCacheImages   bool   `json:"auto_cache_images"`
+}
+
+type StorageSetCmtBoundInput struct {
+	Cmtbound *float32
 }

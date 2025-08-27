@@ -77,7 +77,7 @@ func Run(ctx context.Context) error {
 
 	httpsAddr := net.JoinHostPort(opt.Address, strconv.Itoa(opt.HttpsPort))
 
-	cron := cronman.InitCronJobManager(true, options.Options.CronJobWorkerCount)
+	cron := cronman.InitCronJobManager(true, options.Options.CronJobWorkerCount, options.Options.TimeZone)
 	initial.InitClient(cron)
 	cron.Start()
 	defer cron.Stop()
