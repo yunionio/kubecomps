@@ -19,7 +19,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -43,6 +43,7 @@ import (
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/util/atexit"
 	"yunion.io/x/onecloud/pkg/util/fileutils2"
+	"yunion.io/x/onecloud/pkg/util/netutils2"
 )
 
 const (
@@ -70,7 +71,15 @@ type BaseOptions struct {
 
 	ApplicationID      string `help:"Application ID"`
 	RequestWorkerCount int    `default:"8" help:"Request worker thread count, default is 8"`
-	TaskWorkerCount    int    `default:"4" help:"Task manager worker thread count, default is 4"`
+
+	RequestWorkerQueueSize int `default:"10" help:"Request worker queue size, default is 10"`
+
+	TaskWorkerCount      int `default:"4" help:"Task manager worker thread count, default is 4"`
+	LocalTaskWorkerCount int `default:"4" help:"Worker thread count that runs local tasks, default is 4"`
+
+	TaskArchiveThresholdHours  int `default:"168" help:"The threshold in hours to migrate tasks to archive, default is 7days(168hours)"`
+	TaskArchiveIntervalMinutes int `default:"60" help:"The interval in mibutes to migrate tasks to archive, default is 1 hour"`
+	TaskArchiveBatchLimit      int `default:"10000" help:"The maximal count of tasks to archivie in a batch, default is 10000"`
 
 	DefaultProcessTimeoutSeconds int `default:"60" help:"request process timeout, default is 60 seconds"`
 
@@ -108,6 +117,9 @@ type BaseOptions struct {
 
 	CustomizedPrivatePrefixes []string `help:"customized private prefixes"`
 
+	MetadataServerIp4s []string `help:"metadata server IPv4 addresses, default is 169.254.169.254" default:"169.254.169.254"`
+	MetadataServerIp6s []string `help:"metadata server IPv6 addresses, default is fd00:ec2::254" default:"'fd00:ec2::254'"`
+
 	structarg.BaseOptions
 
 	GlobalHTTPProxy  string `help:"Global http proxy"`
@@ -119,6 +131,12 @@ type BaseOptions struct {
 	PlatformNames map[string]string `help:"identity name of this platform by language"`
 
 	EnableAppProfiling bool `help:"enable profiling API" default:"false"`
+	AllowTLS1x         bool `help:"allow obsolete insecure TLS V1.0&1.1" default:"false" json:"allow_tls1x"`
+
+	EnableChangeOwnerAutoRename bool `help:"Allows renaming when changing names" default:"false"`
+	EnableDefaultPolicy         bool `help:"Enable defualt policies" default:"true"`
+
+	DefaultHandlersWhitelistUserAgents []string `help:"whitelist user agents, default is empty"`
 }
 
 const (
@@ -150,15 +168,19 @@ type HostCommonOptions struct {
 
 	EnableRemoteExecutor bool `help:"Enable remote executor" default:"false"`
 
-	ExecutorConnectTimeoutSeconds int    `help:"executor client connection timeout in seconds, default is 30" default:"30"`
 	EnableIsolatedDeviceWhitelist bool   `help:"enable isolated device white list" default:"false"`
+	ExecutorConnectTimeoutSeconds int    `help:"executor client connection timeout in seconds, default is 30" default:"30"`
 	ImageDeployDriver             string `help:"Image deploy driver" default:"qemu-kvm" choices:"qemu-kvm|nbd|libguestfs"`
+	DeployConcurrent              int    `help:"qemu-kvm deploy driver concurrent" default:"5"`
+	Qcow2Preallocation            string `help:"Qcow2 image create preallocation" default:"metadata" choices:"disable|metadata|falloc|full"`
 }
 
 type DBOptions struct {
 	SqlConnection string `help:"SQL connection string" alias:"connection"`
 
 	Clickhouse string `help:"Connection string for click house"`
+
+	DbMaxWaitTimeoutSeconds int `help:"max wait timeout for db connection, default 1 hour" default:"3600"`
 
 	OpsLogWithClickhouse   bool `help:"store operation logs with clickhouse" default:"false"`
 	EnableDBChecksumTables bool `help:"Enable DB tables with record checksum for consistency"`
@@ -215,7 +237,7 @@ func (opt *EtcdOptions) GetEtcdTLSConfig() (*tls.Config, error) {
 		opt.EtcdUseTLS = true
 	}
 	if opt.EtcdCacert != "" {
-		data, err := ioutil.ReadFile(opt.EtcdCacert)
+		data, err := os.ReadFile(opt.EtcdCacert)
 		if err != nil {
 			return nil, errors.Wrap(err, "read cacert file")
 		}
@@ -347,6 +369,8 @@ func parseOptions(optStruct interface{}, args []string, configFileName string, s
 
 	consts.SetServiceName(optionsRef.ApplicationID)
 	httperrors.SetTimeZone(optionsRef.TimeZone)
+	netutils2.SetIp4MetadataServers(optionsRef.MetadataServerIp4s)
+	netutils2.SetIp6MetadataServers(optionsRef.MetadataServerIp6s)
 
 	// log configuration
 	log.SetVerboseLevel(int32(optionsRef.LogVerboseLevel))
@@ -372,7 +396,7 @@ func parseOptions(optStruct interface{}, args []string, configFileName string, s
 		h.Init()
 		log.DisableColors()
 		log.Logger().AddHook(h)
-		log.Logger().Out = ioutil.Discard
+		log.Logger().Out = io.Discard
 		atexit.Register(atexit.ExitHandler{
 			Prio:   atexit.PRIO_LOG_CLOSE,
 			Reason: "deinit log rotate hook",
@@ -388,7 +412,16 @@ func parseOptions(optStruct interface{}, args []string, configFileName string, s
 		consts.SetRegion(optionsRef.Region)
 	}
 
+	consts.SetDefaultPolicy(optionsRef.EnableDefaultPolicy)
 	consts.SetDomainizedNamespace(optionsRef.DomainizedNamespace)
+
+	consts.SetTaskWorkerCount(optionsRef.TaskWorkerCount)
+	consts.SetLocalTaskWorkerCount(optionsRef.LocalTaskWorkerCount)
+	consts.SetTaskArchiveThresholdHours(optionsRef.TaskArchiveThresholdHours)
+
+	if optionsRef.Address == "0.0.0.0" {
+		optionsRef.Address = ""
+	}
 }
 
 func (self *BaseOptions) HttpTransportProxyFunc() httputils.TransportProxyFunc {

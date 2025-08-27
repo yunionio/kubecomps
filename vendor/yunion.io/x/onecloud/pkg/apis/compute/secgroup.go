@@ -42,7 +42,7 @@ type SSecgroupRuleResource struct {
 	// | tcp      | TCP     |
 	// | icmp     | ICMP    |
 	// | udp      | UDP     |
-	// enum: any, tcp, udp, icmp
+	// enum: ["any", "tcp", "udp", "icmp"]
 	Protocol string `json:"protocol"`
 
 	// 端口列表, 参数为空代表任意端口
@@ -62,7 +62,7 @@ type SSecgroupRuleResource struct {
 	PortEnd int
 
 	// 方向
-	// enum: in, out
+	// enum: ["in", "out"]
 	// required: true
 	Direction string `json:"direction"`
 
@@ -73,7 +73,7 @@ type SSecgroupRuleResource struct {
 	// 行为
 	// deny: 拒绝
 	// allow: 允许
-	// enum: deny, allow
+	// enum: ["deny", "allow"]
 	// required: true
 	Action string `json:"action"`
 
@@ -120,13 +120,13 @@ type SSecgroupRuleUpdateInput struct {
 	// | tcp      | TCP     |
 	// | icmp     | ICMP    |
 	// | udp      | UDP     |
-	// enum: any, tcp, udp, icmp
+	// enum: ["any", "tcp", "udp", "icmp"]
 	Protocol *string `json:"protocol"`
 
 	// 行为
 	// deny: 拒绝
 	// allow: 允许
-	// enum: deny, allow
+	// enum: ["deny", "allow"]
 	// required: true
 	Action *string `json:"action"`
 
@@ -255,6 +255,8 @@ type SecgroupResourceInput struct {
 
 type SecgroupFilterListInput struct {
 	SecgroupResourceInput
+	RegionalFilterListInput
+	ManagedResourceListInput
 
 	// 以安全组排序
 	OrderBySecgroup string `json:"order_by_secgroup"`
@@ -291,6 +293,16 @@ type SecgroupDetails struct {
 type SecurityGroupResourceInfo struct {
 	// 安全组名称
 	Secgroup string `json:"secgroup"`
+
+	// VPC归属区域ID
+	CloudregionId string `json:"cloudregion_id"`
+
+	CloudregionResourceInfo
+
+	// VPC归属云订阅ID
+	ManagerId string `json:"manager_id"`
+
+	ManagedResourceInfo
 }
 
 type GuestsecgroupListInput struct {
@@ -311,11 +323,6 @@ type GuestsecgroupDetails struct {
 	// 安全组名称
 	Secgroup string `json:"secgroup"`
 }
-
-//type SElasticcachesecgroup struct {
-//	SElasticcacheJointsBase
-//	SSecurityGroupResourceBase
-//}
 
 type ElasticcachesecgroupDetails struct {
 	ElasticcacheJointResourceDetails
