@@ -21,9 +21,9 @@ import (
 const (
 	HOST_TYPE_BAREMETAL  = "baremetal"
 	HOST_TYPE_HYPERVISOR = "hypervisor" // KVM
+	HOST_TYPE_CONTAINER  = "container"
 	HOST_TYPE_KVM        = "kvm"
 	HOST_TYPE_ESXI       = compute.HOST_TYPE_ESXI // # VMWare vSphere ESXi
-	HOST_TYPE_KUBELET    = "kubelet"              // # Kubernetes Kubelet
 	HOST_TYPE_HYPERV     = "hyperv"               // # Microsoft Hyper-V
 	HOST_TYPE_XEN        = "xen"                  // # XenServer
 
@@ -56,6 +56,10 @@ const (
 	HOST_TYPE_CUCLOUD        = compute.HOST_TYPE_CUCLOUD
 	HOST_TYPE_QINGCLOUD      = compute.HOST_TYPE_QINGCLOUD
 	HOST_TYPE_ORACLE         = compute.HOST_TYPE_ORACLE
+	HOST_TYPE_SANGFOR        = compute.HOST_TYPE_SANGFOR
+	HOST_TYPE_ZETTAKIT       = compute.HOST_TYPE_ZETTAKIT
+	HOST_TYPE_UIS            = compute.HOST_TYPE_UIS
+	HOST_TYPE_CAS            = compute.HOST_TYPE_CAS
 
 	HOST_TYPE_DEFAULT = HOST_TYPE_HYPERVISOR
 
@@ -119,11 +123,16 @@ const (
 	HostResourceTypeDedicated      = "dedicated"
 )
 
+const (
+	HOST_METADATA_CPU_USAGE_PERCENT = "cpu_usage_percent"
+	HOST_METADATA_MEMORY_USED_MB    = "memory_used_mb"
+)
+
 var HOST_TYPES = []string{
 	HOST_TYPE_BAREMETAL,
 	HOST_TYPE_HYPERVISOR,
 	HOST_TYPE_ESXI,
-	HOST_TYPE_KUBELET,
+	HOST_TYPE_CONTAINER,
 	HOST_TYPE_XEN,
 	HOST_TYPE_ALIYUN,
 	HOST_TYPE_APSARA,
@@ -153,6 +162,9 @@ var HOST_TYPES = []string{
 	HOST_TYPE_CUCLOUD,
 	HOST_TYPE_QINGCLOUD,
 	HOST_TYPE_ORACLE,
+	HOST_TYPE_SANGFOR,
+	HOST_TYPE_ZETTAKIT,
+	HOST_TYPE_UIS,
 }
 
 var ALL_NIC_TYPES = []compute.TNicType{NIC_TYPE_IPMI, NIC_TYPE_ADMIN, NIC_TYPE_NORMAL}
@@ -183,4 +195,5 @@ const (
 
 const (
 	HOSTMETA_RESERVED_CPUS_INFO = "reserved_cpus_info"
+	HOSTMETA_RESERVED_CPUS_RATE = "reserved_cpus_rate"
 )

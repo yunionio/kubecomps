@@ -84,6 +84,24 @@ func (worker *SWorker) run() {
 		req := worker.manager.queue.Pop()
 		if req != nil {
 			task := req.(*sWorkerTask)
+
+			if worker.manager.cancelPrevIdent {
+				// cancel previous identical tasks
+				findIdent := false
+				worker.manager.queue.Range(func(iReq interface{}) bool {
+					iTask := iReq.(*sWorkerTask)
+					if iTask.task.Dump() == task.task.Dump() {
+						// found idential task
+						findIdent = true
+						return false
+					}
+					return true
+				})
+				if findIdent {
+					continue
+				}
+			}
+
 			if task.worker != nil {
 				task.worker <- worker
 			}
@@ -161,6 +179,11 @@ type SWorkerManager struct {
 	dbWorker       bool
 
 	ignoreOverflow bool
+
+	cancelPrevIdent bool
+
+	queueInitHook  func() error
+	queueEmptyHook func() error
 }
 
 func NewWorkerManager(name string, workerCount int, backlog int, dbWorker bool) *SWorkerManager {
@@ -168,6 +191,12 @@ func NewWorkerManager(name string, workerCount int, backlog int, dbWorker bool) 
 }
 
 func NewWorkerManagerIgnoreOverflow(name string, workerCount int, backlog int, dbWorker bool, ignoreOverflow bool) *SWorkerManager {
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	if backlog <= 0 {
+		backlog = 128
+	}
 	manager := SWorkerManager{name: name,
 		queue:          NewRing(workerCount * backlog),
 		workerCount:    workerCount,
@@ -179,6 +208,8 @@ func NewWorkerManagerIgnoreOverflow(name string, workerCount int, backlog int, d
 		dbWorker:       dbWorker,
 
 		ignoreOverflow: ignoreOverflow,
+
+		cancelPrevIdent: false,
 	}
 
 	workerManagerLock.Lock()
@@ -198,6 +229,18 @@ type sWorkerTask struct {
 	worker  chan *SWorker
 	onError func(error)
 	start   time.Time
+}
+
+func (wm *SWorkerManager) SetQueueInitHook(f func() error) {
+	wm.queueInitHook = f
+}
+
+func (wm *SWorkerManager) SetQueueEmptyHook(f func() error) {
+	wm.queueEmptyHook = f
+}
+
+func (wm *SWorkerManager) EnableCancelPreviousIdenticalTask() {
+	wm.cancelPrevIdent = true
 }
 
 func (wm *SWorkerManager) UpdateWorkerCount(workerCount int) error {
@@ -234,6 +277,12 @@ func (wm *SWorkerManager) removeWorker(worker *SWorker) {
 	} else {
 		wm.detachedWorker.removeWithLock(worker)
 	}
+	if wm.activeWorker.size()+wm.detachedWorker.size() == 0 && wm.queueEmptyHook != nil {
+		err := wm.queueEmptyHook()
+		if err != nil {
+			log.Errorf("queueEmptyHook fail %s", err)
+		}
+	}
 }
 
 func execCallback(task *sWorkerTask) {
@@ -257,6 +306,13 @@ func (wm *SWorkerManager) schedule() {
 }
 
 func (wm *SWorkerManager) scheduleWithLock() {
+	if wm.activeWorker.size()+wm.detachedWorker.size() == 0 && wm.queueInitHook != nil {
+		err := wm.queueInitHook()
+		if err != nil {
+			log.Errorf("queueInitHook fail %s", err)
+			return
+		}
+	}
 	queueSize := wm.queue.Size()
 	if wm.activeWorker.size() < wm.workerCount && queueSize > 0 {
 		wm.workerId += 1
@@ -266,15 +322,14 @@ func (wm *SWorkerManager) scheduleWithLock() {
 			log.Debugf("no enough worker, add new worker %s", worker)
 		}
 		go worker.run()
-	} else if queueSize > 10 {
-		log.Warningf("[%s] BUSY activeWork %d detachedWork %d max %d queue: %d", wm, wm.ActiveWorkerCount(), wm.DetachedWorkerCount(), wm.workerCount, wm.queue.Size())
 	} else if queueSize > 50 {
 		w := wm.activeWorker.list.Front()
-		for w != nil {
+		if w != nil {
 			worker := w.Value.(*SWorker)
 			log.Warningf("work [%s]%s stucking for a while", worker.task.start, worker.task.task.Dump())
-			w = w.Next()
 		}
+	} else if queueSize > 10 {
+		log.Warningf("[%s] BUSY activeWork %d detachedWork %d max %d queue: %d", wm, wm.ActiveWorkerCount(), wm.DetachedWorkerCount(), wm.workerCount, wm.queue.Size())
 	}
 }
 

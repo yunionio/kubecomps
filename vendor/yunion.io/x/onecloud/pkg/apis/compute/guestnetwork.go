@@ -15,8 +15,11 @@
 package compute
 
 import (
+	"reflect"
+
 	"yunion.io/x/cloudmux/pkg/apis/compute"
 	"yunion.io/x/jsonutils"
+	"yunion.io/x/pkg/gotypes"
 )
 
 type GuestnetworkDetails struct {
@@ -33,6 +36,14 @@ type GuestnetworkDetails struct {
 	EipAddr string `json:"eip_addr"`
 
 	NetworkAddresses []NetworkAddrConf `json:"network_addresses"`
+
+	GuestIpMask int8 `json:"guest_ip_mask"`
+	// 网关地址
+	GuestGateway string `json:"guest_gateway"`
+
+	GuestIp6Mask uint8 `json:"guest_ip6_mask"`
+	// 网关地址
+	GuestGateway6 string `json:"guest_gateway6"`
 }
 
 type GuestnetworkShortDesc struct {
@@ -53,6 +64,10 @@ type GuestnetworkShortDesc struct {
 	NetworkId string `json:"network_id"`
 	// 附属IP
 	SubIps string `json:"sub_ips"`
+	// 端口映射
+	PortMappings GuestPortMappings `json:"port_mappings"`
+
+	IsDefault bool `json:"is_default"`
 }
 
 type GuestnetworkListInput struct {
@@ -82,7 +97,8 @@ type GuestnetworkUpdateInput struct {
 
 	Index *int8 `json:"index"`
 
-	IsDefault *bool `json:"is_default"`
+	IsDefault    *bool             `json:"is_default"`
+	PortMappings GuestPortMappings `json:"port_mappings"`
 }
 
 type GuestnetworkBaseDesc struct {
@@ -101,7 +117,7 @@ type GuestnetworkBaseDesc struct {
 	Vlan           int                  `json:"vlan"`
 	Bw             int                  `json:"bw"`
 	Mtu            int16                `json:"mtu"`
-	Index          int8                 `json:"index"`
+	Index          int                  `json:"index"`
 	RxTrafficLimit int64                `json:"rx_traffic_limit"`
 	TxTrafficLimit int64                `json:"tx_traffic_limit"`
 	NicType        compute.TNicType     `json:"nic_type"`
@@ -121,11 +137,14 @@ type GuestnetworkBaseDesc struct {
 		Id           string `json:"id"`
 		Provider     string `json:"provider"`
 		MappedIpAddr string `json:"mapped_ip_addr"`
+
+		MappedIp6Addr string `json:"mapped_ip6_addr"`
 	} `json:"vpc"`
 
 	Networkaddresses jsonutils.JSONObject `json:"networkaddresses"`
 
-	VirtualIps []string `json:"virtual_ips"`
+	VirtualIps   []string          `json:"virtual_ips"`
+	PortMappings GuestPortMappings `json:"port_mappings"`
 }
 
 type GuestnetworkJsonDesc struct {
@@ -154,4 +173,66 @@ type SNicTrafficRecord struct {
 	TxTraffic int64
 
 	HasBeenSetDown bool
+}
+
+type GuestPortMappingProtocol string
+
+const (
+	GuestPortMappingProtocolTCP GuestPortMappingProtocol = "tcp"
+	GuestPortMappingProtocolUDP GuestPortMappingProtocol = "udp"
+)
+
+const (
+	GUEST_PORT_MAPPING_RANGE_START = 20000
+	GUEST_PORT_MAPPING_RANGE_END   = 25000
+)
+
+type GuestPortMappingPortRange struct {
+	Start int `json:"start"`
+	End   int `json:"end"`
+}
+
+type GuestPortMappingEnvValueFrom string
+
+const (
+	GuestPortMappingEnvValueFromPort     GuestPortMappingEnvValueFrom = "port"
+	GuestPortMappingEnvValueFromHostPort GuestPortMappingEnvValueFrom = "host_port"
+)
+
+type GuestPortMappingEnv struct {
+	Key       string                       `json:"key"`
+	ValueFrom GuestPortMappingEnvValueFrom `json:"value_from"`
+}
+
+type GuestPortMapping struct {
+	Protocol GuestPortMappingProtocol `json:"protocol"`
+	// 容器内部 Port 端口范围 1-65535，-1表示由宿主机自动分配和 HostPort 相同的端口
+	Port          int                        `json:"port"`
+	HostPort      *int                       `json:"host_port,omitempty"`
+	HostIp        string                     `json:"host_ip"`
+	HostPortRange *GuestPortMappingPortRange `json:"host_port_range,omitempty"`
+	// whitelist for remote ips
+	RemoteIps []string              `json:"remote_ips"`
+	Rule      *GuestPortMappingRule `json:"rule,omitempty"`
+	Envs      []GuestPortMappingEnv `json:"envs,omitempty"`
+}
+
+type GuestPortMappingRule struct {
+	FirstPortOffset *int `json:"first_port_offset"`
+}
+
+type GuestPortMappings []*GuestPortMapping
+
+func (g GuestPortMappings) String() string {
+	return jsonutils.Marshal(g).String()
+}
+
+func (g GuestPortMappings) IsZero() bool {
+	return len(g) == 0
+}
+
+func init() {
+	gotypes.RegisterSerializable(reflect.TypeOf(&GuestPortMappings{}), func() gotypes.ISerializable {
+		return &GuestPortMappings{}
+	})
 }

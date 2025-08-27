@@ -41,10 +41,13 @@ const (
 	IMAGE_STATUS_DELETED        = "deleted"
 	IMAGE_STATUS_PENDING_DELETE = "pending_delete"
 
+	IMAGE_STATUS_UNKNOWN = "unkown"
+
 	IMAGE_STATUS_SYNC_CLASS_METADATA_FAILEd = "sync_class_metadata_failed"
 
 	ImageTypeTemplate = TImageType("image")
 	ImageTypeISO      = TImageType("iso")
+	ImageTypeTarGzip  = TImageType("tgz")
 
 	LocalFilePrefix = "file://"
 	S3Prefix        = "s3://"
@@ -53,22 +56,34 @@ const (
 	IMAGE_STORAGE_DRIVER_S3    = "s3"
 
 	// image properties
-	IMAGE_OS_ARCH             = "os_arch"
-	IMAGE_OS_DISTRO           = "os_distribution"
-	IMAGE_OS_TYPE             = "os_type"
-	IMAGE_OS_VERSION          = "os_version"
-	IMAGE_DISK_FORMAT         = "disk_format"
-	IMAGE_UEFI_SUPPORT        = "uefi_support"
-	IMAGE_IS_LVM_PARTITION    = "is_lvm_partition"
-	IMAGE_IS_READONLY         = "is_readonly"
-	IMAGE_PARTITION_TYPE      = "partition_type"
-	IMAGE_INSTALLED_CLOUDINIT = "installed_cloud_init"
-	IMAGE_DISABLE_USB_KBD     = "disable_usb_kbd"
-	IMAGE_VDI_PROTOCOL        = "vdi_protocol"
+	IMAGE_OS_ARCH              = "os_arch"
+	IMAGE_OS_DISTRO            = "os_distribution"
+	IMAGE_OS_TYPE              = "os_type"
+	IMAGE_OS_VERSION           = "os_version"
+	IMAGE_DISK_FORMAT          = "disk_format"
+	IMAGE_UEFI_SUPPORT         = "uefi_support"
+	IMAGE_IS_LVM_PARTITION     = "is_lvm_partition"
+	IMAGE_IS_READONLY          = "is_readonly"
+	IMAGE_PARTITION_TYPE       = "partition_type"
+	IMAGE_INSTALLED_CLOUDINIT  = "installed_cloud_init"
+	IMAGE_DISABLE_USB_KBD      = "disable_usb_kbd"
+	IMAGE_VDI_PROTOCOL         = "vdi_protocol"
+	IMAGE_INTERNAL_PATH_MAP    = "internal_path_map"
+	IMAGE_USED_BY_POST_OVERLAY = "used_by_post_overlay"
 
 	IMAGE_STATUS_UPDATING = "updating"
 )
 
 var (
 	ImageDeadStatus = []string{IMAGE_STATUS_DEACTIVATED, IMAGE_STATUS_KILLED, IMAGE_STATUS_DELETED, IMAGE_STATUS_PENDING_DELETE}
+)
+
+const (
+	IMAGE_DISK_FORMAT_RAW    = "raw"
+	IMAGE_DISK_FORMAT_QCOW2  = "qcow2"
+	IMAGE_DISK_FORMAT_ISO    = "iso"
+	IMAGE_DISK_FORMAT_VMDK   = "vmdk"
+	IMAGE_DISK_FORMAT_DOCKER = "docker"
+	IMAGE_DISK_FORMAT_VHD    = "vhd"
+	IMAGE_DISK_FORMAT_TGZ    = "tgz"
 )

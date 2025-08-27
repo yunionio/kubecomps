@@ -59,7 +59,7 @@ type SElasticipCreateInput struct {
 	// |ZStack      | traffic                |
 	// |OpenStack   | traffic                |
 	// default: traffic
-	// enum: traffic, bandwidth
+	// enum: ["traffic", "bandwidth"]
 	ChargeType string `json:"charge_type"`
 
 	Mode string `json:"mode"`
@@ -94,6 +94,9 @@ type ElasticipDetails struct {
 
 	// 绑定资源名称
 	AssociateName string `json:"associate_name"`
+
+	// 虚拟机内网IP
+	ServerPrivateIp string `json:"server_private_ip"`
 }
 
 func (self ElasticipDetails) GetMetricTags() map[string]string {
