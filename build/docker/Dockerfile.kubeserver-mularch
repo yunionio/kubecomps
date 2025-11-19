@@ -1,4 +1,4 @@
-FROM registry.cn-beijing.aliyuncs.com/yunionio/kube-build:3.19.0-go-1.21.10-0 as build
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kube-build:3.22.2-go-1.24.9-0 AS build
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 RUN mkdir -p /go/src/yunion.io/x/kubecomps
@@ -7,7 +7,7 @@ COPY . /go/src/yunion.io/x/kubecomps
 WORKDIR /go/src/yunion.io/x/kubecomps
 RUN make cmd/kubeserver
 
-FROM registry.cn-beijing.aliyuncs.com/yunionio/kubeserver-base:20230803.0
+FROM registry.cn-beijing.aliyuncs.com/yunionio/kubeserver-base:20251118.0
 RUN mkdir -p /opt/yunion/bin
 COPY --from=build /go/src/yunion.io/x/kubecomps/manifests/ansible /opt/yunion/ansible
 COPY --from=build /go/src/yunion.io/x/kubecomps/_output/bin/kubeserver /opt/yunion/bin/kubeserver
