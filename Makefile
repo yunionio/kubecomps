@@ -3,6 +3,8 @@ OUTPUT_DIR = $(ROOT_DIR)/_output
 BIN_DIR = $(OUTPUT_DIR)/bin
 REPO_PREFIX = yunion.io/x/kubecomps
 
+HELM_VERSION ?= v4.0.0-1
+
 REGISTRY ?= "registry.cn-beijing.aliyuncs.com/yunionio"
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 	                   git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
@@ -38,7 +40,7 @@ build: clean generate
 	done
 
 embed-helm-pkgs:
-	docker run --rm -v $(shell pwd):/app registry.cn-beijing.aliyuncs.com/yunionio/helm:v3.5.2 \
+	docker run --rm -v $(shell pwd):/app registry.cn-beijing.aliyuncs.com/yunionio/helm:$(HELM_VERSION) \
 		/bin/bash -c "cd /app && /app/scripts/embed-helm-pkgs.sh"
 
 generate: embed-helm-pkgs
