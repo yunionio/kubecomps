@@ -82,6 +82,14 @@ func (h harborImpl) ValidateCreateData(ctx context.Context, userCred mcclient.To
 
 	return data, nil
 }
+func (h harborImpl) CreateCredential(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ContainerRegistryCreateInput) (string, error) {
+	config := data.Config.Harbor
+	if config == nil {
+		return "", nil
+	}
+	return createContainerImageSecret(ctx, userCred, ownerId, data.Name, &config.ContainerRegistryConfigCommon)
+}
+
 func (h harborImpl) PreparePushImage(ctx context.Context, url string, conf *api.ContainerRegistryConfig, meta *client.ImageMetadata) error {
 	// get project name
 	ref := meta.Ref
