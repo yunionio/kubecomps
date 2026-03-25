@@ -22,6 +22,7 @@ func init() {
 type IContainerRegistryDriver interface {
 	GetType() api.ContainerRegistryType
 
+	CreateCredential(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ContainerRegistryCreateInput) (string, error)
 	GetDockerRegistryClient(url string, config *api.ContainerRegistryConfig) (client.Client, error)
 
 	ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ContainerRegistryCreateInput) (*api.ContainerRegistryCreateInput, error)

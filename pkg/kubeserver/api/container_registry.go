@@ -9,6 +9,7 @@ type ContainerRegistryType string
 const (
 	ContainerRegistryTypeHarbor = "harbor"
 	ContainerRegistryTypeCommon = "common"
+	ContainerRegistryTypeCustom = "custom"
 )
 
 type ContainerRegistryListInput struct {
@@ -19,18 +20,22 @@ type ContainerRegistryListInput struct {
 }
 
 type ContainerRegistryConfigCommon struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	apis.ContainerPullImageAuthConfig
 }
 
 type ContainerRegistryConfigHarbor struct {
 	ContainerRegistryConfigCommon
 }
 
+type ContainerRegistryConfigCustom struct {
+	ContainerRegistryConfigCommon
+}
+
 type ContainerRegistryConfig struct {
 	Type   ContainerRegistryType          `json:"type"`
-	Common *ContainerRegistryConfigCommon `json:"common`
+	Common *ContainerRegistryConfigCommon `json:"common"`
 	Harbor *ContainerRegistryConfigHarbor `json:"harbor"`
+	Custom *ContainerRegistryConfigCustom `json:"custom"`
 }
 
 type ContainerRegistryCreateInput struct {
