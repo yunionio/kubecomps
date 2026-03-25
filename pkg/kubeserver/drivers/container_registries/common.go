@@ -11,8 +11,10 @@ import (
 	"strings"
 
 	"yunion.io/x/jsonutils"
+	identityapi "yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	identitymodules "yunion.io/x/onecloud/pkg/mcclient/modules/identity"
 	"yunion.io/x/pkg/errors"
 
 	"yunion.io/x/kubecomps/pkg/kubeserver/api"
@@ -57,21 +59,52 @@ func (c commonImpl) GetPathPrefix(inputUrl string) (string, error) {
 }
 
 func (c commonImpl) ValidateCreateData(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ContainerRegistryCreateInput) (*api.ContainerRegistryCreateInput, error) {
-	config := data.Config.Common
-	if config == nil {
-		return nil, httperrors.NewInputParameterError("Configuration of common is nil")
-	}
 	if _, err := c.GetPathPrefix(data.Url); err != nil {
 		return nil, err
 	}
-	cli, err := c.GetDockerRegistryClient(data.Url, &data.Config)
-	if err != nil {
-		return nil, httperrors.NewInputParameterError("Get docker registry client: %v", err)
-	}
-	if err := cli.Ping(ctx); err != nil {
-		return nil, httperrors.NewInputParameterError("Ping docker registry %q: %v", data.Url, err)
+	config := data.Config.Common
+	if config != nil && config.Username != "" && config.Password != "" {
+		cli, err := c.GetDockerRegistryClient(data.Url, &data.Config)
+		if err != nil {
+			return nil, httperrors.NewInputParameterError("Get docker registry client: %v", err)
+		}
+		if err := cli.Ping(ctx); err != nil {
+			return nil, httperrors.NewInputParameterError("Ping docker registry %q: %v", data.Url, err)
+		}
 	}
 	return data, nil
+}
+
+func (c commonImpl) CreateCredential(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data *api.ContainerRegistryCreateInput) (string, error) {
+	config := data.Config.Common
+	if config == nil {
+		return "", nil // no credential needed for common registry
+	}
+	return createContainerImageSecret(ctx, userCred, ownerId, data.Name, config)
+}
+
+func createContainerImageSecret(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, name string, config *api.ContainerRegistryConfigCommon) (string, error) {
+	if config == nil {
+		return "", httperrors.NewInputParameterError("Configuration of common is nil")
+	}
+	if config.Username == "" {
+		return "", httperrors.NewInputParameterError("Username is required")
+	}
+	if config.Password == "" {
+		return "", httperrors.NewInputParameterError("Password is required")
+	}
+	s, err := models.GetUserSession(ctx, userCred)
+	if err != nil {
+		return "", errors.Wrapf(err, "get user session")
+	}
+	obj, err := identitymodules.Credentials.CreateContainerImageSecret(s, ownerId.GetProjectId(), name, &identityapi.CredentialContainerImageBlob{
+		Username: config.Username,
+		Password: config.Password,
+	})
+	if err != nil {
+		return "", err
+	}
+	return obj.GetString("id")
 }
 
 func (c commonImpl) PreparePushImage(ctx context.Context, url string, conf *api.ContainerRegistryConfig, meta *client.ImageMetadata) error {

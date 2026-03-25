@@ -14,11 +14,14 @@ import (
 
 	"yunion.io/x/jsonutils"
 	"yunion.io/x/log"
+	"yunion.io/x/onecloud/pkg/apis"
+	identityapi "yunion.io/x/onecloud/pkg/apis/identity"
 	"yunion.io/x/onecloud/pkg/appsrv"
 	"yunion.io/x/onecloud/pkg/appsrv/dispatcher"
 	"yunion.io/x/onecloud/pkg/cloudcommon/db"
 	"yunion.io/x/onecloud/pkg/httperrors"
 	"yunion.io/x/onecloud/pkg/mcclient"
+	identitymodules "yunion.io/x/onecloud/pkg/mcclient/modules/identity"
 	"yunion.io/x/pkg/errors"
 	"yunion.io/x/pkg/util/streamutils"
 	"yunion.io/x/pkg/util/stringutils"
@@ -56,9 +59,10 @@ func init() {
 type SContainerRegistry struct {
 	db.SSharableVirtualResourceBase
 
-	Url    string               `width:"256" charset:"ascii" nullable:"false" create:"required" update:"user" list:"user"`
-	Type   string               `charset:"ascii" width:"128" create:"required" nullable:"true" list:"user"`
-	Config jsonutils.JSONObject `nullable:"true" create:"optional"`
+	Url          string               `width:"256" charset:"ascii" nullable:"false" create:"required" update:"user" list:"user"`
+	Type         string               `charset:"ascii" width:"128" create:"required" nullable:"true" list:"user"`
+	CredentialId string               `width:"256" charset:"ascii" nullable:"true" create:"optional" list:"user"`
+	Config       jsonutils.JSONObject `nullable:"true" create:"optional"`
 }
 
 func (man *SContainerRegistryManager) AddDispatcher(prefix string, app *appsrv.Application, manager dispatcher.IModelDispatchHandler) {
@@ -108,24 +112,100 @@ func (man *SContainerRegistryManager) ValidateCreateData(ctx context.Context, us
 		return nil, errors.Wrapf(err, "validate %q create data", driver.GetType())
 	}
 
-	rgCli, err := driver.GetDockerRegistryClient(data.Url, &data.Config)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get docker registry client on %q", driver.GetType())
-	}
-
-	if err := rgCli.Ping(ctx); err != nil {
-		return nil, errors.Wrapf(err, "ping docker registry on %q", driver.GetType())
-	}
-
 	return data, err
 }
 
-func (r *SContainerRegistry) GetConfig() (*api.ContainerRegistryConfig, error) {
-	conf := new(api.ContainerRegistryConfig)
-	if err := r.Config.Unmarshal(conf); err != nil {
-		return nil, err
+type ContainerRegistryCreateInput struct {
+	apis.SharableVirtualResourceCreateInput
+
+	// Repo type
+	// required: true
+	// enum: harbor
+	Type api.ContainerRegistryType `json:"type"`
+
+	// Repo URL
+	// required: true
+	// example: https://10.127.190.187/yunionio
+	Url string `json:"url"`
+
+	// Credential ID
+	CredentialId string `json:"credential_id"`
+}
+
+func (r *SContainerRegistry) CustomizeCreate(ctx context.Context, userCred mcclient.TokenCredential, ownerId mcclient.IIdentityProvider, query jsonutils.JSONObject, data jsonutils.JSONObject) error {
+	input := new(api.ContainerRegistryCreateInput)
+	if err := data.Unmarshal(input); err != nil {
+		return errors.Wrap(err, "unmarshal container registry create input")
 	}
-	conf.Type = api.ContainerRegistryType(r.Type)
+	drv, err := GetContainerRegistryManager().GetDriver(input.Type)
+	if err != nil {
+		return errors.Wrap(err, "get container registry driver")
+	}
+	credentialId, err := drv.CreateCredential(ctx, userCred, ownerId, query, input)
+	if err != nil {
+		return errors.Wrap(err, "create credential")
+	}
+	r.CredentialId = credentialId
+	// clear config, all credential info is stored in credential
+	r.Config = nil
+	return nil
+}
+
+func (r *SContainerRegistry) GetConfig() (*api.ContainerRegistryConfig, error) {
+	if r.Config != nil {
+		conf := new(api.ContainerRegistryConfig)
+		if err := r.Config.Unmarshal(conf); err != nil {
+			return nil, err
+		}
+		conf.Type = api.ContainerRegistryType(r.Type)
+		return conf, nil
+	}
+	return r.getConfigByCredential()
+}
+
+func (r *SContainerRegistry) getConfigByCredential() (*api.ContainerRegistryConfig, error) {
+	if r.CredentialId == "" {
+		return nil, errors.Error("both config and credential_id are empty")
+	}
+	s, err := GetAdminSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "get admin session")
+	}
+	obj, err := identitymodules.Credentials.Get(s, r.CredentialId, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get credential %s", r.CredentialId)
+	}
+	blobStr, err := obj.GetString("blob")
+	if err != nil {
+		return nil, errors.Wrap(err, "get credential blob")
+	}
+	blob := new(identityapi.CredentialContainerImageBlob)
+	if err := jsonutils.NewString(blobStr).Unmarshal(blob); err != nil {
+		blobJson, parseErr := jsonutils.ParseString(blobStr)
+		if parseErr != nil {
+			return nil, errors.Wrap(parseErr, "parse credential blob json")
+		}
+		if err := blobJson.Unmarshal(blob); err != nil {
+			return nil, errors.Wrap(err, "unmarshal credential blob")
+		}
+	}
+	commonConf := &api.ContainerRegistryConfigCommon{
+		ContainerPullImageAuthConfig: apis.ContainerPullImageAuthConfig{
+			Username: blob.Username,
+			Password: blob.Password,
+		},
+	}
+	conf := &api.ContainerRegistryConfig{
+		Type: api.ContainerRegistryType(r.Type),
+	}
+	switch conf.Type {
+	case api.ContainerRegistryTypeCommon:
+		conf.Common = commonConf
+	case api.ContainerRegistryTypeHarbor:
+		conf.Harbor = &api.ContainerRegistryConfigHarbor{ContainerRegistryConfigCommon: *commonConf}
+	case api.ContainerRegistryTypeCustom:
+		conf.Custom = &api.ContainerRegistryConfigCustom{ContainerRegistryConfigCommon: *commonConf}
+	}
 	return conf, nil
 }
 
@@ -307,8 +387,10 @@ func (man *SContainerRegistryManager) GetPropertyDownloadImage(ctx context.Conte
 	drv, _ := man.GetDriver(api.ContainerRegistryTypeCommon)
 	conf := &api.ContainerRegistryConfig{
 		Common: &api.ContainerRegistryConfigCommon{
-			Username: query.Username,
-			Password: query.Password,
+			ContainerPullImageAuthConfig: apis.ContainerPullImageAuthConfig{
+				Username: query.Username,
+				Password: query.Password,
+			},
 		},
 	}
 	imgPathParts := strings.Split(imgPath, "/")
