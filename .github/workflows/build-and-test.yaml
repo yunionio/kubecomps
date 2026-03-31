@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 8
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.18'
+          go-version: '1.24'
       - name: test
         shell: bash
         run: |
@@ -25,6 +25,8 @@ jobs:
           workdir="$HOME/go/src/yunion.io/x"
           mkdir -p "$workdir"
           mv "$HOME/work/kubecomps/kubecomps" "$workdir/"
+
+          sudo apt-get install -y build-essential librados-dev
 
           export GOPATH="$HOME/go"
           export GO111MODULE=off
