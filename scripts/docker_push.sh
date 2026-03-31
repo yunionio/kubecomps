@@ -41,6 +41,8 @@ get_current_arch() {
     echo $current_arch
 }
 
+ALLARCH=("amd64" "arm64" "riscv64")
+
 pushd $(cd "$(dirname "$0")"; pwd) > /dev/null
 readlink_mac $(basename "$0")
 cd "$(dirname "$REAL_PATH")"
@@ -128,7 +130,7 @@ get_image_name() {
     local arch=$2
     local is_all_arch=$3
     local img_name="$REGISTRY/$component:$TAG"
-    if [[ "$is_all_arch" == "true" || "$arch" == arm64 || "$arch" == riscv64 ]]; then
+    if [[ -n "$arch" && "$is_all_arch" == "true" ]]; then
         img_name="${img_name}-$arch"
     fi
     echo $img_name
@@ -179,19 +181,21 @@ general_build(){
 
 make_manifest_image() {
     local component=$1
+    local arch=$2
     local img_name=$(get_image_name $component "" "false")
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[$(readlink -f ${BASH_SOURCE}):${LINENO} ${FUNCNAME[0]}] return for DRY_RUN"
         return
     fi
 
-    docker buildx imagetools create -t $img_name \
-        $img_name-amd64 \
-        $img_name-riscv64 \
-        $img_name-arm64
-    docker manifest inspect ${img_name} | grep -wq amd64
-    docker manifest inspect ${img_name} | grep -wq arm64
-    docker manifest inspect ${img_name} | grep -wq riscv64
+    CMD="docker buildx imagetools create -t ${img_name} "
+    for ac in "${ALLARCH[@]}"; do
+        if [[ "${arch}" == "all" || "${arch}" == *"$ac"* ]]; then
+            CMD="${CMD} ${img_name}-${ac}"
+        fi
+    done
+    echo "$CMD"
+    $CMD
 }
 
 ALL_COMPONENTS=$(ls cmd | grep -v '.*cli$' | xargs)
@@ -211,6 +215,15 @@ fi
 cd $SRC_DIR
 mkdir -p $SRC_DIR/_output
 
+show_update_cmd() {
+    local component=$1
+    local spec=$1
+    local name=$1
+    local tag=$TAG
+
+    echo "kubectl patch oc -n onecloud default --type='json' -p='[{op: replace, path: /spec/${spec}/imageName, value: ${name}},{"op": "replace", "path": "/spec/${spec}/repository", "value": "${REGISTRY}"},{"op": "add", "path": "/spec/${spec}/tag", "value": "${tag}"}]'"
+}
+
 for component in $COMPONENTS; do
     if [[ $component == *cli ]]; then
         echo "Please build image for climc"
@@ -218,15 +231,21 @@ for component in $COMPONENTS; do
     fi
     echo "Start to build component: $component"
 
-    case "$ARCH" in
-        all)
-            for arch in "arm64" "amd64" "riscv64"; do
-                general_build $component $arch "true"
-            done
-            make_manifest_image $component
-            ;;
-        *)
+    multiarch=""
+    for ac in "${ALLARCH[@]}"; do
+        if [[ "$ARCH" == "$ac" ]]; then
+            # single arch
             general_build $component $ARCH "false"
-            ;;
-    esac
+        elif [[ "$ARCH" == "all" || "$ARCH" == *"$ac"* ]]; then
+            multiarch="true"
+            general_build $component $ac "true"
+        fi
+    done
+    if [[ "$multiarch" == "true" ]]; then
+        make_manifest_image $component $ARCH
+    fi
+done
+
+for component in $COMPONENTS; do
+    show_update_cmd $component
 done
