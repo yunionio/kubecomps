@@ -160,6 +160,11 @@ func (r *SContainerRegistry) GetConfig() (*api.ContainerRegistryConfig, error) {
 		conf.Type = api.ContainerRegistryType(r.Type)
 		return conf, nil
 	}
+	if r.CredentialId == "" {
+		return &api.ContainerRegistryConfig{
+			Type: api.ContainerRegistryType(r.Type),
+		}, nil
+	}
 	return r.getConfigByCredential()
 }
 
