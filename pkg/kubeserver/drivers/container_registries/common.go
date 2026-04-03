@@ -39,7 +39,11 @@ func (c commonImpl) GetType() api.ContainerRegistryType {
 
 func (c commonImpl) GetDockerRegistryClient(url string, config *api.ContainerRegistryConfig) (client.Client, error) {
 	if config.Common == nil {
-		return nil, errors.Errorf("harbor config is nil")
+		// return nil, errors.Errorf("harbor config is nil")
+		return client.NewClient(url, client.DockerAuthConfig{
+			Username: "",
+			Password: "",
+		})
 	}
 	return client.NewClient(url, client.DockerAuthConfig{
 		Username: config.Common.Username,
