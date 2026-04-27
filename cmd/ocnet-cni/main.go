@@ -14,7 +14,7 @@ func main() {
 	_, filename := filepath.Split(os.Args[0])
 	switch filename {
 	case "ocnet-cni":
-		plugin.Main("unknown version")
+		plugin.Main("v20250609.0")
 	default:
 		log.Fatalf("Unsupported %s", filename)
 	}
