@@ -151,6 +151,19 @@ func (r *SContainerRegistry) CustomizeCreate(ctx context.Context, userCred mccli
 	return nil
 }
 
+func (r *SContainerRegistry) CustomizeDelete(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject, data jsonutils.JSONObject) error {
+	if r.CredentialId != "" {
+		s, err := GetAdminSession()
+		if err != nil {
+			return errors.Wrap(err, "get admin session")
+		}
+		if _, err := identitymodules.Credentials.Delete(s, r.CredentialId, nil); err != nil {
+			return errors.Wrapf(err, "delete credential %s", r.CredentialId)
+		}
+	}
+	return r.SSharableVirtualResourceBase.CustomizeDelete(ctx, userCred, query, data)
+}
+
 func (r *SContainerRegistry) GetConfig() (*api.ContainerRegistryConfig, error) {
 	if r.Config != nil {
 		conf := new(api.ContainerRegistryConfig)
