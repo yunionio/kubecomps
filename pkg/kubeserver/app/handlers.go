@@ -1,7 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	nethttppprof "net/http/pprof"
+	"strings"
 
 	"yunion.io/x/log"
 	"yunion.io/x/onecloud/pkg/appsrv"
@@ -22,6 +26,7 @@ func InitHandlers(app *appsrv.Application) {
 	taskman.AddTaskHandler(apiPrefix, app)
 	usages.AddUsageHandler(apiPrefix, app)
 	app.EnableProfiling()
+	addPProfHandlers(apiPrefix, app)
 
 	for _, man := range []db.IModelManager{
 		taskman.TaskManager,
@@ -117,6 +122,41 @@ func InitHandlers(app *appsrv.Application) {
 	k8s.AddRawResourceDispatcher(apiPrefix, app)
 	k8s.AddMiscDispatcher(apiPrefix, app)
 	addDefaultHandler(apiPrefix, app)
+}
+
+// addPProfHandlers exposes net/http/pprof under <apiPrefix>/debug/pprof/<name>.
+// pprof.Index hard-codes "/debug/pprof/" when extracting the sub-profile name
+// and only dispatches runtime/pprof.Lookup-based profiles (heap, goroutine,
+// allocs, block, mutex, threadcreate). The four special handlers (cmdline,
+// profile, symbol, trace) are exported as separate funcs and must be dispatched
+// explicitly, so we do that here.
+func addPProfHandlers(apiPrefix string, app *appsrv.Application) {
+	stripPrefix := apiPrefix
+	handler := func(_ context.Context, w http.ResponseWriter, r *http.Request) {
+		r2 := r.Clone(r.Context())
+		r2.URL.Path = strings.TrimPrefix(r2.URL.Path, stripPrefix)
+		name := strings.TrimRight(strings.TrimPrefix(r2.URL.Path, "/debug/pprof/"), "/")
+		switch name {
+		case "cmdline":
+			nethttppprof.Cmdline(w, r2)
+		case "profile":
+			nethttppprof.Profile(w, r2)
+		case "symbol":
+			nethttppprof.Symbol(w, r2)
+		case "trace":
+			nethttppprof.Trace(w, r2)
+		default:
+			// keep trailing slash off the path so Index doesn't pass "heap/" to Lookup
+			r2.URL.Path = strings.TrimRight(r2.URL.Path, "/")
+			nethttppprof.Index(w, r2)
+		}
+	}
+	app.AddHandler("GET", fmt.Sprintf("%s/debug/pprof", apiPrefix),
+		appsrv.WhitelistFilter(handler)).SetProcessNoTimeout()
+	app.AddHandler("GET", fmt.Sprintf("%s/debug/pprof/<name>", apiPrefix),
+		appsrv.WhitelistFilter(handler)).SetProcessNoTimeout()
+	app.AddHandler("POST", fmt.Sprintf("%s/debug/pprof/<name>", apiPrefix),
+		appsrv.WhitelistFilter(handler)).SetProcessNoTimeout()
 }
 
 func addDefaultHandler(apiPrefix string, app *appsrv.Application) {
