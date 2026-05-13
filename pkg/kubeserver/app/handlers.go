@@ -152,11 +152,11 @@ func addPProfHandlers(apiPrefix string, app *appsrv.Application) {
 		}
 	}
 	app.AddHandler("GET", fmt.Sprintf("%s/debug/pprof", apiPrefix),
-		appsrv.WhitelistFilter(handler)).SetProcessNoTimeout()
+		handler).SetProcessNoTimeout()
 	app.AddHandler("GET", fmt.Sprintf("%s/debug/pprof/<name>", apiPrefix),
-		appsrv.WhitelistFilter(handler)).SetProcessNoTimeout()
+		handler).SetProcessNoTimeout()
 	app.AddHandler("POST", fmt.Sprintf("%s/debug/pprof/<name>", apiPrefix),
-		appsrv.WhitelistFilter(handler)).SetProcessNoTimeout()
+		handler).SetProcessNoTimeout()
 }
 
 func addDefaultHandler(apiPrefix string, app *appsrv.Application) {
