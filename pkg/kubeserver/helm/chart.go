@@ -213,6 +213,7 @@ func (c ChartClient) LocateChartPath(repoName, chartName, version string, repo *
 	}
 
 	pathOpt := c.NewChartPathOptions(version, false, repo)
+	pathOpt.InsecureSkipTLSverify = true
 
 	chartName = strings.Join([]string{repoName, chartName}, "/")
 
