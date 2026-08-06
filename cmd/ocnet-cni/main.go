@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"yunion.io/x/log"
+	"yunion.io/x/pkg/util/version"
 
 	"yunion.io/x/kubecomps/pkg/cni-plugin/plugin"
 )
@@ -14,7 +15,7 @@ func main() {
 	_, filename := filepath.Split(os.Args[0])
 	switch filename {
 	case "ocnet-cni":
-		plugin.Main("v20250609.0")
+		plugin.Main(version.Get().String())
 	default:
 		log.Fatalf("Unsupported %s", filename)
 	}
