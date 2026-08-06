@@ -174,6 +174,12 @@ func getNetworkConfig(idx int, nic PodNic, defaultGw bool) (*current.Interface, 
 		}
 		routes = append(routes, route)
 
+		// always add 169.254.169.254 for default NIC (align with onecloud AddNicRoutes)
+		_, mdNet, _ := net.ParseCIDR("169.254.169.254/32")
+		routes = append(routes, &types.Route{
+			Dst: *mdNet,
+			GW:  net.ParseIP("0.0.0.0"),
+		})
 	}
 	// process ipv6
 	if nic.Ip6 != "" {
@@ -199,6 +205,13 @@ func getNetworkConfig(idx int, nic PodNic, defaultGw bool) (*current.Interface, 
 				GW:  defaultGateway6,
 			}
 			routes = append(routes, route6)
+
+			// always add fd00:ec2::254 for default NIC (align with onecloud AddNicRoutes)
+			_, mdNet6, _ := net.ParseCIDR("fd00:ec2::254/128")
+			routes = append(routes, &types.Route{
+				Dst: *mdNet6,
+				GW:  net.ParseIP("::"),
+			})
 		}
 	}
 
