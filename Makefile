@@ -120,9 +120,9 @@ test:
 
 .PHONY: fmt fmt-check test
 
-.PHONY: ocnet-cni ocnet-cni-amd64 ocnet-cni-arm64
+.PHONY: ocnet-cni ocnet-cni-amd64 ocnet-cni-arm64 ocnet-cni-riscv64
 
-ocnet-cni: ocnet-cni-amd64 ocnet-cni-arm64
+ocnet-cni: ocnet-cni-amd64 ocnet-cni-arm64 ocnet-cni-riscv64
 
 ocnet-cni-amd64: prepare_dir
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO_BUILD) \
@@ -131,6 +131,11 @@ ocnet-cni-amd64: prepare_dir
 ocnet-cni-arm64: prepare_dir
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO_BUILD) \
 		-o $(BIN_DIR)/ocnet-cni-arm64 $(REPO_PREFIX)/cmd/ocnet-cni
+
+ocnet-cni-riscv64: prepare_dir
+	CGO_ENABLED=0 GOOS=linux GOARCH=riscv64 $(GO_BUILD) \
+		-o $(BIN_DIR)/ocnet-cni-riscv64 $(REPO_PREFIX)/cmd/ocnet-cni
+
 
 %:
 	@:
