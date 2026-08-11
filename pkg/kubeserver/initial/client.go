@@ -23,6 +23,7 @@ func InitClient(cron *cronman.SCronJobManager) {
 	client.InitClustersManager(manager.ClusterManager())
 
 	cron.AddJobEveryFewHour("AutoPurgeSplitable", 4, 30, 0, db.AutoPurgeSplitable, false)
+	cron.AddJobEveryFewDays("AutoCleanK8sHistoryData", 1, 3, 30, 0, models.AutoCleanK8sHistoryData, false)
 
 	cron.AddJobAtIntervalsWithStartRun("StartKubeClusterHealthCheck", 5*time.Minute, models.ClusterManager.ClusterHealthCheckTask, true)
 	cron.AddJobAtIntervalsWithStartRun("StartKubeClusterAutoSyncTask", 30*time.Minute, models.ClusterManager.StartAutoSyncTask, true)

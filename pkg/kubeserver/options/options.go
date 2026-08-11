@@ -43,6 +43,10 @@ type KubeServerOptions struct {
 	OfflineRegistryServiceURL string `help:"offline registry service url"`
 
 	RunningMode string `help:"running mode" choices:"k8s|docker-compose" default:"k8s"`
+
+	// K8sHistoryDataKeepDays is how long soft-deleted in-cluster K8s resources
+	// (pods, deployments, etc.) are retained before hard delete. Default 30 days.
+	K8sHistoryDataKeepDays int `help:"days to keep soft-deleted k8s cluster resources" default:"30"`
 }
 
 const (
