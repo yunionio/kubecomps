@@ -34,6 +34,13 @@ const (
 	KindNameServiceAccount          KindName = "ServiceAccount"
 	KindNameLimitRange              KindName = "LimitRange"
 	KindNameResourceQuota           KindName = "ResourceQuota"
+	KindNamePriorityClass           KindName = "PriorityClass"
+
+	// Volcano CRDs. Internal kinds avoid colliding with batch/v1 Job in the informer cache.
+	KindNameVolcanoJob       KindName = "VolcanoJob"
+	KindNameVolcanoQueue     KindName = "VolcanoQueue"
+	KindNameVolcanoPodGroup  KindName = "VolcanoPodGroup"
+	KindNameVolcanoHyperNode KindName = "VolcanoHyperNode"
 
 	// onecloud service operator native kind
 	KindNameVirtualMachine          KindName = "VirtualMachine"
@@ -69,6 +76,12 @@ const (
 	ResourceNameServiceAccount          string = "serviceaccounts"
 	ResourceNameLimitRange              string = "limitranges"
 	ResourceNameResourceQuota           string = "resourcequotas"
+	ResourceNamePriorityClass           string = "priorityclasses"
+
+	ResourceNameVolcanoJob       string = "vcjobs"
+	ResourceNameVolcanoQueue     string = "vcqueues"
+	ResourceNameVolcanoPodGroup  string = "vcpodgroups"
+	ResourceNameVolcanoHyperNode string = "vchypernodes"
 
 	// onecloud service operator resource
 	ResourceNameVirtualMachine          string = "virtualmachines"

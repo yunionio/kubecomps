@@ -113,7 +113,7 @@ func (d K8sModelDispatcher) Add(handler IK8sModelDispatchHandler) {
 	// update k8s object by raw data
 	app.AddHandler2("PUT",
 		fmt.Sprintf("%s/%s/<resid>/rawdata", clusterPrefix, handler.KeywordPlural()),
-		handler.Filter(d.updateRawData), metadata, "get_raw_data", tags)
+		handler.Filter(d.updateRawData), metadata, "update_raw_data", tags)
 }
 
 func (d K8sModelDispatcher) fetchEnv(

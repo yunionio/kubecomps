@@ -39,6 +39,8 @@ type ResourceHandler interface {
 
 	Dynamic(groupKind schema.GroupKind, versions ...string) (dynamic.NamespaceableResourceInterface, error)
 	DynamicGet(gvr schema.GroupVersionKind, namespace string, name string) (runtime.Object, error)
+	ReplaceUnstructured(resourceName string, obj *unstructured.Unstructured) (*unstructured.Unstructured, error)
+	ReplaceUnstructuredUsing(dc dynamic.Interface, resourceName string, obj *unstructured.Unstructured) (*unstructured.Unstructured, error)
 
 	EnableBidirectionalSync()
 	DisableBidirectionalSync()
@@ -155,6 +157,14 @@ func (h *resourceHandler) Update(kind string, namespace string, name string, obj
 		return nil, errors.Wrap(err, "getResourceByKind")
 	}
 
+	if utils.IsInStringArray(resourceMap.GroupVersionResourceKind.Kind, api.KindHandledByDynamic) {
+		updated, err := h.replaceUnstructured(resourceMap, namespace, name, object.Raw)
+		if err != nil {
+			return nil, err
+		}
+		return unknownFromObject(updated)
+	}
+
 	uObj, ok := object.DeepCopyObject().(*unstructured.Unstructured)
 	if !ok {
 		kubeClient := h.getClientByGroupVersion(resourceMap)
@@ -216,6 +226,16 @@ func (h *resourceHandler) Delete(kind string, namespace string, name string, opt
 	if err != nil {
 		return errors.Wrap(err, "getResourceByKind")
 	}
+	if utils.IsInStringArray(resourceMap.GroupVersionResourceKind.Kind, api.KindHandledByDynamic) {
+		if options == nil {
+			options = &metav1.DeleteOptions{}
+		}
+		gvr := resourceMap.GroupVersionResourceKind.GroupVersionResource
+		if resourceMap.Namespaced {
+			return h.dynamicClient.Resource(gvr).Namespace(namespace).Delete(context.Background(), name, *options)
+		}
+		return h.dynamicClient.Resource(gvr).Delete(context.Background(), name, *options)
+	}
 	kubeClient := h.getClientByGroupVersion(resourceMap)
 	req := kubeClient.Delete().
 		Resource(kind).
@@ -226,6 +246,68 @@ func (h *resourceHandler) Delete(kind string, namespace string, name string, opt
 	}
 
 	return req.Do(context.Background()).Error()
+}
+
+func (h *resourceHandler) ReplaceUnstructured(resourceName string, obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	return h.ReplaceUnstructuredUsing(h.dynamicClient, resourceName, obj)
+}
+
+func (h *resourceHandler) ReplaceUnstructuredUsing(dc dynamic.Interface, resourceName string, obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	resourceMap, err := h.getResourceByKind(resourceName)
+	if err != nil {
+		return nil, errors.Wrap(err, "getResourceByKind")
+	}
+	obj = sanitizeVolcanoReplace(obj)
+	raw, err := obj.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return h.replaceUnstructuredWith(dc, resourceMap, obj.GetNamespace(), obj.GetName(), raw)
+}
+
+// sanitizeVolcanoReplace drops fields the main resource endpoint must not carry.
+// Volcano Job and Queue publish status through a subresource; managedFields are server-owned.
+func sanitizeVolcanoReplace(obj *unstructured.Unstructured) *unstructured.Unstructured {
+	if obj == nil {
+		return obj
+	}
+	out := obj.DeepCopy()
+	unstructured.RemoveNestedField(out.Object, "status")
+	out.SetManagedFields(nil)
+	return out
+}
+
+func (h *resourceHandler) replaceUnstructured(resourceMap api.ResourceMap, namespace, name string, raw []byte) (*unstructured.Unstructured, error) {
+	return h.replaceUnstructuredWith(h.dynamicClient, resourceMap, namespace, name, raw)
+}
+
+func (h *resourceHandler) replaceUnstructuredWith(dc dynamic.Interface, resourceMap api.ResourceMap, namespace, name string, raw []byte) (*unstructured.Unstructured, error) {
+	obj := &unstructured.Unstructured{}
+	if err := obj.UnmarshalJSON(raw); err != nil {
+		return nil, errors.Wrap(err, "unmarshal unstructured")
+	}
+	if obj.GetName() == "" {
+		obj.SetName(name)
+	}
+	if resourceMap.Namespaced && obj.GetNamespace() == "" {
+		obj.SetNamespace(namespace)
+	}
+	if dc == nil {
+		return nil, errors.Error("dynamic client is nil")
+	}
+	gvr := resourceMap.GroupVersionResourceKind.GroupVersionResource
+	if resourceMap.Namespaced {
+		return dc.Resource(gvr).Namespace(obj.GetNamespace()).Update(context.Background(), obj, metav1.UpdateOptions{})
+	}
+	return dc.Resource(gvr).Update(context.Background(), obj, metav1.UpdateOptions{})
+}
+
+func unknownFromObject(obj runtime.Object) (*runtime.Unknown, error) {
+	raw, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	return &runtime.Unknown{Raw: raw}, nil
 }
 
 // Get object from cache
@@ -311,6 +393,9 @@ func (h *resourceHandler) getGenericInformer(kind string) (informers.GenericInfo
 	if !ok {
 		kind := resource.GroupVersionResourceKind.Kind
 		log.Warningf("Not found resource kind %q in genericInformers", kind)
+		if api.IsVolcanoKind(kind) {
+			return nil, resource, fmt.Errorf("volcano resource %s is not available in this cluster", kind)
+		}
 		if utils.IsInStringArray(kind, api.KindHandledByDynamic) {
 			genericInformer = h.cacheFactory.dynamicInformerFactory.ForResource(resource.GroupVersionResourceKind.GroupVersionResource)
 		} else {

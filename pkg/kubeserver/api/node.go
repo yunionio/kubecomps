@@ -113,6 +113,10 @@ type NodeListInput struct {
 	ClusterResourceListInput
 }
 
+type NodeSetLabelsInput struct {
+	Labels map[string]string `json:"labels"`
+}
+
 type NodeDetailV2 struct {
 	ClusterResourceDetail
 	Ready              bool                   `json:"ready"`
@@ -125,6 +129,8 @@ type NodeDetailV2 struct {
 	Taints []v1.Taint `json:"taints,omitempty"`
 	// Unschedulable controls node schedulability of new pods. By default node is schedulable.
 	Unschedulable bool `json:"unschedulable"`
+	// Labels are the node metadata labels.
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// NodeDetail extra fields
 	// NodePhase is the current lifecycle phase of the node.

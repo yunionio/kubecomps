@@ -176,6 +176,7 @@ func (node *SNode) GetDetails(ctx context.Context, cli *client.ClusterManager, b
 		NodeInfo:              rNode.Status.NodeInfo,
 		Taints:                rNode.Spec.Taints,
 		Unschedulable:         rNode.Spec.Unschedulable,
+		Labels:                rNode.Labels,
 	}
 	pods, err := node.GetRawPods(cli, rNode)
 	if err != nil {
@@ -350,6 +351,21 @@ func (node *SNode) PerformUncordon(ctx context.Context, userCred mcclient.TokenC
 	return nil, node.SetNodeScheduleToggle(false)
 }
 
+func (node *SNode) AllowPerformSetLabels(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) bool {
+	return db.IsDomainAllowPerform(ctx, userCred, node, "set-labels")
+}
+
+func (node *SNode) PerformSetLabels(ctx context.Context, userCred mcclient.TokenCredential, query, data jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	input := api.NodeSetLabelsInput{}
+	if err := data.Unmarshal(&input); err != nil {
+		return nil, err
+	}
+	if input.Labels == nil {
+		input.Labels = map[string]string{}
+	}
+	return nil, node.SetNodeLabels(input.Labels)
+}
+
 func (node *SNode) GetRawNode() (*v1.Node, error) {
 	obj, err := GetK8sObject(node)
 	if err != nil {
@@ -380,6 +396,27 @@ func (obj *SNode) SetNodeScheduleToggle(unschedule bool) error {
 			nodeObj.Spec.Taints[i] = taint
 		}
 	}
+	if _, err := cli.UpdateV2(api.ResourceNameNode, nodeObj); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (obj *SNode) SetNodeLabels(labels map[string]string) error {
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	ccli, err := obj.GetClusterClient()
+	if err != nil {
+		return errors.Wrap(err, "get cluster client")
+	}
+	cli := ccli.GetHandler()
+	node, err := obj.GetRawNode()
+	if err != nil {
+		return errors.Wrap(err, "get remote k8s node")
+	}
+	nodeObj := node.DeepCopy()
+	nodeObj.Labels = labels
 	if _, err := cli.UpdateV2(api.ResourceNameNode, nodeObj); err != nil {
 		return err
 	}

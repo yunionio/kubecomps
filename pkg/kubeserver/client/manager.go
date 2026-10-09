@@ -182,7 +182,7 @@ func (m *ClustersManager) parseAPIResources(clusterName string, dc discovery.Dis
 						Version:  gv.Version,
 						Resource: resource.Name,
 					},
-					Kind: resource.Kind,
+					Kind: capi.NormalizeDiscoveredKind(gv.Group, gv.Version, resource.Name, resource.Kind),
 				},
 			}
 			resources = append(resources, res)
