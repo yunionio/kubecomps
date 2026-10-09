@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	// extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -238,6 +239,17 @@ var KindToResourceMap = map[string]ResourceMap{
 		},
 		Namespaced: false,
 	},
+	api.ResourceNamePriorityClass: {
+		GroupVersionResourceKind: GroupVersionResourceKind{
+			GroupVersionResource: schema.GroupVersionResource{
+				Group:    schedulingv1.GroupName,
+				Version:  schedulingv1.SchemeGroupVersion.Version,
+				Resource: api.ResourceNamePriorityClass,
+			},
+			Kind: api.KindNamePriorityClass,
+		},
+		Namespaced: false,
+	},
 
 	api.ResourceNameRole: {
 		GroupVersionResourceKind: GroupVersionResourceKind{
@@ -316,10 +328,81 @@ var KindToResourceMap = map[string]ResourceMap{
 		},
 		Namespaced: true,
 	},
+	api.ResourceNameVolcanoJob: {
+		GroupVersionResourceKind: GroupVersionResourceKind{
+			GroupVersionResource: schema.GroupVersionResource{
+				Group:    "batch.volcano.sh",
+				Version:  "v1alpha1",
+				Resource: "jobs",
+			},
+			Kind: api.KindNameVolcanoJob,
+		},
+		Namespaced: true,
+	},
+	api.ResourceNameVolcanoQueue: {
+		GroupVersionResourceKind: GroupVersionResourceKind{
+			GroupVersionResource: schema.GroupVersionResource{
+				Group:    "scheduling.volcano.sh",
+				Version:  "v1beta1",
+				Resource: "queues",
+			},
+			Kind: api.KindNameVolcanoQueue,
+		},
+		Namespaced: false,
+	},
+	api.ResourceNameVolcanoPodGroup: {
+		GroupVersionResourceKind: GroupVersionResourceKind{
+			GroupVersionResource: schema.GroupVersionResource{
+				Group:    "scheduling.volcano.sh",
+				Version:  "v1beta1",
+				Resource: "podgroups",
+			},
+			Kind: api.KindNameVolcanoPodGroup,
+		},
+		Namespaced: true,
+	},
+	api.ResourceNameVolcanoHyperNode: {
+		GroupVersionResourceKind: GroupVersionResourceKind{
+			GroupVersionResource: schema.GroupVersionResource{
+				Group:    "topology.volcano.sh",
+				Version:  "v1alpha1",
+				Resource: "hypernodes",
+			},
+			Kind: api.KindNameVolcanoHyperNode,
+		},
+		Namespaced: false,
+	},
 }
 
 var KindHandledByDynamic = []string{
 	api.KindNameIngress, api.KindNameCronJob, // api.KindNameHorizontalPodAutoscaler,
+	api.KindNameVolcanoJob, api.KindNameVolcanoQueue, api.KindNameVolcanoPodGroup, api.KindNameVolcanoHyperNode,
+}
+
+// NormalizeDiscoveredKind rewrites Volcano CRD kinds so they do not share the
+// informer cache key with batch/v1 Job. Other resources keep the discovered kind.
+func NormalizeDiscoveredKind(group, version, resource, kind string) string {
+	switch {
+	case group == "batch.volcano.sh" && version == "v1alpha1" && resource == "jobs":
+		return api.KindNameVolcanoJob
+	case group == "scheduling.volcano.sh" && version == "v1beta1" && resource == "queues":
+		return api.KindNameVolcanoQueue
+	case group == "scheduling.volcano.sh" && version == "v1beta1" && resource == "podgroups":
+		return api.KindNameVolcanoPodGroup
+	case group == "topology.volcano.sh" && version == "v1alpha1" && resource == "hypernodes":
+		return api.KindNameVolcanoHyperNode
+	default:
+		return kind
+	}
+}
+
+func IsVolcanoKind(kind string) bool {
+	switch kind {
+	case api.KindNameVolcanoJob, api.KindNameVolcanoQueue, api.KindNameVolcanoPodGroup, api.KindNameVolcanoHyperNode:
+		return true
+	default:
+		return false
+	}
 }
 
 func GetResourceKinds() sets.String {

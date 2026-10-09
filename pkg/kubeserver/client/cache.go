@@ -118,12 +118,21 @@ func buildCacheController(
 			continue
 		}
 		resMan := cluster.GetK8sResourceManager(kind)
-		dynamicInformer := dynamicInformerFactory.ForResource(res)
-		if resMan != nil {
-			// test watch permissions
+		if api.IsVolcanoKind(kind) {
 			allowed, err := accessCheck(client, "", "watch", res.Group, res.Resource)
 			if !allowed {
-				return nil, errors.Wrap(err, "watch accessCheck")
+				log.Warningf("skip volcano informer %s/%s in cluster %s: %v", res.Group, res.Resource, cluster.GetName(), err)
+				continue
+			}
+		}
+		dynamicInformer := dynamicInformerFactory.ForResource(res)
+		if resMan != nil {
+			if !api.IsVolcanoKind(kind) {
+				// test watch permissions
+				allowed, err := accessCheck(client, "", "watch", res.Group, res.Resource)
+				if !allowed {
+					return nil, errors.Wrap(err, "watch accessCheck")
+				}
 			}
 			// register informer event handler
 			dynamicInformer.Informer().AddEventHandler(newEventHandler(cacheF, cluster, resMan))
@@ -187,6 +196,14 @@ func (c *CacheFactory) EndpointLister() v1.EndpointsLister {
 
 func (c *CacheFactory) HPALister() autoscalingv1.HorizontalPodAutoscalerLister {
 	return c.sharedInformerFactory.Autoscaling().V2beta2().HorizontalPodAutoscalers().Lister()
+}
+
+func (c *CacheFactory) HasGenericInformer(kind string) bool {
+	if c == nil || c.genericInformers == nil {
+		return false
+	}
+	_, ok := c.genericInformers[kind]
+	return ok
 }
 
 func (c *CacheFactory) GetGVKR(kindName string) *api.ResourceMap {
