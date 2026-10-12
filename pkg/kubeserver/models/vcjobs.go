@@ -184,7 +184,7 @@ func validateVCJobCreate(input *api.VCJobCreateInput) error {
 	default:
 		return httperrors.NewInputParameterError("networkTopologyMode must be empty, hard or soft")
 	}
-	if input.NetworkTopologyMode != "" && input.HighestTierAllowed < 1 {
+	if (input.NetworkTopologyMode == "hard" || input.NetworkTopologyMode == "soft") && input.HighestTierAllowed < 1 {
 		return httperrors.NewInputParameterError("highestTierAllowed must be >= 1")
 	}
 	if len(input.Tasks) == 0 {
@@ -278,13 +278,11 @@ func newJobObject(input *api.VCJobCreateInput, namespace string) (*unstructured.
 		}
 	}
 	if mode := strings.TrimSpace(input.NetworkTopologyMode); mode != "" {
-		tier := input.HighestTierAllowed
-		if tier < 1 {
-			tier = 1
-		}
 		topology := map[string]interface{}{
-			"mode":               mode,
-			"highestTierAllowed": int64(tier),
+			"mode": mode,
+		}
+		if input.HighestTierAllowed >= 1 {
+			topology["highestTierAllowed"] = int64(input.HighestTierAllowed)
 		}
 		if err := unstructured.SetNestedMap(u.Object, topology, "spec", "networkTopology"); err != nil {
 			return nil, err
