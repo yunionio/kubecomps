@@ -77,6 +77,12 @@ func Run(ctx context.Context) error {
 
 	httpsAddr := net.JoinHostPort(opt.Address, strconv.Itoa(opt.HttpsPort))
 
+	if opt.RunningMode == options.RUNNING_MODE_K8S {
+		if err := models.GetClusterManager().RefreshSystemClusterKubeconfig(); err != nil {
+			log.Fatalf("Refresh system cluster kubeconfig %v", err)
+		}
+	}
+
 	cron := cronman.InitCronJobManager(true, options.Options.CronJobWorkerCount, options.Options.TimeZone)
 	initial.InitClient(cron)
 	cron.Start()
