@@ -2,6 +2,7 @@ package client
 
 import (
 	"sync"
+	"time"
 
 	// "k8s.io/apimachinery/pkg/api/meta"
 	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +47,10 @@ func GetClustersManager() IClustersManager {
 	return clustersManager
 }
 
+func ManagerInitialized() bool {
+	return clustersManager != nil
+}
+
 func InitClustersManager(dbManager manager.IClusterManager) error {
 	runningClusters, err := dbManager.GetRunningClusters()
 	if err != nil {
@@ -63,17 +68,45 @@ func InitClustersManager(dbManager manager.IClusterManager) error {
 
 func (m *ClustersManager) initRunningClustersOnce(runningClusters []manager.ICluster) {
 	succCnt := 0
-	failedCnt := 0
+	failed := make([]manager.ICluster, 0)
 	for i := 0; i < len(runningClusters); i++ {
 		cluster := runningClusters[i]
 		if err := m.AddClient(cluster); err != nil {
 			log.Warningf("Add cluster %s client error: %v", cluster.GetName(), err)
-			failedCnt++
+			if errors.Cause(err) != ErrClusterNotRunning {
+				failed = append(failed, cluster)
+			}
 			continue
 		}
 		succCnt++
 	}
-	log.Infof("init running clusters finished, success count %d, failed count %d", succCnt, failedCnt)
+	log.Infof("init running clusters finished, success count %d, failed count %d", succCnt, len(failed))
+	if len(failed) > 0 {
+		go m.retryAddClients(failed)
+	}
+}
+
+func (m *ClustersManager) retryAddClients(clusters []manager.ICluster) {
+	pending := clusters
+	for attempt := 1; attempt <= 20 && len(pending) > 0; attempt++ {
+		time.Sleep(3 * time.Second)
+		next := make([]manager.ICluster, 0, len(pending))
+		for _, cluster := range pending {
+			if m.getManager(cluster.GetId()) != nil {
+				continue
+			}
+			if err := m.AddClient(cluster); err != nil {
+				if errors.Cause(err) == ErrClusterAlreadyAdded {
+					continue
+				}
+				log.Warningf("retry add cluster %s client (%d/20): %v", cluster.GetName(), attempt, err)
+				next = append(next, cluster)
+				continue
+			}
+			log.Infof("cluster %s client ready", cluster.GetName())
+		}
+		pending = next
+	}
 }
 
 func (m *ClustersManager) getManager(clusterId string) *ClusterManager {

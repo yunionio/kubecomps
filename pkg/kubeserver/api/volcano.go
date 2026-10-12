@@ -65,9 +65,11 @@ type VCJobDetail struct {
 
 type VCHyperNodeMemberInput struct {
 	Type       string `json:"type"`
+	Selector   string `json:"selector"`
 	LabelKey   string `json:"labelKey"`
 	LabelValue string `json:"labelValue"`
 	ExactMatch string `json:"exactMatch"`
+	Pattern    string `json:"pattern"`
 }
 
 type VCHyperNodeCreateInput struct {
