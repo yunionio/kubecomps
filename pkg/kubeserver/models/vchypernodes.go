@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"regexp"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -115,6 +117,91 @@ func (obj *SVCHyperNode) UpdateRawdata(ctx context.Context, userCred mcclient.To
 	return volcanoRawdata(K8SObjectToJSONObject(updated), api.VolcanoHyperNodeKind), nil
 }
 
+func memberSelectorKind(member api.VCHyperNodeMemberInput) string {
+	kind := strings.TrimSpace(member.Selector)
+	if kind != "" {
+		return kind
+	}
+	switch {
+	case strings.TrimSpace(member.Pattern) != "":
+		return "regex"
+	case strings.TrimSpace(member.ExactMatch) != "" && strings.TrimSpace(member.LabelKey) == "" && strings.TrimSpace(member.LabelValue) == "":
+		return "exact"
+	case member.Type == "HyperNode":
+		return "exact"
+	default:
+		return "label"
+	}
+}
+
+func validateHyperNodeMember(member api.VCHyperNodeMemberInput) error {
+	kind := memberSelectorKind(member)
+	exact := strings.TrimSpace(member.ExactMatch)
+	pattern := strings.TrimSpace(member.Pattern)
+	labelKey := strings.TrimSpace(member.LabelKey)
+	labelValue := strings.TrimSpace(member.LabelValue)
+	switch kind {
+	case "exact":
+		if exact == "" {
+			return httperrors.NewInputParameterError("exact match requires exactMatch")
+		}
+		if pattern != "" || labelKey != "" || labelValue != "" {
+			return httperrors.NewInputParameterError("only one of exactMatch, pattern, labelKey can be set")
+		}
+	case "regex":
+		if member.Type != "Node" {
+			return httperrors.NewInputParameterError("regex match is only allowed for node members")
+		}
+		if pattern == "" {
+			return httperrors.NewInputParameterError("regex match requires pattern")
+		}
+		if _, err := regexp.Compile(pattern); err != nil {
+			return httperrors.NewInputParameterError("pattern is not a valid regular expression")
+		}
+		if exact != "" || labelKey != "" || labelValue != "" {
+			return httperrors.NewInputParameterError("only one of exactMatch, pattern, labelKey can be set")
+		}
+	case "label":
+		if member.Type != "Node" {
+			return httperrors.NewInputParameterError("label match is only allowed for node members")
+		}
+		if labelKey == "" || labelValue == "" {
+			return httperrors.NewInputParameterError("node member requires labelKey and labelValue")
+		}
+		if exact != "" || pattern != "" {
+			return httperrors.NewInputParameterError("only one of exactMatch, pattern, labelKey can be set")
+		}
+	default:
+		return httperrors.NewInputParameterError("selector must be exact, regex or label")
+	}
+	return nil
+}
+
+func memberSelectorObject(member api.VCHyperNodeMemberInput) map[string]interface{} {
+	switch memberSelectorKind(member) {
+	case "exact":
+		return map[string]interface{}{
+			"exactMatch": map[string]interface{}{
+				"name": strings.TrimSpace(member.ExactMatch),
+			},
+		}
+	case "regex":
+		return map[string]interface{}{
+			"regexMatch": map[string]interface{}{
+				"pattern": strings.TrimSpace(member.Pattern),
+			},
+		}
+	default:
+		return map[string]interface{}{
+			"labelMatch": map[string]interface{}{
+				"matchLabels": map[string]interface{}{
+					strings.TrimSpace(member.LabelKey): strings.TrimSpace(member.LabelValue),
+				},
+			},
+		}
+	}
+}
+
 func validateHyperNodeSpec(input *api.VCHyperNodeCreateInput) error {
 	if input.Tier < 1 {
 		return httperrors.NewInputParameterError("tier must be >= 1")
@@ -125,19 +212,21 @@ func validateHyperNodeSpec(input *api.VCHyperNodeCreateInput) error {
 	if len(input.Members) == 0 {
 		return httperrors.NewInputParameterError("members is empty")
 	}
+	memberType := ""
 	for i := range input.Members {
 		member := input.Members[i]
 		switch member.Type {
-		case "Node":
-			if member.LabelKey == "" || member.LabelValue == "" {
-				return httperrors.NewInputParameterError("node member requires labelKey and labelValue")
-			}
-		case "HyperNode":
-			if member.ExactMatch == "" {
-				return httperrors.NewInputParameterError("hypernode member requires exactMatch")
-			}
+		case "Node", "HyperNode":
 		default:
 			return httperrors.NewInputParameterError("member type must be Node or HyperNode")
+		}
+		if memberType == "" {
+			memberType = member.Type
+		} else if member.Type != memberType {
+			return httperrors.NewInputParameterError("members must be all nodes or all hypernodes")
+		}
+		if err := validateHyperNodeMember(member); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -147,21 +236,9 @@ func newHyperNodeObject(input *api.VCHyperNodeCreateInput) (*unstructured.Unstru
 	members := make([]interface{}, 0, len(input.Members))
 	for i := range input.Members {
 		member := input.Members[i]
-		selector := map[string]interface{}{}
-		if member.Type == "Node" {
-			selector["labelMatch"] = map[string]interface{}{
-				"matchLabels": map[string]interface{}{
-					member.LabelKey: member.LabelValue,
-				},
-			}
-		} else {
-			selector["exactMatch"] = map[string]interface{}{
-				"name": member.ExactMatch,
-			}
-		}
 		members = append(members, map[string]interface{}{
 			"type":     member.Type,
-			"selector": selector,
+			"selector": memberSelectorObject(member),
 		})
 	}
 	u := &unstructured.Unstructured{}
@@ -199,15 +276,21 @@ func hyperNodeDetailFromUnstructured(base api.ClusterResourceDetail, u *unstruct
 	if isList || u == nil {
 		return detail
 	}
-	selectors, hyperNodes := hyperNodeMemberRefs(u)
+	queries, hyperNodes := hyperNodeMemberRefs(u)
 	detail.HyperNodes = hyperNodes
-	detail.Nodes = matchNodesByLabelSelectors(cli, selectors)
+	detail.Nodes = matchNodesByMemberQueries(cli, queries)
 	return detail
 }
 
-func hyperNodeMemberRefs(u *unstructured.Unstructured) ([]map[string]string, []string) {
+type nodeMemberQuery struct {
+	labels  map[string]string
+	exact   string
+	pattern string
+}
+
+func hyperNodeMemberRefs(u *unstructured.Unstructured) ([]nodeMemberQuery, []string) {
 	raw, _, _ := unstructured.NestedSlice(u.Object, "spec", "members")
-	var selectors []map[string]string
+	var queries []nodeMemberQuery
 	var hyperNodes []string
 	seenHyperNode := map[string]struct{}{}
 	for _, item := range raw {
@@ -218,9 +301,17 @@ func hyperNodeMemberRefs(u *unstructured.Unstructured) ([]map[string]string, []s
 		memberType, _, _ := unstructured.NestedString(member, "type")
 		switch memberType {
 		case "Node":
+			if name, found, _ := unstructured.NestedString(member, "selector", "exactMatch", "name"); found && name != "" {
+				queries = append(queries, nodeMemberQuery{exact: name})
+				continue
+			}
+			if pattern, found, _ := unstructured.NestedString(member, "selector", "regexMatch", "pattern"); found && pattern != "" {
+				queries = append(queries, nodeMemberQuery{pattern: pattern})
+				continue
+			}
 			matchLabels, found, _ := unstructured.NestedStringMap(member, "selector", "labelMatch", "matchLabels")
 			if found && len(matchLabels) > 0 {
-				selectors = append(selectors, matchLabels)
+				queries = append(queries, nodeMemberQuery{labels: matchLabels})
 			}
 		case "HyperNode":
 			name, found, _ := unstructured.NestedString(member, "selector", "exactMatch", "name")
@@ -234,39 +325,82 @@ func hyperNodeMemberRefs(u *unstructured.Unstructured) ([]map[string]string, []s
 			hyperNodes = append(hyperNodes, name)
 		}
 	}
-	return selectors, hyperNodes
+	return queries, hyperNodes
 }
 
-func matchNodesByLabelSelectors(cli *client.ClusterManager, selectors []map[string]string) []string {
-	if cli == nil || len(selectors) == 0 {
-		return nil
-	}
-	indexer := cli.GetIndexer()
-	if indexer == nil {
-		return nil
-	}
-	nodes, err := indexer.NodeLister().List(labels.Everything())
-	if err != nil {
-		log.Errorf("list nodes for hypernode members: %v", err)
+func matchNodesByMemberQueries(cli *client.ClusterManager, queries []nodeMemberQuery) []string {
+	if len(queries) == 0 {
 		return nil
 	}
 	var names []string
 	seen := map[string]struct{}{}
+	add := func(name string) {
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+	var patterns []*regexp.Regexp
+	var selectors []labels.Selector
+	for _, query := range queries {
+		if query.exact != "" {
+			add(query.exact)
+			continue
+		}
+		if query.pattern != "" {
+			re, err := regexp.Compile(query.pattern)
+			if err != nil {
+				log.Errorf("compile hypernode member pattern %q: %v", query.pattern, err)
+				continue
+			}
+			patterns = append(patterns, re)
+			continue
+		}
+		if len(query.labels) > 0 {
+			selectors = append(selectors, labels.SelectorFromSet(query.labels))
+		}
+	}
+	if len(patterns) == 0 && len(selectors) == 0 {
+		return names
+	}
+	if cli == nil {
+		return names
+	}
+	indexer := cli.GetIndexer()
+	if indexer == nil {
+		return names
+	}
+	nodes, err := indexer.NodeLister().List(labels.Everything())
+	if err != nil {
+		log.Errorf("list nodes for hypernode members: %v", err)
+		return names
+	}
 	for _, node := range nodes {
 		if node == nil {
 			continue
 		}
-		nodeLabels := labels.Set(node.Labels)
-		for _, selector := range selectors {
-			if !labels.SelectorFromSet(selector).Matches(nodeLabels) {
-				continue
-			}
-			if _, ok := seen[node.Name]; ok {
+		matched := false
+		for _, pattern := range patterns {
+			if pattern.MatchString(node.Name) {
+				matched = true
 				break
 			}
-			seen[node.Name] = struct{}{}
-			names = append(names, node.Name)
-			break
+		}
+		if !matched {
+			nodeLabels := labels.Set(node.Labels)
+			for _, selector := range selectors {
+				if selector.Matches(nodeLabels) {
+					matched = true
+					break
+				}
+			}
+		}
+		if matched {
+			add(node.Name)
 		}
 	}
 	return names
