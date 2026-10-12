@@ -96,6 +96,7 @@ func (m *SClusterManager) GetSystemClusterKubeconfig(apiServer string, cfg *rest
 		"Cert":        base64.StdEncoding.EncodeToString(caData),
 		"User":        svcAccount,
 		"Token":       token,
+		"TokenFile":   cfg.BearerTokenFile,
 	}
 
 	tmpl := `apiVersion: v1
@@ -109,6 +110,9 @@ users:
 - name: "{{.User}}"
   user:
     token: "{{.Token}}"
+    {{- if .TokenFile}}
+    tokenFile: "{{.TokenFile}}"
+    {{- end}}
 contexts:
 - name: "{{.ClusterName}}"
   context:
