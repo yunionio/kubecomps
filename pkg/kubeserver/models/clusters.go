@@ -329,23 +329,31 @@ func (m *SClusterManager) GetSystemClusterCreateData() (*api.ClusterCreateInput,
 	return createData, nil
 }
 
-func (m *SClusterManager) RegisterSystemCluster() error {
+func (m *SClusterManager) RefreshSystemClusterKubeconfig() error {
+	sysCluster, err := m.GetSystemCluster()
+	if err != nil || sysCluster == nil {
+		return err
+	}
+	_, _, err = m.SyncSystemClusterKubeconfig()
+	return err
+}
+
+func (m *SClusterManager) SyncSystemClusterKubeconfig() (*SCluster, bool, error) {
 	sysCluster, err := m.GetSystemCluster()
 	if err != nil {
-		return errors.Wrap(err, "get system cluster")
+		return nil, false, errors.Wrap(err, "get system cluster")
 	}
 	userCred := GetAdminCred()
 	newCreated := false
 	ctx := context.TODO()
 	if sysCluster == nil {
-		// create system cluster
 		createData, err := m.GetSystemClusterCreateData()
 		if err != nil {
-			return errors.Wrap(err, "get cluster create data")
+			return nil, false, errors.Wrap(err, "get cluster create data")
 		}
 		obj, err := db.DoCreate(m, context.TODO(), userCred, nil, createData.JSON(createData), userCred)
 		if err != nil {
-			return errors.Wrap(err, "create cluster")
+			return nil, false, errors.Wrap(err, "create cluster")
 		}
 		func() {
 			lockman.LockObject(ctx, obj)
@@ -356,10 +364,9 @@ func (m *SClusterManager) RegisterSystemCluster() error {
 		sysCluster = obj.(*SCluster)
 		newCreated = true
 	}
-	// update system cluster
 	k8sInfo, err := m.GetSystemClusterK8SInfo()
 	if err != nil {
-		return errors.Wrap(err, "get k8s info")
+		return nil, false, errors.Wrap(err, "get k8s info")
 	}
 	if _, err := db.Update(sysCluster, func() error {
 		if sysCluster.ApiServer != k8sInfo.ApiServer {
@@ -373,8 +380,23 @@ func (m *SClusterManager) RegisterSystemCluster() error {
 		}
 		return nil
 	}); err != nil {
-		return errors.Wrap(err, "update system cluster")
+		return nil, false, errors.Wrap(err, "update system cluster")
 	}
+	if client.ManagerInitialized() && sysCluster.GetStatus() == api.ClusterStatusRunning && !client.GetClustersManager().IsClusterClientHealthy(sysCluster) {
+		if err := client.GetClustersManager().UpdateClient(sysCluster, true); err != nil {
+			log.Warningf("refresh system cluster client: %v", err)
+		}
+	}
+	return sysCluster, newCreated, nil
+}
+
+func (m *SClusterManager) RegisterSystemCluster() error {
+	sysCluster, newCreated, err := m.SyncSystemClusterKubeconfig()
+	if err != nil {
+		return err
+	}
+	userCred := GetAdminCred()
+	ctx := context.TODO()
 	if !newCreated {
 		if err := sysCluster.StartSyncStatus(ctx, userCred, ""); err != nil {
 			return errors.Wrap(err, "start sysCluster sync status task")
@@ -392,6 +414,11 @@ func (m *SClusterManager) RegisterSystemCluster() error {
 		}
 		if err := sysCluster.ReRunDeployingComponents(); err != nil {
 			return errors.Wrap(err, "ReRunDeployingComponents")
+		}
+		if client.ManagerInitialized() && !client.GetClustersManager().IsClusterClientHealthy(sysCluster) {
+			if err := client.GetClustersManager().UpdateClient(sysCluster, true); err != nil {
+				log.Warningf("refresh system cluster client: %v", err)
+			}
 		}
 		return nil
 	}

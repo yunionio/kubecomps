@@ -32,19 +32,18 @@ func (t *ClusterSyncTask) OnInit(ctx context.Context, obj db.IStandaloneModel, d
 		if err := params.Unmarshal(input); err != nil {
 			return nil, errors.Wrap(err, "unmarshal sync input")
 		}
-		if input.Force {
-			if err := client.GetClustersManager().UpdateClient(cluster, true); err != nil {
+		mgr := client.GetClustersManager()
+		if input.Force || !mgr.IsClusterClientHealthy(cluster) {
+			if err := mgr.UpdateClient(cluster, true); err != nil {
 				return nil, errors.Wrap(err, "update cluster to client manager")
 			}
-			if err := cluster.SetStatus(ctx, t.GetUserCred(), api.ClusterStatusRunning, "by syncing"); err != nil {
-				return nil, errors.Wrap(err, "change cluster status to running")
-			}
-		} else {
-			if err := client.GetClustersManager().AddClient(cluster); err != nil {
-				if errors.Cause(err) != client.ErrClusterAlreadyAdded {
-					return nil, errors.Wrap(err, "add cluster to client manager")
+			if input.Force {
+				if err := cluster.SetStatus(ctx, t.GetUserCred(), api.ClusterStatusRunning, "by syncing"); err != nil {
+					return nil, errors.Wrap(err, "change cluster status to running")
 				}
 			}
+		} else if err := mgr.AddClient(cluster); err != nil && errors.Cause(err) != client.ErrClusterAlreadyAdded {
+			return nil, errors.Wrap(err, "add cluster to client manager")
 		}
 		// do sync
 		if err := cluster.SyncK8sMachinesConfig(ctx, t.UserCred); err != nil {
