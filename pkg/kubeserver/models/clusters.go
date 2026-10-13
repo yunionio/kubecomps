@@ -2406,19 +2406,28 @@ func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCr
 		return
 	}
 	RunSyncClusterTask(newFuncTaskWrapper("Sync cluster task", func() {
+		var syncErr error
+		defer func() {
+			if err := c.EnableBidirectionalSync(); err != nil {
+				log.Errorf("EnableBidirectionalSync cluster %s error: %v", c.GetId(), err)
+				if syncErr == nil {
+					syncErr = err
+				}
+			}
+			if waitChan != nil {
+				waitChan <- syncErr
+			}
+		}()
+
 		log.Infof("start sync cluster %s", c.GetName())
 		if err := c.prepareStartSync(); err != nil {
 			log.Errorf("sync cluster task error: %v", err)
-			if waitChan != nil {
-				waitChan <- err
-			}
+			syncErr = err
 			return
 		}
 		if err := c.MarkSyncing(c, userCred); err != nil {
 			log.Errorf("Mark cluster %s syncing error: %v", c.GetId(), err)
-			if waitChan != nil {
-				waitChan <- err
-			}
+			syncErr = err
 			return
 		}
 
@@ -2427,28 +2436,13 @@ func (c *SCluster) SubmitSyncTask(ctx context.Context, userCred mcclient.TokenCr
 			if err != nil {
 				log.Errorf("Sync %s error: %v", man.KeywordPlural(), err)
 				c.MarkErrorSync(ctx, c, err)
-				if waitChan != nil {
-					waitChan <- err
-				}
+				syncErr = err
 				return
 			}
 		}
 		if err := c.MarkEndSync(ctx, userCred, c); err != nil {
 			log.Errorf("mark cluster %s sync end error: %v", c.GetId(), err)
-			if waitChan != nil {
-				waitChan <- err
-			}
-			return
-		}
-		if err := c.EnableBidirectionalSync(); err != nil {
-			log.Errorf("EnableBidirectionalSync cluster %s sync end error: %v", c.GetId(), err)
-			if waitChan != nil {
-				waitChan <- err
-			}
-			return
-		}
-		if waitChan != nil {
-			waitChan <- nil
+			syncErr = err
 			return
 		}
 	}))
