@@ -559,6 +559,21 @@ func syncClusterResources(
 	}
 
 	for i := 0; i < len(added); i += 1 {
+		// A local row can miss the remote UID (for example a create_fail record).
+		// Adopt it instead of failing the whole cluster sync.
+		if localObj, exist, err := man.IsRemoteObjectLocalExist(userCred, cluster, added[i]); err != nil {
+			syncResult.AddError(errors.Wrapf(err, "check existing object"))
+			continue
+		} else if exist {
+			if err := SyncUpdatedClusterResource(ctx, userCred, man, localObj, added[i]); err != nil {
+				syncResult.UpdateError(err)
+			} else {
+				localObjs = append(localObjs, localObj)
+				remoteObjs = append(remoteObjs, added[i])
+				syncResult.Update()
+			}
+			continue
+		}
 		newObj, err := NewFromRemoteObject(ctx, userCred, man, cluster, added[i])
 		if err != nil {
 			if man.IsNamespaceScope() {
