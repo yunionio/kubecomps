@@ -96,6 +96,14 @@ func (obj *SPriorityClass) ValidateDeleteCondition(ctx context.Context, info jso
 	return obj.SClusterResourceBase.ValidateDeleteCondition(ctx, info)
 }
 
+func (obj *SPriorityClass) GetDetailsRawdata(ctx context.Context, userCred mcclient.TokenCredential, query jsonutils.JSONObject) (jsonutils.JSONObject, error) {
+	raw, err := obj.SClusterResourceBase.GetDetailsRawdata(ctx, userCred, query)
+	if err != nil {
+		return nil, err
+	}
+	return volcanoRawdata(raw, string(api.KindNamePriorityClass)), nil
+}
+
 func (obj *SPriorityClass) GetDetails(ctx context.Context, cli *client.ClusterManager, base interface{}, k8sObj runtime.Object, isList bool) interface{} {
 	detail := obj.SClusterResourceBase.GetDetails(ctx, cli, base, k8sObj, isList).(api.ClusterResourceDetail)
 	pc, ok := k8sObj.(*schedulingv1.PriorityClass)
