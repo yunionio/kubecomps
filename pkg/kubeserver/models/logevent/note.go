@@ -91,9 +91,13 @@ type PVCNote struct {
 
 func NewPVCNote(domainId string, input api.PersistentVolumeClaimDetail, nsLabels map[string]string) *PVCNote {
 	quantity := input.Capacity[v1.ResourceStorage]
+	storageClass := ""
+	if input.StorageClass != nil {
+		storageClass = *input.StorageClass
+	}
 	return &PVCNote{
 		NamespaceResourceNote: NewNamespaceResourceNote(domainId, input.NamespaceResourceDetail, nsLabels),
 		CapacityMB:            int(quantity.ScaledValue(resource.Mega)),
-		StorageClass:          *input.StorageClass,
+		StorageClass:          storageClass,
 	}
 }
