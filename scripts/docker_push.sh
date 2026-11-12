@@ -179,6 +179,18 @@ general_build(){
     build_process_with_buildx $component $arch $is_all_arch
 }
 
+# buildx imagetools always speaks HTTPS. HTTP registries listed in
+# daemon.json "insecure-registries" must use docker manifest --insecure.
+registry_is_insecure() {
+    local hostport="${1%%/*}"
+    docker info 2>/dev/null | awk -v host="$hostport" '
+        /Insecure Registries:/ {flag=1; next}
+        /Registry Mirrors:/ {flag=0}
+        flag && index($0, host) {found=1}
+        END {exit found ? 0 : 1}
+    '
+}
+
 make_manifest_image() {
     local component=$1
     local arch=$2
@@ -187,15 +199,25 @@ make_manifest_image() {
         echo "[$(readlink -f ${BASH_SOURCE}):${LINENO} ${FUNCNAME[0]}] return for DRY_RUN"
         return
     fi
-
-    CMD="docker buildx imagetools create -t ${img_name} "
+    local sources=()
+    local ac
     for ac in "${ALLARCH[@]}"; do
         if [[ "${arch}" == "all" || "${arch}" == *"$ac"* ]]; then
-            CMD="${CMD} ${img_name}-${ac}"
+            sources+=("${img_name}-${ac}")
         fi
     done
+    if registry_is_insecure "$img_name"; then
+        CMD="docker manifest create --amend --insecure ${img_name} ${sources[*]}"
+        echo "$CMD"
+        docker manifest create --amend --insecure "$img_name" "${sources[@]}"
+        CMD="docker manifest push --insecure ${img_name}"
+        echo "$CMD"
+        docker manifest push --insecure "$img_name"
+        return
+    fi
+    CMD="docker buildx imagetools create -t ${img_name} ${sources[*]}"
     echo "$CMD"
-    $CMD
+    docker buildx imagetools create -t "$img_name" "${sources[@]}"
 }
 
 ALL_COMPONENTS=$(ls cmd | grep -v '.*cli$' | xargs)
